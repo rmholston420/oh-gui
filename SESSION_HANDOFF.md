@@ -1,70 +1,62 @@
-# SESSION_HANDOFF
+# Session Handoff
 
-Overwritten 2026-08-08 09:52 EDT.
+**Updated:** 2026-08-08 17:45 EDT
 
-## Stage in progress
+## Where the build is
 
-Phase 0 baseline. **Path E model selection is CLOSED** — ADR-005 Ratified, Amendments #1, #2, #3.
-No further planner or coder benching is warranted.
+**Phase 0 is complete.** All four exit criteria met:
 
-## Final selection (ADR-005)
+1. Upstream pins recorded — done
+2. Reference checkout — done
+3. **Baseline metrics — done this session** (was the only open item)
+4. First-run wizard — done
 
-| Role | Model | ctx | Preset | Think | num_predict |
-|---|---|---:|---|---|---:|
-| Planner | `qwen3.6:27b` | 131,072 | `planner` 1.0/0.95/20 | on | 16,384 |
-| Coder | `qwen3.6:35b-a3b-mtp-q4_K_M` | 131,072 | `precise` 0.6/0.95/20 | on | 16,384 |
+Nothing in Phase 0 is outstanding. Next work is Phase 1.
 
-Roles do NOT collapse: 26,140 + 26,390 = 52,530 MiB against a 32,607 MiB card, so the router
-MUST call `ollama stop` on the outgoing role model (`OLLAMA_KEEP_ALIVE=-1`, nothing auto-unloads).
-`OLLAMA_MAX_LOADED_MODELS` stays **2** — see Amendment #4; `=1` was retracted, not applied.
+## What was completed this session
 
-## Completed this session
+- Blocks 3–6 of the baseline matrix, 32 further cells, bringing the total to 48 across six blocks.
+- ADR-011 authored and acted on: derivative Ollama tags carrying Qwen's coding preset, because the
+  stock tags ship the general-reasoning preset and the profile layer cannot express
+  `presence_penalty` at all. Verified by reading the parameters back, checking disk for blob reuse,
+  and re-measuring throughput.
+- ADR-008, ADR-009, ADR-010, ADR-011 all ratified with verdicts written.
+- ADR-008 amended to record that the human-driven pass will never run, so three of its five item-5
+  metrics are permanently unobtainable — stated explicitly so a reader does not mistake null for
+  zero.
+- `bench/mtp/` throughput settled: 1.81x / 1.66x / 1.48x, inside the documented band.
+- Fixed a float formatting defect in `compare_blocks.py` that had leaked
+  `535.8000000000001 s` into a committed table; 5 tests added.
+- Fixed the `conversation_id` nesting defect — the error harvester had never worked on a real cell
+  while its unit tests passed, because they fed it the value it was failing to find. Tests now drive
+  both readers end to end over a realistically shaped summary.
 
-- ADR-005 ratified, then hardened by three amendments across four independent runs.
-- Planner evidence: **c12 `27b` 6/6** on the gold decision (medians 72, 72) vs **c13 `35b-mtp`
-  3/12** (medians 66, 58, 66, 64). The pre-registered `precise` test failed its gate (1/3,
-  median 64), so temperature was ruled out as the cause of c13's instability.
-- Harness defect fixed: `SAMPLING` was silently ignored. Real `--sampling` override, validated
-  against the harness's own preset table, recorded in every result JSON, 8 regression assertions.
-- Embedder query latency 150.6 ms (not user-visible); input length **ruled out** as the cause of
-  the ADR-004 A#2/A#7 12x discrepancy, which stays open.
-- **Frontend scaffolded and the first-run wizard shipped** (Phase 0 exit item 4): five steps,
-  25 unit tests, `tsc -b` clean. Step 2 computes its decision table from the real predicate rather
-  than showing canned copy.
-- **A specified authorization control was found to decide nothing** and fixed — ADR-006. The
-  out-of-worktree stop's "elevate to at least MEDIUM" sat below standard `ConfirmRisky`'s HIGH
-  threshold, so it would have shipped pausing on nothing new. Caught by a failing ordering test.
-- **The frontend gate now renders in a real browser** — ADR-007. axe contrast, clipping, narrow
-  viewport, and per-step screenshots; both assertions proven against forced defects, and the first
-  clipping check was itself wrong and was caught by its own probe.
-- Four self-corrections recorded this session: retracted comparability caveat; retracted
-  ~3,500 MiB desktop premise in `bench/gold/arch.md`; incorrect cold-gate "wrong side of warmup"
-  claim; and an ADR follow-up pre-registered without a command that could execute it.
+## The finding that matters most
+
+Six blocks. Every one scored **7/8**. Every one failed a **different** task.
+
+| Preset | 27b | 27b-mtp | 35b-a3b-mtp |
+|---|---|---|---|
+| General | t01 | t02 | t08 |
+| Coding | t08 | t04 | t07 |
+
+The task set does not discriminate between these models or these presets at one repetition per
+cell. **No model has been selected, and none should be selected from these numbers.**
+
+## Open questions and known gaps
+
+1. **Model selection for the Phase 1 router is unresolved** and needs a harness this one is not:
+   repetitions per cell so variance is visible, and tasks hard enough to spread the results.
+2. **Malformed tool-call JSON, ~2 per cell**, on every build regardless of preset. It cost an entire
+   cell once (t02 on `27b-mtp-q4_K_M`: three identical rejected `file_editor` calls, run never
+   started). Open defect, wants its own ADR. Whether the coding preset helps is unproven — 17→11,
+   16→12, 19→20 is suggestive at best.
+3. Three item-5 human metrics are permanently unobtainable. Closed, not pending.
 
 ## Exact next action
 
-Phase 0 exit item 3 (baseline metrics report) is the **only** open item. The harness is built,
-self-tested and committed; the run is operator work.
+Begin Phase 1. Before wiring the router, decide whether to build the discriminating harness first —
+model selection is a Phase 1 input and the current baseline cannot supply it.
 
-```bash
-cd ~/dev/oh-gui && git pull
-bash bench/baseline/seed_fixture.sh
-bash scripts/provision-reference-checkout.sh --run-copy
-cd ~/.oh-gui/reference/agent-canvas-run && npm ci && npm run dev
-```
-
-Point the stock app's settings at Ollama, select the ADR-005 pair, then in a second terminal:
-
-```bash
-cd ~/dev/oh-gui
-export OH_GUI_BASELINE_STAMP=$(date +%Y%m%d_%H%M)
-bash bench/baseline/run_baseline.sh t01     # ... through t08
-python3 bench/baseline/report.py ~/.oh-gui/baseline/${OH_GUI_BASELINE_STAMP}_run \
-  --out docs/BASELINE-METRICS-${OH_GUI_BASELINE_STAMP}.md
-```
-
-Then fill ADR-008's Verdict section from that report and move it Proposed → Ratified. Phase 0
-closes at that point. `bench/baseline/README.md` documents the event keys.
-
-**Prerequisite to check first:** the stock app needs `uv` on PATH (it starts its backend via
-`uvx`). Node is already 24.16.0.
+The router must reference the derivative tags (`qwen3.6:27b-coder`, `qwen3.6:27b-mtp-coder`,
+`qwen3.6:35b-a3b-mtp-coder`), not the stock ones, and must `ollama stop` the outgoing role model.

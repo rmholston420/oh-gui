@@ -100,3 +100,38 @@ Phase 0 close. The router in Phase 1 references the derivative tags.
 - ADR-008 (baseline method), ADR-009 (sampling findings), ADR-010 (MTP parity + correction block)
 - [Qwen3.6 model card sampling guidance](https://qwen.readthedocs.io)
 - `agent-server-schema.d.ts` — LLM fields exposed: temperature, top_p, top_k, seed
+
+---
+
+## Verdict (2026-08-08)
+
+Adopted. Three tags built with `ollama create`: `qwen3.6:27b-coder`, `qwen3.6:27b-mtp-coder`,
+`qwen3.6:35b-a3b-mtp-coder`.
+
+Both acceptance conditions this ADR set were met:
+
+- `ollama show --parameters` returns `temperature 0.6` and `presence_penalty 0` on all three, with
+  `draft_num_predict 4` preserved on the two MTP derivatives and absent from `27b-coder` — matching
+  the parent tags exactly.
+- Blobs were reused, not copied. Free disk was 64G before and 64G after, despite `ollama list`
+  reporting 17+17+22 GB of new entries. The listed sizes are logical.
+- Throughput held: `27b-mtp-q4_K_M` 124.96/124.82 tok/s against `27b-mtp-coder` 124.72/124.53 on
+  short generation with sampling pinned identically on both sides. Within 0.3 tok/s, so
+  `ollama create` did not disturb the speculative decoding heads.
+
+**What this ADR does NOT claim.** Tool-error counts across the paired blocks were 17→11, 16→12 and
+19→20 — the two dense 27b builds fell about a third, the MoE did not move. With one repetition per
+cell, against a defect that already varied 16 to 19 between same-preset runs, three paired deltas
+are suggestive and nothing more. **No causal claim that the coding preset reduces malformed
+tool-call JSON is entered here.** One data point is worth recording plainly: `27b-mtp-coder`
+completed t02 in 8 turns, the cell where the general preset produced three identical unparseable
+`file_editor` calls and the run never started.
+
+This preset is adopted because it is the parameter set Qwen documents for coding and the previous
+one was Qwen's general-reasoning preset applied to coding work by accident of packaging — a
+correctness argument that stands without any measured improvement.
+
+The malformed tool-call JSON, ~2 per cell on every build regardless of preset, remains an open
+defect and needs its own ADR against a harness with repetitions.
+
+**Status: Ratified.**

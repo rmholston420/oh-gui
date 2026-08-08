@@ -85,3 +85,20 @@ ADR-008 verdict.
 - [OpenHands SDK LLM config defaults](https://deepwiki.com/OpenHands/software-agent-sdk/4.1-llm-interface-and-configuration)
 - [Ollama K/V cache quantization](https://smcleod.net/2024/12/bringing-k/v-context-quantisation-to-ollama/)
 - ADR-008 (Phase 0 baseline method)
+
+---
+
+## Verdict (2026-08-08)
+
+Confirmed on the machine, not inferred. `ollama show --parameters` on all three tags returned the
+same values — `temperature 1`, `top_p 0.95`, `top_k 20`, `min_p 0`, `presence_penalty 1.5`,
+`repeat_penalty 1` — and the OpenHands profile JSON carries no sampling field of any kind. So
+Ollama's Modelfile governs every request the app makes, which is what this ADR claimed.
+
+The MTP asymmetry recorded here was also confirmed and corrected: `draft_num_predict 4` is present
+on both MTP tags and **absent** from plain `qwen3.6:27b`. ADR-010 briefly contradicted this from a
+registry page and has been corrected; this ADR's table was right.
+
+Acted on in ADR-011, which moves the parameters to the coding preset at the Ollama layer.
+
+**Status: Ratified.**

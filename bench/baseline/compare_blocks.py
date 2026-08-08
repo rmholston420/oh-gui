@@ -45,7 +45,13 @@ def load_block(run_dir: Path) -> dict:
 
 
 def _n(v, suffix=""):
-    return "?" if v is None else f"{v}{suffix}"
+    """`?` for unmeasurable, never 0. Floats are summed, so bare f-strings leak binary
+    repetend tails like 535.8000000000001 into documents of record."""
+    if v is None:
+        return "?"
+    if isinstance(v, float):
+        return f"{v:.1f}{suffix}" if v % 1 else f"{int(v)}{suffix}"
+    return f"{v}{suffix}"
 
 
 def main() -> int:

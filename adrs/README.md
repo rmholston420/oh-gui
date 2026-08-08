@@ -18,7 +18,7 @@ old one and mark the old one `Amended · superseded by ADR-###`.
 | [ADR-005](ADR-005-planner-and-coder-model-selection.md) | Planner and Coder Model Selection for OH-GUI | Ratified | Phase 0 |
 | [ADR-006](ADR-006-out-of-worktree-stop-elevates-to-high.md) | The Out-of-Worktree Trust-Dial Stop Elevates to HIGH | Ratified | Phase 0 mirror; binding on Phase 1 |
 | [ADR-007](ADR-007-frontend-visual-gate.md) | The Frontend Gate Renders in a Real Browser | Ratified | Phase 0 |
-| [ADR-008](ADR-008-phase-0-baseline-method.md) | Phase 0 Baseline Metrics: Method, and Verdict | **Proposed** (verdict pending the run) | Phase 0 exit |
+| [ADR-008](ADR-008-phase-0-baseline-method.md) | Phase 0 Baseline Metrics: Method, and Verdict | **Ratified** — 7/8 on all six blocks; task set non-discriminating at n=1 | Phase 0 exit |
 
 ## Open items awaiting a decision
 
@@ -43,6 +43,6 @@ old one and mark the old one `Amended · superseded by ADR-###`.
 | Desktop VRAM overhead | 657-666 MiB measured with browser open; the ~3,500 MiB estimate is retracted (ADR-004 A#6) |
 | `OLLAMA_FLASH_ATTENTION` | Confirmed no-op on all three axes (VRAM, prefill, decode) |
 | Repo layout for code | `apps/gui/` + `services/middleware/`, confirmed 2026-08-08 |
-| ADR-009 | Qwen3.6 sampling parameters and the MTP asymmetry | Proposed — verdict pending Phase 0 matrix |
-| ADR-010 | The baseline must compare MTP against MTP | Proposed — third block not yet run |
-| ADR-011 | Correct the sampling preset at the layer that governs it | Proposed |
+| ADR-009 | Qwen3.6 sampling parameters and the MTP asymmetry | Ratified |
+| ADR-010 | The baseline must compare MTP against MTP | Ratified |
+| ADR-011 | Correct the sampling preset at the layer that governs it | Ratified |

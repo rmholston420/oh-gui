@@ -2471,3 +2471,43 @@ understated by roughly 1.6x, so the tie on acceptance could not have been broken
 
 Block 3 launched 16:39 (`20260808_1639`), preflight PASS, 61 self-tests green. t01 ACCEPTED=yes in
 3 turns, idle at 66s — the cell plain 27b failed on a regression.
+
+## 2026-08-08 17:45 EDT — Phase 0 baseline closed; ADR-008/009/010/011 ratified
+
+- **Stage:** Phase 0 (baseline metrics) — item 3, the last open item
+- **Ports/adapters:** none (measurement and model packaging only)
+
+Blocks 3–6 completed. Block 3 (`20260808_1639`, `27b-mtp-q4_K_M`) 7/8; t02 lost to three identical
+unparseable `file_editor` calls, recorded as UNKNOWN rather than a quality failure since the agent
+changed no files and never started.
+
+ADR-011 acted on: three derivative tags built with `ollama create` from the existing local tags —
+`qwen3.6:27b-coder`, `qwen3.6:27b-mtp-coder`, `qwen3.6:35b-a3b-mtp-coder` — carrying Qwen's coding
+preset (temperature 0.6, presence_penalty 0) in place of the general-reasoning preset the stock tags
+ship. Chosen over profile fields because the agent-server schema exposes only temperature/top_p/
+top_k/seed, has no presence_penalty, and the profile sets `drop_params: true`, so the profile route
+would have fixed half the parameters and given no signal it had missed the rest. Verified: params
+readable back on all three, blobs reused (64G free before and after), MTP throughput unchanged
+within 0.3 tok/s.
+
+Blocks 4–6 (`20260808_1701`) run on the corrected tags: 7/8, 7/8, 7/8.
+
+**Headline finding across all six blocks: every block scored 7/8 and every block failed a different
+task.** t01/t02/t08 under the general preset, t08/t04/t07 under the coding preset. The task set does
+not discriminate between these models or presets at one repetition per cell. No winner declared;
+model selection deferred to Phase 1 with a harness that has repetitions and harder tasks.
+
+Tool errors 17→11, 16→12, 19→20 (paired by model). Not claimed as causal — n=1 against a defect that
+already varies 16–19 between same-preset runs. Malformed tool-call JSON stays an open defect.
+
+Thermals across all 48 cells: peak 79C, 0s at or above the 80C warn line, 0 throttled samples.
+
+- **Files touched:** `adrs/ADR-008-phase-0-baseline-method.md` (amendment + verdict),
+  `adrs/ADR-009-qwen3.6-sampling-and-mtp.md` (verdict), `adrs/ADR-010-mtp-parity-in-the-baseline.md`
+  (verdict), `adrs/ADR-011-coder-preset-derivative-tags.md` (new + verdict), `adrs/README.md`,
+  `bench/baseline/compare_blocks.py`, `bench/baseline/tests/test_compare_number_format.py` (new),
+  `docs/BASELINE-COMPARE-six-blocks.md`, `docs/BASELINE-METRICS-20260808_16*.md`,
+  `docs/BASELINE-METRICS-20260808_1701-*.md`
+- **Bug fixed:** summed floats leaked a binary repetend tail (`535.8000000000001 s`) into a
+  committed comparison table; `_n()` now formats floats, 5 tests added.
+- **Stop condition:** Phase 0 item 3 met. Phase 0 exit criteria all satisfied.

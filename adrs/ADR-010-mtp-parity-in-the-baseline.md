@@ -100,3 +100,24 @@ Phase 0 item 3. Phase 0 cannot be declared complete until the third block has ru
 - [Ollama qwen3.6 tags](https://ollama.com/library/qwen3.6/tags)
 - [Ollama qwen3.6:27b params blob](https://ollama.com/library/qwen3.6:27b/blobs/276ffc6327ae)
 - [Unsloth Qwen3.6 documentation](https://unsloth.ai/docs/models/qwen3.6)
+
+---
+
+## Verdict (2026-08-08)
+
+Parity achieved and the decision holds.
+
+Throughput was measured where tokens are countable (`bench/mtp/`, Ollama `/api/generate`, 3 reps,
+all cells capped at exactly 1024 output tokens): 1.81x on short generation, 1.66x on long, 1.48x on
+prefill-heavy — inside Unsloth's documented 1.4–2.2x band. Run-to-run spread under 0.5 tok/s.
+
+The suppression rule earned its place. Across six blocks the matrix's wall-clock spans 294s to
+783s, and those differences are tool calls and retries, not generation speed. `compare_blocks.py`
+refuses to compare speed across the MTP boundary and states that no tok/s may be quoted from that
+harness.
+
+The correction block stands: `27b-mtp-q4_K_M` carries a CLIP vision tower absent from plain 27b
+(27.3B vs 27.8B text params), so a *quality* difference between them cannot be attributed to MTP
+alone. Throughput is unaffected — an idle vision tower cannot accelerate text.
+
+**Status: Ratified.**

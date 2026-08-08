@@ -132,3 +132,40 @@ Phase 0 exit.
 - `bench/baseline/README.md`
 - ADR-005 (model pair), ADR-001 Amendment #2 (reference checkout location)
 - `docs/specs/08-telemetry.md` §8.6 (failure-signature vocabulary)
+
+---
+
+## Verdict (2026-08-08)
+
+Six blocks, 48 cells, two sampling presets across three model builds. **Every block scored 7/8, and
+every block failed a different task.**
+
+| Preset | qwen3.6:27b | 27b-mtp | 35b-a3b-mtp |
+|---|---|---|---|
+| General (Ollama default) | t01 | t02 | t08 |
+| Coding (ADR-011) | t08 | t04 | t07 |
+
+Acceptance is pinned at 87.5% in all six, and which cell fails moves every run. **This task set does
+not discriminate between these models or these presets at one repetition per cell.** Two of the six
+misses were not quality failures at all: 35b-a3b's t08 and its later t07 changed no files, and
+27b-mtp's t02 was killed outright by malformed tool-call JSON after three identical rejected
+`file_editor` calls.
+
+Declaring a winner from these numbers would be reading noise. The honest statement is that all
+three builds clear seven of eight tasks of this difficulty, and the harness cannot currently
+separate them.
+
+**Phase 0 item 3 asks for baseline metrics to be recorded, not for a model to be chosen.** That is
+satisfied: per-task acceptance against objective gates, turns, files, lines, wall-clock to first
+message and to idle, 1 Hz GPU temperature and power, resident model and quantization, tool-error
+counts, and generation throughput from `bench/mtp/`. Item 7 satisfied. Items 5 and 6 satisfied in
+part, with three human metrics permanently unobtainable per the amendment above.
+
+**Model selection is deferred to Phase 1 router configuration** and needs a harness this one is not:
+repetitions per cell so variance is visible, and tasks hard enough to produce a spread. Recorded as
+a known gap rather than papered over.
+
+Thermals across all 48 cells: peak 79C, zero samples at or above the 80C warn line, zero thermally
+throttled samples, against a 83C ceiling and 88C redline. The thermal question is closed.
+
+**Status: Ratified.**
