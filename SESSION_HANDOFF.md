@@ -25,7 +25,7 @@ but has never been executed against a model.
 - **ADR-004 Amendment #5** - production context ceiling is 131,072, not 262,144.
 - **ADR-005 filed OPEN** with criteria and falsifier fixed before results exist.
 - **Written:** `bench/path_e/{bench_path_e.py,run_path_e.sh,dump_for_scoring.sh}`.
-- **Cold-start gate** (`gpu_cool_wait`, `GPU_COLD_C=40`) - 40 C balances the cooldown wait
+- **Cold-start gate** (`gpu_cool_wait`, `GPU_COLD_C=45`) - 45 C balances the cooldown wait
   actually reaches between cells with the desktop running; cells wait for it instead
   of a guessed `sleep 20`.
   Prevents matrix ordering from becoming a confound in its own results.

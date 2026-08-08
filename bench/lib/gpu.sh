@@ -11,14 +11,14 @@
 #   83 C  HARD CEILING               - abort the run
 #   80 C  warn                       - report, keep going (report-only, never aborts)
 #   80 C  refuse to start a new run
-#   40 C  COLD threshold - not a safety limit. Benching from unequal starting temperatures
+#   45 C  COLD threshold - not a safety limit. Benching from unequal starting temperatures
 #         makes later cells clock down earlier and quietly penalises whatever ran last.
 #         The card reaches 28-29 C at true idle, but with the desktop running it settles
-#         set to 40 C (operator, 2026-08-08) because the wait, not the precision, is the
+#         set to 45 C (operator, 2026-08-08) because the wait, not the precision, is the
 #         binding cost: after a 16k-token cell the card takes minutes to fall below the
 #         mid-30s, and 7 cells of that dominates the run. 40 C is a compromise - cells may
-#         start anywhere in a ~6 C band rather than a ~1 C one, so it equalises less than
-#         a lower target would. That is acceptable ONLY because no cell in this matrix has
+#         start anywhere in a wide band rather than a ~1 C one, so at this value the gate
+#         is a loose backstop against a badly heat-soaked start, NOT a real equaliser. That is acceptable ONLY because no cell in this matrix has
 #         thermally throttled: peak was 77 C against a 78 C warn line. If a future run
 #         throttles, tighten this before trusting any timing comparison.
 # The card was previously capped at 435 W for heat reasons; it currently sits at 600 W,
@@ -39,7 +39,7 @@
 GPU_REDLINE_C="${GPU_REDLINE_C:-88}"   # hardware limit, documentation only
 GPU_MAX_C="${GPU_MAX_C:-83}"           # hard ceiling: abort
 GPU_WARN_C="${GPU_WARN_C:-80}"         # warn (report-only; the abort is GPU_MAX_C)
-GPU_COLD_C="${GPU_COLD_C:-40}"         # comparability: cold-start target (see header)
+GPU_COLD_C="${GPU_COLD_C:-45}"         # comparability: cold-start target (see header)
 GPU_COOL_TIMEOUT_S="${GPU_COOL_TIMEOUT_S:-300}"  # give up waiting, warn, continue
 GPU_START_C="${GPU_START_C:-80}"       # refuse to begin above this
 

@@ -1052,3 +1052,16 @@ Diagnosis pending - see DEBUG_LOG.
 - Safety limits unchanged: `GPU_MAX_C=83` (abort + unload all models),
   `GPU_START_C=80` (refuse to start), `GPU_REDLINE_C=88` (hardware, documentation only).
 
+## 2026-08-08 10:06 EDT - Cold-start target raised to 45 C
+
+- `GPU_COLD_C` 40 -> 45, per operator. Supersedes the 32/33/34/40 C entries.
+- **What this costs, stated plainly:** at 45 C the gate no longer meaningfully equalises
+  starting temperature - it is now a loose backstop that only catches a badly heat-soaked
+  start. Cross-cell timing comparisons rest on the absence of throttling (77 C peak vs the
+  83 C abort), not on cells starting from a common temperature.
+- Still worth keeping at this value: it prevents a cell from beginning while the card is
+  still shedding heat from a long 16k-token predecessor, which is the failure the fixed
+  `sleep 20` allowed.
+- **Re-tighten before trusting timings if a run ever reports thermally throttled samples.**
+- Override per run: `GPU_COLD_C=34 bash bench/path_e/run_path_e.sh`.
+
