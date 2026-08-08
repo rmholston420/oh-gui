@@ -1038,3 +1038,17 @@ Diagnosis pending - see DEBUG_LOG.
   before trusting any cross-cell timing comparison.**
 - Supersedes the 32 C, 33 C and 34 C entries above. Env-overridable per run.
 
+## 2026-08-08 10:03 EDT - Warn line raised 78 C -> 80 C
+
+- `GPU_WARN_C` 78 -> 80, per operator. **Report-only threshold** - it controls the
+  watcher's warning message and the "time >= warn" counter in the summary. It has never
+  aborted anything; the abort is `GPU_MAX_C=83`, which is unchanged, as are the 80 C
+  refuse-to-start guard and the 88 C hardware redline.
+- Rationale: at the ratified 435 W cap the matrix peaks at 77 C, so a 78 C line sat close
+  enough to normal operation to be noise rather than signal.
+- **Trade-off:** the early-warning band between warn and abort narrows from 5 C to 3 C.
+  Acceptable given the observed heating rate - the last matrix climbed 69 -> 77 C over
+  several minutes, not seconds, so 3 C is still ample notice.
+- Safety limits unchanged: `GPU_MAX_C=83` (abort + unload all models),
+  `GPU_START_C=80` (refuse to start), `GPU_REDLINE_C=88` (hardware, documentation only).
+

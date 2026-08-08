@@ -9,7 +9,7 @@
 # Operator thermal limits for this RTX 5090:
 #   88 C  hardware redline           - never to be reached
 #   83 C  HARD CEILING               - abort the run
-#   78 C  warn                       - report, keep going
+#   80 C  warn                       - report, keep going (report-only, never aborts)
 #   80 C  refuse to start a new run
 #   40 C  COLD threshold - not a safety limit. Benching from unequal starting temperatures
 #         makes later cells clock down earlier and quietly penalises whatever ran last.
@@ -38,7 +38,7 @@
 
 GPU_REDLINE_C="${GPU_REDLINE_C:-88}"   # hardware limit, documentation only
 GPU_MAX_C="${GPU_MAX_C:-83}"           # hard ceiling: abort
-GPU_WARN_C="${GPU_WARN_C:-78}"         # warn
+GPU_WARN_C="${GPU_WARN_C:-80}"         # warn (report-only; the abort is GPU_MAX_C)
 GPU_COLD_C="${GPU_COLD_C:-40}"         # comparability: cold-start target (see header)
 GPU_COOL_TIMEOUT_S="${GPU_COOL_TIMEOUT_S:-300}"  # give up waiting, warn, continue
 GPU_START_C="${GPU_START_C:-80}"       # refuse to begin above this
