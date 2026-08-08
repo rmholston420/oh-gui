@@ -310,3 +310,21 @@ Entry format:
   neither can share the GPU with the planner) plus an MRL dimension-truncation probe.
 - **Stop condition:** Phase 0 exit still NOT met.
 
+## 2026-08-08 04:20 EDT - qwen3.6:35b added to VRAM sweep (planner candidate)
+
+- **Stage:** Phase 0 (baseline metrics)
+- **Verified upstream** (https://ollama.com/library/qwen3.6/tags): `qwen3.6:35b`,
+  `qwen3.6:35b-a3b` and `qwen3.6:latest` all share digest `07d35212591f`, 24 GB, 256K
+  context, vision+tools+thinking. The `a3b` suffix means **MoE with ~3B active params** -
+  it is NOT a dense 35B. `qwen3.6:27b` is digest `a50eda8ed977`, 17 GB.
+- **Changed:** `bench/vram_sweep.sh` MODELS now includes `qwen3.6:35b`.
+- **Predicted (to be falsified by measurement):** 24 GB weights + MoE KV cost measured at
+  ~110 KB/token on the other A3B model (`qwen3-coder:30b`) implies ~27.6 GB at 32K and
+  ~31 GB at 64K. Expect FITS at 32768, SPILL at 65536, and 131072 impossible.
+- **Tradeoff this forces:** ADR-004 selected `qwen3.6:27b` at **131072** specifically to
+  meet the Qwen3.6 card's >=128K guidance for preserving thinking capability. If 35b caps
+  at 32K, adopting it is a 4x context regression bought with more parameters and ~3B
+  active (faster generation). That is a genuine either/or, not a free upgrade, and needs
+  an explicit decision once measured.
+- **Stop condition:** Phase 0 exit still NOT met.
+

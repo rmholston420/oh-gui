@@ -8,7 +8,9 @@
 #   bash bench/vram_sweep.sh q8         # q8_0 KV (restarts Ollama with env vars)
 set -uo pipefail
 
-MODELS=("qwen3.6:27b" "qwen3-coder:30b")
+# qwen3.6:35b == qwen3.6:35b-a3b (same digest 07d35212591f): MoE, 3B active, 24 GB.
+# 7 GB more weight than 27b but far fewer active params -> expect faster gen, worse KV.
+MODELS=("qwen3.6:27b" "qwen3.6:35b" "qwen3-coder:30b")
 CTXS=(32768 65536 131072 262144)
 MODE="${1:-fp16}"
 OUT="$HOME/.oh-gui/vram_sweep"
