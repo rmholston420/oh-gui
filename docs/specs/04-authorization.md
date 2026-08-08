@@ -18,7 +18,7 @@
 
 (v4.0 correction) The threshold and confirm_unknown parameters that actually exist on ConfirmRisky() must be surfaced in the trust-dial settings UI, not left as invisible defaults - a user should be able to see and adjust whether UNKNOWN-risk actions pause or proceed.
 
-> **CORRECTION 2026-08-08 (OPEN - awaiting operator ratification; see KNOWN_ISSUES.md).**
+> **CORRECTION 2026-08-08 - ratified as ADR-006.**
 > The row above previously said the analyzer elevates out-of-worktree writes "to at least MEDIUM"
 > paired with "standard ConfirmRisky()". Implementing it as an executable predicate showed that
 > combination **cannot produce this row's own stated behavior**: standard ConfirmRisky is

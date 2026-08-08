@@ -16,7 +16,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "gate": "npm run lint && npm run test && npm run build"
+    "gate": "npm run lint && npm run test && npm run build",
+    "e2e:setup": "playwright install chromium",
+    "verify": "npm run gate && npm run test:e2e"
   },
   "dependencies": {
     "motion": "13.0.0",
@@ -24,6 +26,7 @@
     "react-dom": "19.2.8"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
     "@eslint/js": "10.0.1",
     "@openhands/typescript-client": "1.37.0",
     "@playwright/test": "1.62.1",
@@ -35,6 +38,7 @@
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.4",
     "@vitejs/plugin-react": "6.0.5",
+    "axe-core": "^4.13.0",
     "eslint": "10.8.1",
     "eslint-plugin-react-hooks": "7.1.1",
     "globals": "17.9.0",

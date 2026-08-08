@@ -171,8 +171,9 @@ upstream, so the anti-corruption layer can be generated and diffed rather than h
 
 ## 2026-08-08 — the "Ask on writes outside worktree" stop, as specified, cannot work
 
-**Status: OPEN — needs operator ratification. Implemented as HIGH elevation in the Phase 0 display
-mirror; the Phase 1 middleware must match whatever is ratified.**
+**Status: CLOSED 2026-08-08 — ratified as [ADR-006](adrs/ADR-006-out-of-worktree-stop-elevates-to-high.md).**
+Elevate to HIGH, standard `ConfirmRisky(threshold=HIGH)` unchanged. Binding on the Phase 1
+middleware. Retained here as the record of a control that would have shipped deciding nothing.
 
 `docs/specs/04-authorization.md` §4.1 specifies this stop as a `SecurityAnalyzerBase` subclass that
 elevates any out-of-worktree write **"to at least MEDIUM"**, composed into

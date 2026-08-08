@@ -16,6 +16,8 @@ old one and mark the old one `Amended · superseded by ADR-###`.
 | [ADR-003](ADR-003-single-operator-remove-household.md) | Single-Operator Deployment: Remove Household Multi-User Mode | Ratified | Phase 0 |
 | [ADR-004](ADR-004-vram-context-envelope.md) | VRAM and Context Envelope on Colossus | Ratified | Phase 0 |
 | [ADR-005](ADR-005-planner-and-coder-model-selection.md) | Planner and Coder Model Selection for OH-GUI | Ratified | Phase 0 |
+| [ADR-006](ADR-006-out-of-worktree-stop-elevates-to-high.md) | The Out-of-Worktree Trust-Dial Stop Elevates to HIGH | Ratified | Phase 0 mirror; binding on Phase 1 |
+| [ADR-007](ADR-007-frontend-visual-gate.md) | The Frontend Gate Renders in a Real Browser | Ratified | Phase 0 |
 
 ## Open items awaiting a decision
 
@@ -32,6 +34,7 @@ old one and mark the old one `Amended · superseded by ADR-###`.
 | Household-mode onboarding timing | ADR-003 - household mode removed; question is void |
 | Scope of "remove the auth stuff" | ADR-003 - multi-user removed, safety plane retained |
 | Phase 0 baseline model set | **Superseded by ADR-005.** The coder slot is `qwen3.6:35b-a3b-mtp-q4_K_M`, not `qwen3-coder:30b` - the specialist placed last of four on the machine-scored code task. Planner remains `qwen3.6:27b` |
+| "Ask on writes outside worktree" is inert as specified | **ADR-006 Ratified** - the analyzer elevates to HIGH, not "at least MEDIUM". Standard `ConfirmRisky(threshold=HIGH)` is unchanged; the pairing as written decided nothing |
 | Baseline metrics report vs. dense Qwen3 27B-35B | ADR-005 Ratified - planner `qwen3.6:27b` @131,072, coder `qwen3.6:35b-a3b-mtp-q4_K_M` @131,072, roles do not collapse. Scored in `bench/path_e/SCORING-20260808_{0555,0705,0738}.md` |
 | LICENSE for this repo | MIT, added 2026-08-08 with NOTICE for donor attribution |
 | Thermal operating point | 435 W ratified; 600 W rejected at 82 C with throttling (BUILD_LOG 2026-08-08 08:20). Core sensor only - VRAM temp is not exposed by this driver (`docs/THERMAL-5090.md`) |

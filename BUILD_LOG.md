@@ -1921,3 +1921,43 @@ any build starts. Recorded here; no spec or ADR edited yet.
 - **Stop condition: Phase 0 exit item 4 MET on its stated criterion** (wizard ships and states the
   default stop explicitly in its own UI copy). **Item 3 (baseline metrics report) is the only Phase
   0 exit item still open.** Two OPEN entries added to KNOWN_ISSUES.
+
+## 2026-08-08 09:52 EDT — the frontend gate now renders in a real browser (ADR-007); ADR-006 ratified
+
+- Stage: Phase 0, `apps/gui` test infrastructure. Ports touched: none.
+- Operator direction: always use Playwright to check the frontend. Implemented as an enforced gate
+  rather than a habit — `apps/gui/e2e/wizard.spec.ts`, 8 tests, ~6s.
+- Justification is empirical, not stylistic: the wizard passed 25 Vitest tests while wrapping
+  "Pauses for you" in every table row, failing contrast on the risk chips, and breaking the policy
+  expression mid-call. jsdom has no layout engine and no colours, so that entire defect class is
+  invisible to it by construction.
+- Asserts per step: axe-core `wcag2aa`+`wcag21aa` (serious/critical fail the run), no clipped text,
+  no horizontal scroll at 900px, rendered table agrees with the predicate, and a full-page
+  screenshot attached to the report so screens stay reviewable.
+- **Both assertions were proven against real defects before being trusted.** Reverting the risk chip
+  to a dim slate produced a `color-contrast` failure naming all five rows. Clamping the table
+  wrapper to `h-16 overflow-hidden` produced a clipping failure.
+- **The first clipping check was wrong and the probe caught it.** It skipped every element whose
+  computed overflow was not `visible` — precisely the clipping case — so it passed the forced
+  defect. Rewritten to flag `hidden`/`clip` containers whose scroll size exceeds their client size,
+  exempting `auto`/`scroll` (deliberate scrollers, e.g. the table wrapper). Re-probed: now fails.
+- The rewrite then flagged `caption.sr-only` on the real page. That is a 1px screen-reader box,
+  clipped by design — a false positive, not a defect. Exempted elements ≤1px in either dimension;
+  a gate that cries wolf gets ignored. Re-probed both directions afterwards: real page clean, forced
+  clip still fails.
+- Screenshot-diffing rejected: it pins pixels, fails on every intentional design change, and trains
+  people to re-baseline without looking. Property assertions survive redesign.
+- Scripts: `npm run verify` = gate + e2e (pre-commit for frontend changes); `npm run e2e:setup`
+  installs chromium. `gate` stays browser-free and fast. Local only — no GitHub Actions.
+- **ADR-006 ratified** (out-of-worktree stop elevates to HIGH). §4.1's correction block moved from
+  OPEN to ratified, KNOWN_ISSUES entry CLOSED, `adrs/README.md` open-items table updated. The
+  entry is retained as the record of a control that would have shipped deciding nothing.
+- **ADR-007 filed and ratified** for the visual gate.
+- New devDeps: `@axe-core/playwright`, `axe-core`. Deleted the `e2e/smoke.spec.ts` placeholder.
+- Files: `apps/gui/e2e/wizard.spec.ts` (new), `apps/gui/e2e/smoke.spec.ts` (deleted),
+  `apps/gui/package.json`, `adrs/ADR-00{6,7}-*.md` (new), `adrs/README.md`,
+  `docs/specs/04-authorization.md`, KNOWN_ISSUES, BUILD_LOG, SESSION_HANDOFF.
+- Verified: 25 unit tests, 8 e2e, lint clean, `tsc -b` clean, build clean.
+- **Stop condition: unchanged. Phase 0 exit item 3 (baseline metrics report) remains the only open
+  Phase 0 item.** No open KNOWN_ISSUES blockers; one accepted Phase 0 limitation (trust-dial
+  display mirror) remains.

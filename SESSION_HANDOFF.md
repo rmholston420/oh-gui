@@ -1,6 +1,6 @@
 # SESSION_HANDOFF
 
-Overwritten 2026-08-08 08:48 EDT.
+Overwritten 2026-08-08 09:52 EDT.
 
 ## Stage in progress
 
@@ -28,25 +28,36 @@ MUST call `ollama stop` on the outgoing role model (`OLLAMA_KEEP_ALIVE=-1`, noth
   against the harness's own preset table, recorded in every result JSON, 8 regression assertions.
 - Embedder query latency 150.6 ms (not user-visible); input length **ruled out** as the cause of
   the ADR-004 A#2/A#7 12x discrepancy, which stays open.
+- **Frontend scaffolded and the first-run wizard shipped** (Phase 0 exit item 4): five steps,
+  25 unit tests, `tsc -b` clean. Step 2 computes its decision table from the real predicate rather
+  than showing canned copy.
+- **A specified authorization control was found to decide nothing** and fixed — ADR-006. The
+  out-of-worktree stop's "elevate to at least MEDIUM" sat below standard `ConfirmRisky`'s HIGH
+  threshold, so it would have shipped pausing on nothing new. Caught by a failing ordering test.
+- **The frontend gate now renders in a real browser** — ADR-007. axe contrast, clipping, narrow
+  viewport, and per-step screenshots; both assertions proven against forced defects, and the first
+  clipping check was itself wrong and was caught by its own probe.
 - Four self-corrections recorded this session: retracted comparability caveat; retracted
   ~3,500 MiB desktop premise in `bench/gold/arch.md`; incorrect cold-gate "wrong side of warmup"
   claim; and an ADR follow-up pre-registered without a command that could execute it.
 
 ## Exact next action
 
-Pull, run the gate, and look at the wizard:
+Pull, install the browser once, then run the full verification:
 
 ```bash
-cd ~/dev/oh-gui && git pull && cd apps/gui && npm ci && npm run gate && npm run dev
+cd ~/dev/oh-gui && git pull && cd apps/gui && npm ci && npm run e2e:setup && npm run verify
 ```
 
-Expect lint clean, **25 tests passed**, `tsc -b` clean, build; then the wizard at the dev URL.
+Expect lint clean, **25 unit tests**, `tsc -b` clean, build, then **8 Playwright tests**.
+`npx playwright show-report` opens the report with a full-page screenshot of all five wizard steps.
 
-**Then decide one thing:** the "Ask on writes outside worktree" stop is specified in a way that
-cannot work (KNOWN_ISSUES 2026-08-08). It is implemented as **elevate-to-HIGH + standard
-ConfirmRisky(threshold=HIGH)**, which is the only combination matching the spec's own behavior
-column, and `04-authorization.md` §4.1 is annotated OPEN pending your ratification. Phase 1's
-middleware must implement whatever is ratified.
+`npm run verify` is the pre-commit command for anything touching the frontend from now on
+(ADR-007). `npm run gate` alone stays browser-free and fast.
+
+**Nothing is awaiting your decision.** The out-of-worktree stop was ratified as ADR-006
+(elevate to HIGH, standard `ConfirmRisky(threshold=HIGH)` unchanged) — the only reading of §4.1
+that produces the behavior §4.1 itself states. Binding on the Phase 1 middleware.
 
 Then the next slice is the **first-run wizard** (`docs/specs/03-layout.md` §3.4): seven steps,
 must state and justify the default trust-dial stop `ConfirmRisky()` in its own UI copy, seed the
