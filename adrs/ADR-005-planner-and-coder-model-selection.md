@@ -437,3 +437,71 @@ adds a symmetrical observation about c13: rep 1 computed `28,685 - 29,698 = -1,0
 recognised the number was impossible, and annotated it *"the system is structurally saturated"*
 rather than recomputing the premise. Noticing an inconsistency and narrating past it is a
 distinct failure mode from not noticing, and a worse one in a planner.
+
+---
+
+## Amendment #3 — 2026-08-08 — pre-registered `precise` test EXECUTED and FAILED; planner axis CLOSED
+
+**Status unchanged: Ratified. This amendment closes the last open question in this ADR.**
+
+The follow-up pre-registered in the original decision and restated in Amendment #2 has now run
+under the real override, verified three ways: dump header `temperature: 0.6`, banner
+`SAMPLING OVERRIDE: preset=precise`, and `sampling_override: "precise"` in each result JSON. Run
+`20260808_0836`, scored in `bench/path_e/SCORING-20260808_0836.md`.
+
+**Gate:** Option C 3/3 **and** median > 75 reopens the planner slot.
+**Result: Option C 1/3, median 64. FAILED on both conditions.**
+
+| c13 run | Preset | Options | Gold decision | Median |
+|---|---|---|---:|---:|
+| `0738` | planner (1.0) | B, B, C | 1/3 | 66 |
+| `0804` | planner (1.0) | B, B, B | 0/3 | 58 |
+| `0824` | planner (1.0) | B(+C), B, C | 1/3 | 66 |
+| `0836` | **precise (0.6)** | **C, B(+C), B** | **1/3** | **64** |
+| **c13 total** | | | **3 / 12** | |
+| **c12 `27b`** | planner (1.0) | C x6 | **6 / 6** | 72, 72 |
+
+**Temperature was not the cause.** Halving it from 1.0 to 0.6 left the decision rate unchanged
+(1/3 vs 1/3, 0/3, 1/3) and moved the median down, not up. The instability is a property of the
+model on this task, not of the sampling preset. `precise` was faster (99.9-111.7 vs 86.7-98.9
+tok/s), which does not enter a quality-gated decision.
+
+**The planner selection is now closed. `qwen3.6:27b` keeps the slot. No further planner benching
+is warranted on this task**, and any future reopening requires a *new* pre-registered hypothesis
+with a stated mechanism — not another replicate set.
+
+### The decisive qualitative finding
+
+Rep 3 independently derived the mechanism that had been absent from all nine prior c13 draws:
+
+> *"Compute Serialization & Latency. The GPU executes inference sequentially. A classification
+> request competes with the active model for GPU time… potentially blocking the operator from
+> timely safety interventions."*
+
+That is `OLLAMA_NUM_PARALLEL=1` in substance — the exact reason `bench/gold/arch.md` prohibits
+Option B's "zero additional cost" framing. The same answer, two paragraphs earlier, asserts
+*"Option B incurs 0 MiB additional VRAM cost,"* and files the serialization objection under
+"arguments against my choice" without letting it change the choice.
+
+**The defect is therefore not a knowledge gap but a weighting failure.** For a planner this is
+worse than ignorance: the document reads as complete, and the objection that should have
+overturned the recommendation is present in it, labelled survivable. A reader skimming for
+diligence would find diligence.
+
+### Recorded against the winner, for symmetry
+
+Rep 1 chose correctly and still produced the run's worst arithmetic, concluding *"Physical safety
+margin: -5,057 MiB (negative headroom at max context)"* — a statement that the system cannot run.
+It double-counted KV cache against a footprint that already includes it, applied the 27b's
+74.6 KB/token to `qwen3-coder:30b` (measured 110.0), applied a 131,072 context to a model measured
+at 65,536, and used an incorrect overhead midpoint it then silently abandoned. Right answer, unsound
+support. This is the same error class flagged three times earlier today: a figure inherited rather
+than re-derived from the measurement the harness already recorded.
+
+### Salvage
+
+Run `0824` rep 3 (Option C, 79) and run `0836` rep 1 (Option C, 74) are the two best available
+drafts of the `SecurityAnalyzer` port. When the security-analyzer ADR is written, start from
+`0824` rep 3's frozen dataclasses and `ActionType`/`TaintTag` model, and take `0836` rep 1's
+separation of `ActionDisposition` from risk level plus its `analyze_action`/`analyze_text` split.
+Neither is ratified; `bench/gold/arch.md` remains a scoring rubric, not a decision.

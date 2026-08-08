@@ -1562,3 +1562,33 @@ trust-dial stop). No further Path E runs are required for Phase 0.
   `bench/tests/test_sampling_override.sh` (new), `bench/path_e/SCORING-20260808_0824.md` (new),
   `adrs/ADR-005-...md`, DEBUG_LOG.md, KNOWN_ISSUES.md, SESSION_HANDOFF.md.
 - Stop condition: ADR-005 Ratified, unchanged. `OLLAMA_MAX_LOADED_MODELS` 2 -> 1 still unapplied.
+
+## 2026-08-08 08:48 EDT — ADR-005 Amendment #3: pre-registered precise test FAILED; planner axis closed
+
+- Stage: Phase 0 baseline / Path E. **Path E model selection now fully closed.**
+- Ran `REPS=3 SAMPLING=precise bash bench/path_e/run_path_e.sh c13_planner_arch_35bmtp` under the
+  override fixed in `e9ad2d5`. Verified live three ways: header `temperature: 0.6`, banner
+  `SAMPLING OVERRIDE: preset=precise`, `sampling_override` in each JSON.
+- **Gate FAILED.** Required Option C 3/3 AND median > 75. Got **Option C 1/3, median 64**
+  (74 / 64 / 64). `qwen3.6:27b` keeps the planner slot.
+- Temperature was not the cause of c13's instability: 1/3 at 0.6 vs 1/3, 0/3, 1/3 at 1.0. Median
+  moved down. Combined **c13 3/12 vs c12 6/6** on the gold decision. `precise` was faster
+  (99.9-111.7 vs 86.7-98.9 tok/s), which a quality-gated decision ignores.
+- **Decisive qualitative finding.** Rep 3 independently derived GPU inference serialization - the
+  substance of `OLLAMA_NUM_PARALLEL=1` and the exact reason Option B's "zero cost" framing is
+  prohibited - wrote it clearly, filed it under arguments-against, and chose Option B anyway while
+  asserting "0 MiB additional VRAM cost" two paragraphs earlier. The defect is weighting, not
+  knowledge, which is worse in a planner: the objection that should overturn the recommendation is
+  present in the document and marked survivable.
+- Recorded against the winner: rep 1 chose correctly and produced the run's worst arithmetic,
+  concluding "-5,057 MiB negative headroom" (i.e. the system cannot run) by double-counting KV
+  against a total that already includes it, using the 27b's 74.6 KB/token for coder:30b (110.0),
+  and applying a 131,072 context to a model measured at 65,536.
+- Salvage noted in the ADR: `0824` rep 3 and `0836` rep 1 are the two best drafts of the
+  SecurityAnalyzer port for the future security ADR.
+- Thermal: coldest run of the day - peak 52 C, avg under load 42.2 C, 193 W, 0 throttled, 247 s
+  for 3 cells. 45 C gate continues to perform.
+- Files: `bench/path_e/SCORING-20260808_0836.md` (new), `adrs/ADR-005-...md` (Amendment #3),
+  BUILD_LOG.md, SESSION_HANDOFF.md.
+- Stop condition: ADR-005 Ratified and now CLOSED on both roles. Remaining ADR-005 consequence:
+  `OLLAMA_MAX_LOADED_MODELS` 2 -> 1, still unapplied.
