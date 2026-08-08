@@ -70,5 +70,9 @@ fi
 
 echo
 echo "Requested: KV=$KV FA=$FA GPU_OVERHEAD=1GiB MAX_LOADED_MODELS=2 NUM_PARALLEL=1 DEBUG=$DBG"
-echo "Flash attention was NEVER confirmed active in runs before 2026-08-08; the grep above"
-echo "returned nothing. Run with 'debug' to prove it before trusting any tok/s measurement."
+echo "Flash attention: the grep above finds nothing because the Ollama Go engine does not"
+echo "log runner flags at any debug level. That is not evidence the setting failed to apply."
+echo "MEASURED 2026-08-08 (bench/fa_probe.sh): FA=1 vs FA=0, qwen3.6:27b @131072, 26,120-token"
+echo "prompt -> 25,509 vs 25,518 MiB (9 MiB, noise) and 2929.5 vs 2926.8 prefill tok/s (0.09%)."
+echo "FA has no measurable effect here. This also explains q8_0 KV no-opping: llama.cpp"
+echo "requires flash attention for KV quantisation, and FA is not engaging."

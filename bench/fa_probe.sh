@@ -10,21 +10,32 @@
 #   2. Prompt-eval throughput: FA normally prefills faster.
 # If BOTH are identical between FA=1 and FA=0, flash attention is not engaging.
 #
+# v3 (2026-08-08): v2 settled the VRAM and prefill axes but produced a garbage decode
+# figure - num_predict=16 on a prompt whose correct answer is the single word "ack" meant
+# eval_count was ~1, so eval_tok_s was first-token latency wearing a throughput costume
+# (0.6 vs 85.8 tok/s, an artefact, not a finding). v3 forces a real generation of NPRED
+# tokens, refuses to report tok/s below a 64-token floor, and samples the GPU DURING
+# generation instead of after it, when the clocks have already decayed.
+#
 # v2 (2026-08-08): fixes a fatal ordering bug in v1 - PROMPT was consumed by a heredoc
 # before it was exported, so the request was never built. Request JSON is now generated
 # by a single Python step that writes a file; nothing depends on shell export ordering.
 #
 #   bash bench/fa_probe.sh
 set -euo pipefail
+source "$(dirname "$0")/lib/gpu.sh"   # MANDATORY thermal instrumentation
 MODEL="${MODEL:-qwen3.6:27b}"     # dense, 74.6 KB/token KV - largest signal of the candidates
 CTX="${CTX:-131072}"
 OUT=~/.oh-gui/fa_probe; mkdir -p "$OUT"
 STAMP=$(date +%Y%m%d_%H%M); CSV="$OUT/${STAMP}_fa_probe.csv"; REQ="$OUT/${STAMP}_req.json"
 DIR=/etc/systemd/system/ollama.service.d; FILE=$DIR/oh-gui.conf
+NPRED="${NPRED:-256}"
+gpu_guard
+gpu_watch_start
 
-python3 - "$MODEL" "$CTX" "$REQ" <<'PY'
+python3 - "$MODEL" "$CTX" "$REQ" "$NPRED" <<'PY'
 import json, sys
-model, ctx, out = sys.argv[1], int(sys.argv[2]), sys.argv[3]
+model, ctx, out, npred = sys.argv[1], int(sys.argv[2]), sys.argv[3], int(sys.argv[4])
 para = ("The middleware owns the entire policy plane: authorization, prompt-injection "
         "screening, action gating, and audit. It never modifies the OpenHands checkout. ")
 prompt = (para * 900).strip() + "\n\nReply with exactly one word: ack"
@@ -32,14 +43,14 @@ json.dump({"model": model,
            "messages": [{"role": "user", "content": prompt}],
            "stream": False,
            "think": False,
-           "options": {"num_ctx": ctx, "num_predict": 16,
+           "options": {"num_ctx": ctx, "num_predict": npred,
                        "temperature": 0.6, "top_p": 0.95, "top_k": 20}},
           open(out, "w"))
 print(f"request written: {out} (~{len(prompt)//4} tokens)")
 PY
 
 echo "model=$MODEL ctx=$CTX" | tee "$CSV.meta"
-echo "fa,idle_mib,used_mib,model_mib,prompt_tokens,prefill_s,prefill_tok_s,eval_tok_s,temp_c,power_w,sm_mhz" > "$CSV"
+echo "fa,idle_mib,used_mib,model_mib,prompt_tokens,prefill_s,prefill_tok_s,eval_tokens,eval_tok_s,peak_temp_c,peak_power_w,peak_sm_mhz" > "$CSV"
 
 for FA in 1 0; do
   sudo tee "$FILE" >/dev/null <<EOF
@@ -59,11 +70,24 @@ EOF
   sleep 2
   idle=$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits)
 
-  echo "-- fa=$FA running (this prefills ~24k tokens, allow a minute)"
-  curl -s localhost:11434/api/chat -d @"$REQ" -o "$OUT/${STAMP}_fa${FA}.json"
+  echo "-- fa=$FA running (prefill ~26k tokens + $NPRED generated tokens)"
+  curl -s localhost:11434/api/chat -d @"$REQ" -o "$OUT/${STAMP}_fa${FA}.json" &
+  CURL_PID=$!
+  # Sample while the GPU is actually working. v2 sampled after the request returned, by
+  # which point clocks and power had already decayed - that is how fa=1 recorded 38C/65W
+  # and fa=0 recorded 68C/435W for identical work.
+  peak_t=0; peak_p=0; peak_sm=0
+  while kill -0 $CURL_PID 2>/dev/null; do
+    read -r ct cp cs <<<"$(nvidia-smi --query-gpu=temperature.gpu,power.draw,clocks.sm \
+          --format=csv,noheader,nounits | tr -d ',')"
+    [ "${ct%.*}" -gt "${peak_t%.*}" ] 2>/dev/null && peak_t=$ct
+    [ "${cp%.*}" -gt "${peak_p%.*}" ] 2>/dev/null && peak_p=$cp
+    [ "${cs%.*}" -gt "${peak_sm%.*}" ] 2>/dev/null && peak_sm=$cs
+    sleep 1
+  done
+  wait $CURL_PID || true
   used=$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits)
-  read -r temp power sm <<<"$(nvidia-smi --query-gpu=temperature.gpu,power.draw,clocks.sm \
-        --format=csv,noheader,nounits | tr -d ',')"
+  temp=$peak_t; power=$peak_p; sm=$peak_sm
 
   python3 - "$OUT/${STAMP}_fa${FA}.json" "$FA" "$idle" "$used" "$temp" "$power" "$sm" >> "$CSV" <<'PY'
 import json, sys
@@ -73,8 +97,11 @@ pt = d.get("prompt_eval_count", 0); pd = d.get("prompt_eval_duration", 0)
 ec = d.get("eval_count", 0);        ed = d.get("eval_duration", 0)
 pre_s  = pd/1e9 if pd else 0
 pre_ts = pt/pre_s if pre_s else 0
-ev_ts  = ec/(ed/1e9) if ed else 0
-print(f"{fa},{idle},{used},{int(used)-int(idle)},{pt},{pre_s:.2f},{pre_ts:.1f},{ev_ts:.1f},{temp},{power},{sm}")
+# Decode throughput is only meaningful over a decent number of tokens. Below the floor,
+# tok/s is dominated by first-token latency - report INVALID rather than a fake number.
+FLOOR = 64
+ev_ts = f"{ec/(ed/1e9):.1f}" if (ed and ec >= FLOOR) else f"INVALID(n={ec})"
+print(f"{fa},{idle},{used},{int(used)-int(idle)},{pt},{pre_s:.2f},{pre_ts:.1f},{ec},{ev_ts},{temp},{power},{sm}")
 PY
   tail -1 "$CSV"
   ollama stop "$MODEL" >/dev/null 2>&1 || true
@@ -84,9 +111,11 @@ echo
 column -s, -t < "$CSV"
 echo
 echo "INTERPRETATION"
-echo " model_mib differs materially between fa=1 and fa=0  -> flash attention IS active"
-echo " model_mib AND prefill_tok_s both ~identical         -> flash attention is a NO-OP,"
-echo "                                                        exactly like q8_0 KV (ADR-004)"
+echo " v2 already settled two axes: model_mib 25509 vs 25518 (9 MiB = noise) and"
+echo " prefill 2929.5 vs 2926.8 tok/s (0.09%). Flash attention changes NEITHER."
+echo " This run tests the one axis v2 measured invalidly: sustained decode."
+echo " If eval_tok_s also matches, FA is a confirmed no-op on all three axes."
 echo
 echo "Restore the normal operating state with: bash bench/ollama_env.sh f16"
 echo "CSV: $CSV"
+gpu_watch_stop

@@ -653,3 +653,41 @@ Entry format:
   evidence. The Path E quality bench will be the first that does.
 - **Stop condition:** Phase 0 exit still NOT met.
 
+## 2026-08-08 06:40 EDT - Flash attention measured: NO-OP on VRAM and prefill
+
+- **Stage:** Phase 0 (baseline metrics)
+- **Run:** `bench/fa_probe.sh` v2, `qwen3.6:27b` @131072, 26,120-token prompt, 435 W cap.
+  CSV `/home/rmholston/.oh-gui/fa_probe/20260808_0441_fa_probe.csv`.
+
+| FA | model_mib | prefill_s | prefill_tok_s |
+|---:|---:|---:|---:|
+| 1 | 25,509 | 8.92 | 2929.5 |
+| 0 | 25,518 | 8.92 | 2926.8 |
+
+- **VERDICT: `OLLAMA_FLASH_ATTENTION` has no measurable effect on this runtime.** 9 MiB of
+  32,607 (0.03%) and 0.09% on prefill are both inside run-to-run noise. Three log-based
+  attempts failed to confirm FA; one measurement falsified it in 45 seconds. The method was
+  the problem, and measurement settled it - same as q8_0 KV.
+- **This unifies two previously separate findings.** llama.cpp requires flash attention to
+  quantise the KV cache. FA not engaging is therefore a sufficient explanation for
+  `OLLAMA_KV_CACHE_TYPE=q8_0` being a no-op ([ollama#8921](https://github.com/ollama/ollama/issues/8921)).
+  One root cause, not two coincidences.
+- **The measured VRAM envelope is UNAFFECTED and remains closed.** Every sweep ran at FA=1,
+  which is now shown to equal FA=0, so no ceiling shifts. The envelope stands as measured.
+- **Raises the value of the deferred `OLLAMA_LLM_LIBRARY` test.** If forcing the llama.cpp
+  backend makes FA engage, q8_0 KV should start working too, roughly doubling every context
+  ceiling. Still deferred until after the quality bench, per operator.
+- **INVALID MEASUREMENT in the same run - decode throughput.** The CSV shows 0.6 tok/s at
+  FA=1 against 85.8 at FA=0. This is an artefact of my probe design, not a finding:
+  `num_predict=16` on a prompt whose correct answer is the single word "ack" means
+  `eval_count` was ~1, so the figure is first-token latency reported as throughput. **No
+  decode conclusion can be drawn from it, in either direction.** The 38C/65W vs 68C/435W
+  readings are the matching artefact - v2 sampled the GPU after the request returned, so
+  the FA=1 row caught the card already idling.
+- **`bench/fa_probe.sh` v3** fixes all three: generation prompt forcing ~250 words,
+  `NPRED=256`, a 64-token validity floor that prints `INVALID(n=...)` rather than a
+  fabricated rate, and peak GPU sampling *during* generation. Now sources `lib/gpu.sh`.
+- **Thermal, incidentally:** 68 C peak at the 435 W cap during a 26k-token prefill - 15 C
+  under the ceiling. The bench has thermal headroom at this cap.
+- **Stop condition:** Phase 0 exit still NOT met.
+
