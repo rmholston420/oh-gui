@@ -134,6 +134,24 @@ load "$CODER" chat || exit 1
 ps_snapshot 3_all_three
 
 echo
+echo; echo "== step 4: the CORRECT router sequence =="
+# Steps 1-3 deliberately exercised the sequence ADR-005 FORBIDS: load a second role model while
+# the first is still resident. Under OLLAMA_KEEP_ALIVE=-1 nothing auto-unloads, so the router is
+# required to `ollama stop` the outgoing role model first. On that path resident goes
+# {embedder} -> load coder = 2 entries, AT the limit but not over it, so nothing should be evicted
+# and the embedder should never churn. That is a prediction; this step executes it.
+for m in "$EMBED" "$PLANNER" "$CODER"; do ollama stop "$m" >/dev/null 2>&1 || true; done
+sleep 3
+load "$EMBED" embed || exit 1
+load "$PLANNER" chat || exit 1
+ps_snapshot 4a_embed_planner
+echo "explicit: ollama stop $PLANNER   (what the router is required to do)"
+ollama stop "$PLANNER" >/dev/null 2>&1 || true
+sleep 2
+ps_snapshot 4b_after_stop
+load "$CODER" chat || exit 1
+ps_snapshot 4c_after_correct_switch
+
 echo "=============================== VERDICT ==============================="
 python3 - "$OUT" "$EMBED" "$PLANNER" "$CODER" <<'VERDICT'
 import json, pathlib, sys
@@ -157,6 +175,22 @@ elif coder not in final:
     print("  Inspect the ps_*.json files; draw no slot-policy conclusion from this.")
 else:
     print("RESULT: unexpected combination - inspect the ps_*.json files.")
+print()
+print("--- step 4: the correct router sequence (stop outgoing, then load incoming) ---")
+after = {m["name"]: m.get("size_vram", 0)
+         for m in json.loads((out / "ps_4c_after_correct_switch.json").read_text()).get("models", [])}
+print(f"resident after the correct switch: {sorted(after) or '(none)'}")
+if embed in after and coder in after and planner not in after:
+    print("  CONFIRMED: the embedder SURVIVES a stop-then-load role switch.")
+    print("  The churn seen in step 3 is caused by the FORBIDDEN sequence, not by =2. With the")
+    print("  router honouring `ollama stop`, resident never exceeds the limit and =2 is correct")
+    print("  as it stands - no change to OLLAMA_MAX_LOADED_MODELS is warranted.")
+elif embed not in after:
+    print("  REFUTED: the embedder was evicted even on the correct sequence.")
+    print("  =2 cannot hold one role model plus the embedder in practice. Raising to 3 is then")
+    print("  justified, since the VRAM ceiling already forbids role co-residency independently.")
+else:
+    print("  unexpected - inspect ps_4*.json before concluding.")
 print()
 print("Independent of slot policy, measured in run 20260808_0850 at num_ctx=4096:")
 print("  planner 20,364 MiB + coder 25,578 MiB = 45,942 MiB vs a 32,607 MiB card.")
