@@ -61,6 +61,11 @@ gpu_hotspot() {
 
 gpu_sample() {
   local q thr hs
+  # NOTE: fan.speed is UNRELIABLE on this card. Driver 610.57.04 does not expose the fan
+  # tachometer for this 5090, so both nvidia-smi and LACT report 0% / 0 RPM while the fans
+  # are visibly spinning (operator-confirmed 2026-08-08). The column is recorded for
+  # completeness but a 0 here means "not reported", NOT "fans stopped". Do not infer
+  # cooling behaviour from it, and do not build a guard on it.
   q=$(nvidia-smi --query-gpu=temperature.gpu,power.draw,clocks.sm,utilization.gpu,fan.speed \
         --format=csv,noheader,nounits | tr -d ' ')
   # Parse the value AFTER the colon, not $NF. "Not Active" has $NF == "Active", so the
@@ -192,8 +197,10 @@ if hot:
     print(f" hotspot max {max(hot):.0f}C   avg {sum(hot)/len(hot):.1f}C   (peak delta over edge {max(hot)-max(t):+.0f}C)")
 else:
     print(" hotspot UNAVAILABLE - edge sensor only")
-if fan:
+if fan and max(fan) > 0:
     print(f" fan     max {max(fan):.0f}%   avg {sum(fan)/len(fan):.1f}%")
+elif fan:
+    print(" fan     NOT REPORTED by this card (reads 0% while physically spinning) - ignore")
 print(f" sm clk  min {min(s):.0f}MHz avg {sum(s)/len(s):.0f}MHz")
 print(f" time >= {WARN:.0f}C warn: {over_warn}s     >= {MAX:.0f}C ceiling: {over_max}s")
 print(f" power-capped samples: {len(pcap)} (expected at the cap - benign if constant across cells)")

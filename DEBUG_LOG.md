@@ -192,3 +192,34 @@ _No entries yet. First debugging action in this repo appends below._
   is 88 C, confirmed from `T.Limit 57` at 33 C (= 90 C max operating) minus the -2 C
   slowdown spec. Earlier entries that implied a hardware cutout were imprecise.
 
+## 2026-08-08 08:35 EDT - CORRECTION: fan speed is a REPORTING failure, not a control failure
+
+- **Supersedes the 08:22 entry above.** That entry's framing was wrong and the wrong
+  remediation was nearly applied.
+- **Operator observation (decisive):** "the fans were never stopped, i can see them
+  spinning." Physical inspection beats every readout in this investigation.
+- **Actual fault:** driver 610.57.04 does not expose this 5090's fan tachometer through
+  NVML. Both `nvidia-smi --query-gpu=fan.speed` and `lact cli stats` therefore report
+  `0 %` / `0 RPM` while the fans are visibly running. Nothing is wrong with the cooling.
+- **What I got wrong, and why it mattered:** I read `fan max 0%` at 82 C, inferred that
+  LACT had seized fan control and pinned it at zero, and drafted a command to set
+  `fan_control_enabled: false` to "give the fans back to the vBIOS." The fans were never
+  taken away. The instrument was broken, not the machine. Both the static-80% test and the
+  curve test returned 0 RPM for the same reason, which I misread as corroboration - two
+  readings from the same broken sensor are one observation, not two.
+- **Fix applied:** `bench/lib/gpu.sh` now treats an all-zero `fan_pct` series as
+  "NOT REPORTED by this card" in the summary instead of printing `fan max 0%`, and
+  `gpu_sample` carries a comment stating that 0 means unreported, not stopped. No guard may
+  be built on this column.
+- **Still genuinely unknown:** whether the LACT curve is being applied at all. It cannot be
+  verified through any readout on this hardware; only audible or tachometer-free physical
+  observation can settle it. Deliberately NOT pursued further - the bench runs at 435 W
+  where the card peaks at 69-70 C, so fan tuning is not on the critical path.
+- **Unaffected by this correction:** the 435 W decision (it rests on temperature and
+  throttle counters, both of which report correctly), the hotspot record-only decision, and
+  the flash-attention verdict.
+- **Generalisable lesson, second instance today:** when an instrument reports an extreme
+  value (0% fans at 82 C), suspect the instrument before theorising about the system. The
+  earlier throttle-parser bug was the same shape - every sample flagged as throttled, which
+  was a parser reading `$NF` of "Not Active", not a card in permanent throttle.
+

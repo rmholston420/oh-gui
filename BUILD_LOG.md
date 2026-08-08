@@ -873,3 +873,20 @@ Diagnosis pending - see DEBUG_LOG.
   Remaining before the bench: fan control diagnosis (does not block), then the Path E
   harness and ADR-005.
 
+## 2026-08-08 08:36 EDT - Fan telemetry marked unreliable; fan work closed as off-critical-path
+
+- **Stage:** Phase 0 / R1, instrumentation.
+- Operator confirmed by direct observation that the GPU fans spin normally. The `0%`
+  readings are a driver/NVML reporting gap on this 5090, not a cooling fault. Full
+  correction in DEBUG_LOG 08:35, which supersedes the defect logged at 08:22.
+- `bench/lib/gpu.sh` summary no longer prints a misleading `fan max 0%`; an all-zero series
+  now prints `fan NOT REPORTED by this card`.
+- **Fan control work is CLOSED as off the critical path.** At the ratified 435 W cap the
+  card peaks at 69-70 C edge with 0 s above the 78 C warn threshold. LACT's fan curve
+  remains installed and inert-or-active (unverifiable on this hardware); it does no harm.
+- **The 600 W rejection is unaffected and if anything reinforced** - 82 C peak and 707 ms of
+  accumulated HW thermal slowdown were reached WITH the fans running normally, so there is
+  no untapped cooling headroom that would rescue 600 W.
+- **Stop condition:** Phase 0 exit not met. All thermal questions now CLOSED. Next and only
+  remaining instrumentation-side work: `bench/path_e/bench_path_e.py` and ADR-005.
+
