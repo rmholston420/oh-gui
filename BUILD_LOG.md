@@ -720,3 +720,34 @@ Entry format:
   (the edit silently failed to apply). Now genuinely fixed and content-verified.
 - **Stop condition:** Phase 0 exit still NOT met.
 
+## 2026-08-08 07:15 EDT - FLASH ATTENTION CLOSED: no-op on all three axes
+
+- **Stage:** Phase 0 (baseline metrics)
+- Run `20260808_0453`, `qwen3.6:27b` @131072, 27,858-token prompt, 256 generated tokens
+  (`done_reason='length'` on both cells, so both generated to the cap), 435 W.
+
+| FA | model_mib | prefill tok/s | eval_tokens | decode tok/s | peak C |
+|---:|---:|---:|---:|---:|---:|
+| 1 | 25,391 | 2912.7 | 256 | **68.4** | 69 |
+| 0 | 25,484 | 2901.7 | 256 | **68.0** | 70 |
+
+- **Decode differs by 0.6%.** Combined with VRAM (0.03%) and prefill (0.4%), all three
+  axes are inside noise. **`OLLAMA_FLASH_ATTENTION` is a confirmed no-op on this runtime.**
+  The setting stays in the drop-in as documentation of intent; it changes nothing today.
+- **This closes the question that was blocking trust in tok/s figures.** The blocker was
+  never that FA might be off - it was not knowing. It is off in effect, equally in every
+  cell, so cross-cell comparison is sound.
+- **First trustworthy throughput baseline for this project:** `qwen3.6:27b` at 131072 ctx
+  decodes at **~68 tok/s** with a ~28k-token prompt, prefilling at **~2900 tok/s**.
+- **Thermals at 435 W under a real generation load:** peak 70 C, under-load average 66.4 C,
+  zero time above the 78 C warn line. Confirms the bench has headroom at this cap.
+- **Instrumentation refinement: power capping and thermal throttling are now reported
+  separately.** The previous run flagged 26 of 40 samples as "throttled" - exactly the 26
+  under-load samples. That was genuine SW Power Cap, not the earlier parser bug: at a 435 W
+  cap drawing 446 W the card is power-capped for the entire load, by design. Conflating it
+  with thermal slowdown would have fired a spurious "tok/s not comparable" warning on every
+  future run and trained us to ignore the one warning that matters. Power cap is now
+  reported as benign-if-constant; only thermal slowdown invalidates cross-cell timing.
+- **Stop condition:** Phase 0 exit still NOT met. Next: gold answers for arch and plan,
+  then the Path E harness.
+

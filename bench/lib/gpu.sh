@@ -37,12 +37,22 @@ gpu_sample() {
   q=$(nvidia-smi --query-gpu=temperature.gpu,power.draw,clocks.sm,utilization.gpu \
         --format=csv,noheader,nounits | tr -d ' ')
   # Parse the value AFTER the colon, not $NF. "Not Active" has $NF == "Active", so the
-  # naive parser reported throttling on every single sample including idle ones.
-  thr=$(nvidia-smi -q -d PERFORMANCE 2>/dev/null \
-        | awk -F':' '/SW Power Cap |HW Thermal Slowdown |SW Thermal Slowdown |HW Power Brake / \
-                     {v=$2; gsub(/[ \t]/,"",v); if (v=="Active") print "Active"}' \
-        | head -1)
-  [ -z "$thr" ] && thr="None"
+  # naive parser reported throttling on every sample including idle ones.
+  #
+  # Power capping and thermal slowdown are reported SEPARATELY and mean different things:
+  #   SW Power Cap  - expected whenever the card is at its power limit. At a 435 W cap
+  #                   drawing 445 W this is Active for the whole load, which is normal and
+  #                   is NOT a reason to distrust a measurement, provided the cap is the
+  #                   same for every cell being compared.
+  #   Thermal       - HW/SW thermal slowdown. This DOES invalidate cross-cell timing,
+  #                   because it depends on how hot the card happened to be at that moment.
+  local pcap thermal
+  pcap=$(nvidia-smi -q -d PERFORMANCE 2>/dev/null \
+        | awk -F':' '/SW Power Cap /{v=$2; gsub(/[ \t]/,"",v); if (v=="Active") print "1"}' | head -1)
+  thermal=$(nvidia-smi -q -d PERFORMANCE 2>/dev/null \
+        | awk -F':' '/HW Thermal Slowdown |SW Thermal Slowdown |HW Power Brake /\
+                     {v=$2; gsub(/[ \t]/,"",v); if (v=="Active") print "1"}' | head -1)
+  thr="${pcap:-0}${thermal:-0}"   # e.g. "10" = power-capped, not thermally throttled
   echo "${q},${thr}"
 }
 
@@ -68,7 +78,7 @@ gpu_watch_start() {
   GPU_WATCH_LOG="${1:-$HOME/.oh-gui/thermal/$(date +%Y%m%d_%H%M)_$$.csv}"
   GPU_ABORT_FLAG="${GPU_WATCH_LOG%.csv}.ABORT"
   mkdir -p "$(dirname "$GPU_WATCH_LOG")"; rm -f "$GPU_ABORT_FLAG"
-  echo "ts,temp_c,power_w,sm_mhz,util_pct,throttle" > "$GPU_WATCH_LOG"
+  echo "ts,temp_c,power_w,sm_mhz,util_pct,pcap_thermal" > "$GPU_WATCH_LOG"
   local parent=$$
   (
     warned=0
@@ -116,18 +126,23 @@ if not rows: print(" no samples"); sys.exit(0)
 t=[float(r["temp_c"]) for r in rows]; p=[float(r["power_w"]) for r in rows]
 s=[float(r["sm_mhz"]) for r in rows]; u=[float(r["util_pct"]) for r in rows]
 busy=[x for x,v in zip(t,u) if v>50]
-thr=[r for r in rows if r.get("throttle")=="Active"]
-over_warn=sum(1 for x in t if x>=WARN); over_max=sum(1 for x in t if x>=MAX)
+# field is a 2-char flag: [SW power cap][thermal slowdown]
+def flag(r, i):
+    v = (r.get("pcap_thermal") or "00")
+    return len(v) > i and v[i] == "1"
+pcap = [r for r in rows if flag(r, 0)]
+thermal = [r for r in rows if flag(r, 1)]
 print(f" samples {len(rows)} ({len(busy)} under load)")
 print(f" temp    max {max(t):.0f}C   avg {sum(t)/len(t):.1f}C" + (f"   under load avg {sum(busy)/len(busy):.1f}C" if busy else ""))
 print(f" power   max {max(p):.0f}W   avg {sum(p)/len(p):.1f}W")
 print(f" sm clk  min {min(s):.0f}MHz avg {sum(s)/len(s):.0f}MHz")
 print(f" time >= {WARN:.0f}C warn: {over_warn}s     >= {MAX:.0f}C ceiling: {over_max}s")
-print(f" throttled samples: {len(thr)}")
+print(f" power-capped samples: {len(pcap)} (expected at the cap - benign if constant across cells)")
+print(f" THERMALLY throttled samples: {len(thermal)}")
 if over_max:     print(f" VERDICT: CEILING BREACHED ({max(t):.0f}C). Revert the cap: sudo nvidia-smi -pl 435")
 elif over_warn:  print(f" VERDICT: warm ({max(t):.0f}C) but under the {MAX:.0f}C ceiling. Acceptable; watch it.")
 else:            print(f" VERDICT: thermally fine - peaked {max(t):.0f}C, well under {WARN:.0f}C.")
-if thr: print(" WARNING: throttling occurred - tok/s in this run is NOT comparable across cells.")
+if thermal: print(" WARNING: THERMAL throttling occurred - tok/s in this run is NOT comparable across cells.")
 print(f" log: {sys.argv[1]}")
 PY
   if [ -n "$GPU_ABORT_FLAG" ] && [ -f "$GPU_ABORT_FLAG" ]; then
