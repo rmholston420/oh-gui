@@ -2186,3 +2186,44 @@ any build starts. Recorded here; no spec or ADR edited yet.
   reproduction worth filing; if not, we need the traceback.
 - Files: `docs/UPSTREAM_PINS.md`.
 - Stop condition unchanged.
+
+## 2026-08-08 13:30 EDT — Accept gate answered on valid evidence; workspaces found; conditions set
+
+- Stage: Phase 0 exit item 3.
+- **1.41.0 fixes the 500.** Root cause identified rather than guessed: the succeeding log line is
+  `Processing request of type ListToolsRequest` -> `Created 21 MCP tools`, which is exactly the
+  call that raised `'Server' object has no attribute 'list_tools'` on 1.40.1, whose sole release
+  note was `fix(mcp): reconcile live agent tool snapshots`. `OH_AGENT_SERVER_VERSION=1.41.0` is now
+  mandatory for baseline runs, a deliberate one-patch deviation from what v1.12.0 pins.
+- **NO ACCEPT GATE — and this time the precondition holds.** probe3 asked for a real file write.
+  The agent wrote `probe_calc.py` unprompted, it appears as `file-quick-row-item-probe_calc.py`,
+  and no accept/approve/confirm/apply vocabulary appeared at any point. Consistent with
+  `Confirmation policy set to: kind='NeverConfirm'`. The two earlier NONE readings are still
+  discarded: one came from onboarding and one from a read-only task, neither of which could have
+  produced a gate. Same answer, but only this one is evidence.
+- Consequence for ADR-008 item 5: `turns_to_acceptance` and `lines_accepted_without_inspection`
+  have no gate to hang on in the reference app. They must be redefined against what actually
+  exists (the agent writes, the operator reviews after the fact via the Files tab diff) or
+  recorded as not-applicable. Not silently zero.
+- **Workspaces are a first-class concept.** The new-thread popover exposes `add-workspaces-button`,
+  `launch-no-workspace`, and an input reading "Local". If a workspace can be registered at the
+  fixture path, that is the app's own supported way to set a working directory and it replaces the
+  plan to copy the fixture into the per-conversation subdir behind the app's back. probe4 written
+  to inventory that flow read-only, stopping before it commits anything.
+- **MCP disabled for baseline runs** via `bench/baseline/mcp_baseline.sh off`, backed up and
+  reversible. Chosen over repointing Serena at the fixture or leaving it on forge-oh: a baseline
+  exists to be compared against later numbers, and the alternatives make every measurement depend
+  on a pinned third-party MCP commit and a foreign repo's index. Leaving it as-is would also have
+  given the agent editable symbol tools over forge-oh during eight write tasks.
+- **All test runs are now recorded.** `bench/baseline/ui/session.mjs` captures a Playwright trace
+  (DOM snapshot before and after every action, plus network and console), a video, and screenshot
+  checkpoints. `watch.sh` replays the latest run. Reason: the operator was auditing my written
+  summary of each run rather than the run, and three findings today were wrong for that reason.
+- Two probe defects fixed, both mine: probe3 timed out clicking a Files tab that was already open
+  and whose control sits under an overlay outside the viewport (check the destination, not the
+  control); and the 5s poll reported first-agent-message and status->idle at an identical 44.0s,
+  a resolution artefact rather than a measurement. Now 1s.
+- Minor, worth noting for local-first: the app requests
+  `https://registry.npmjs.org/@openhands/agent-canvas/latest` on load. OH-GUI must not phone home.
+- Files: `bench/baseline/ui/{session.mjs,probe3.mjs,probe4.mjs,watch.sh}`, `bench/baseline/mcp_baseline.sh`.
+- Stop condition unchanged: Phase 0 item 3 open.

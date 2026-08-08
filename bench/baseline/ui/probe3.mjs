@@ -146,8 +146,11 @@ try {
 
   let firstAgentMsg = null, firstWorking = null, firstDone = null, sawStop = false;
   const gate = new Set();
-  for (let i = 0; i < 60; i++) {
-    await page.waitForTimeout(5000);
+  // 1s polling. probe3 v2 used 5s and reported first-agent-message and status->idle at the
+  // identical 44.0s, which is a resolution artefact, not a measurement. Turn latency is the
+  // headline number of this whole exercise; it cannot be quantised to 5s buckets.
+  for (let i = 0; i < 300; i++) {
+    await page.waitForTimeout(1000);
     const cur = await ids(page);
     if (!firstWorking && cur.includes("conversation-status-working")) { firstWorking = el(); say(`${el()}s status -> working`); }
     if (!sawStop && cur.includes("stop-button")) { sawStop = true; say(`${el()}s stop-button present`); }
@@ -167,13 +170,23 @@ try {
   say(`\n-- gate vocabulary during a REAL write: ${gate.size ? [...gate].join(", ") : "NONE"} --`);
   say(`   Precondition holds this time: a write was actually requested.`);
 
-  if (await has(page, "conversation-tab-files")) {
-    await page.locator('[data-testid="conversation-tab-files"]').first().click();
-    await page.waitForTimeout(2500);
+  // Do NOT click the Files tab if the Files pane is already rendered. probe3 v2 burned 30s
+  // timing out on a click it never needed: files-tab was already in the DOM, and the tab button
+  // sits under the right-panel-toggle overlay and outside the viewport. Check the destination,
+  // not the control.
+  if (await has(page, "files-tab") || await has(page, "conversation-tab-files")) {
+    if (!(await has(page, "files-tab"))) {
+      await page.locator('[data-testid="conversation-tab-files"]').first()
+        .click({ timeout: 8000 }).catch((e) => say(`   (files tab click: ${e.message.split("\n")[0]})`));
+      await page.waitForTimeout(2500);
+    } else { say(`   files-tab already open — not clicking the tab control`); }
     if (await has(page, "files-tab-refresh")) {
-      await page.locator('[data-testid="files-tab-refresh"]').first().click();
+      await page.locator('[data-testid="files-tab-refresh"]').first()
+        .click({ timeout: 8000 }).catch(() => {});
       await page.waitForTimeout(2500);
     }
+    const fileIds = (await ids(page)).filter((x) => x.startsWith("file-quick-row-item-"));
+    say(`   files listed: ${fileIds.length ? fileIds.join(", ") : "(none)"}`);
     const ftxt = (await page.locator('[data-testid="files-tab-content"]').innerText()
       .catch(() => "")).replace(/\s+/g, " ").slice(0, 900);
     say(`\n-- files-tab --\n   ${ftxt || "(empty)"}`);

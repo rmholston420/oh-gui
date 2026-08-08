@@ -771,3 +771,46 @@ implicating ADR-008 decision 3 (use the app's own uvx-resolved backend rather th
 ghcr agent-server v1.41.0 image). Competing explanation: an MCP server configured in the active
 agent profile whose client object is the wrong type. These point at different fixes — pin the
 image vs. disable MCP — so no change until the traceback or the profile contents discriminate.
+
+## 2026-08-08 13:30 EDT — 500 on conversation create: agent-server 1.40.1 MCP list_tools
+
+- **Symptom:** `POST /api/conversations` returned 500; agent-server logged
+  `'Server' object has no attribute 'list_tools'`; UI stayed on onboarding with no conversation.
+- **Stage/port:** Phase 0 baseline, reference Agent Canvas v1.12.0 dev stack.
+- **Root cause:** bug in `openhands-agent-server` 1.40.1's MCP tool listing. v1.12.0 pins 1.40.1
+  in `config/defaults.json`, so this is upstream's own shipped pairing, not local misconfiguration.
+  Confirmed by the fix: on 1.41.0 the same code path logs `Processing request of type
+  ListToolsRequest` -> `Created 21 MCP tools` and the conversation is created 201.
+- **Fix:** launch with `OH_AGENT_SERVER_VERSION=1.41.0`, which pins agent-server, sdk, tools and
+  workspace together (verified by reading `buildAgentServerCommand`, not assumed).
+- **Wrong turns worth not repeating:** I first blamed version skew, which was backwards — the app
+  was running exactly what it pins. I then discarded the MCP hypothesis because the agent profile
+  had `mcp_server_refs: null`, but MCP is configured globally in
+  `~/.openhands/settings.json -> agent_settings.mcp_config`, so the profile field proved nothing.
+- **Files:** none in-repo; environment only.
+
+## 2026-08-08 13:30 EDT — Serena MCP was indexing ~/dev/forge-oh during baseline runs
+
+- **Symptom:** agent-server log showed `Starting language server typescript for
+  /home/rmholston/dev/forge-oh` and `Workspace folders: ['/home/rmholston/dev/forge-oh']` while the
+  conversation's working directory was the baseline fixture.
+- **Root cause:** `~/.openhands/settings.json -> agent_settings.mcp_config.serena` is enabled
+  globally with `--project /home/rmholston/dev/forge-oh`. Also `my-mcp` at `http://localhost:8080`.
+- **Impact:** confound (21 extra tools, symbol index of an unrelated repo) and hazard (those tools
+  can edit forge-oh).
+- **Fix:** `bench/baseline/mcp_baseline.sh off` before baseline runs, `restore` after. Backs up
+  settings.json first, since it is the operator's real shared config. Requires an app restart —
+  `mcp_config` is read once at agent-server startup.
+
+## 2026-08-08 13:30 EDT — Playwright click times out on an element that is present and visible
+
+- **Symptom:** `locator.click: Timeout 30000ms exceeded` on `conversation-tab-files`; log says
+  `element is visible, enabled and stable`, then alternates `element is outside of the viewport`
+  and `<span data-aria-label="Show panel"> ... intercepts pointer events`.
+- **Root cause:** the Files pane was ALREADY open (`files-tab` in the DOM). The tab control sits
+  under the `right-panel-toggle` overlay and off-viewport, so the click could never land — and it
+  was never needed.
+- **Fix:** assert on the destination (`files-tab`), not the control. Only click the tab when the
+  pane is absent, and bound the click with a short timeout plus a caught failure.
+- **Rule:** when a click times out on an element Playwright reports as visible and stable, check
+  whether the state it would produce already exists before fighting the overlay.
