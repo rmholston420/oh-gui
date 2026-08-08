@@ -126,21 +126,21 @@ ollama_guard() {
 
   if [ -z "$listen_pid" ]; then
     echo "FATAL: nothing is listening on :${OLLAMA_PORT}." >&2
-    echo "  sudo systemctl start ollama" >&2
+    echo "  systemctl --user start ollama    # ollama runs as a USER unit on this box" >&2
     return 1
   fi
 
   if [ -z "$main_pid" ] || [ "$main_pid" = "0" ]; then
     echo "FATAL: ollama.service is not running, but PID ${listen_pid} holds :${OLLAMA_PORT}." >&2
-    echo "  That process was not started by systemd, so the drop-ins in" >&2
-    echo "  /etc/systemd/system/ollama.service.d/ are NOT in effect." >&2
+    echo "  That process was not started by systemd, so no drop-in is in effect and the" >&2
+    echo "  configuration this bench requires is absent from the server answering it." >&2
     echo "  Serving process: $(_ollama_cmdline "$listen_pid")" >&2
     echo >&2
     echo "  Recover:" >&2
-    echo "    sudo systemctl stop ollama        # stop any restart loop first" >&2
+    echo "    systemctl --user stop ollama      # stop any restart loop first" >&2
     echo "    kill ${listen_pid}; sleep 3" >&2
-    echo "    sudo systemctl start ollama" >&2
-    echo "    ss -ltnp | grep ${OLLAMA_PORT}    # PID must equal MainPID" >&2
+    echo "    systemctl --user start ollama" >&2
+    echo "    ss -ltnpH 'sport = :${OLLAMA_PORT}'   # PID must equal MainPID" >&2
     return 1
   fi
 
@@ -152,9 +152,9 @@ ollama_guard() {
     echo "  Serving process: $(_ollama_cmdline "$listen_pid")" >&2
     echo >&2
     echo "  Recover:" >&2
-    echo "    sudo systemctl stop ollama" >&2
+    echo "    systemctl ${OLLAMA_SCOPE:---user} stop ollama" >&2
     echo "    kill ${listen_pid}; sleep 3" >&2
-    echo "    sudo systemctl start ollama" >&2
+    echo "    systemctl ${OLLAMA_SCOPE:---user} start ollama" >&2
     return 1
   fi
 
@@ -186,7 +186,7 @@ ollama_guard() {
     echo "  These change KV footprint and throughput, so cells measured under them are" >&2
     echo "  not comparable to ADR-004's VRAM envelope or to earlier runs." >&2
     echo "    bash bench/ollama_env.sh          # rewrites the drop-in and restarts" >&2
-    echo "    systemctl show ollama --property=Environment" >&2
+    echo "    systemctl --user show ollama --property=Environment" >&2
     return 1
   fi
 

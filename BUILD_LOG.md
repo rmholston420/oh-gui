@@ -1278,3 +1278,42 @@ consolidating Ollama onto a single unit that reads `~/.ollama/models`.
 is 1 GiB where round 1 effectively had 0. ADR-004's 131072-context envelope was established
 without that reserve, so c12/c13 may not fit. If they fail to load, that is a real finding
 about the envelope, not a new bug.
+
+## 2026-08-08 07:08 EDT — ollama_env.sh v4: user unit, FA=0, guard-verified
+
+**Stage.** Phase 0 / Path E bench (ADR-005).
+
+**Why.** v3 was actively dangerous after this morning's consolidation. It wrote
+`/etc/systemd/system/ollama.service.d/` (now deleted) and ran `sudo systemctl restart ollama`
+(unit renamed to `ollama.service.disabled-20260808`), so it would have failed — or worse,
+recreated the two-unit collision that invalidated three runs. It also requested
+`OLLAMA_FLASH_ATTENTION=1`, which `bench/lib/ollama.sh` now rejects, so running it would have
+blocked every subsequent bench with a confusing FATAL.
+
+**Changed.** `bench/ollama_env.sh` → v4:
+- Writes `~/.config/systemd/user/ollama.service.d/oh-gui.conf`; restarts via `--user`.
+- Defaults `OLLAMA_FLASH_ATTENTION=0`. FA was measured irrelevant here (9 MiB and 0.09%
+  prefill delta, `bench/fa_probe.sh`), so the deciding argument is comparability: round 1 ran
+  under `FA=false`, so 0 keeps round 2 comparable to already-scored results.
+- Sets `OLLAMA_MODELS` explicitly, since an Ollama default never appears in `/proc/environ`
+  and is therefore unverifiable from outside.
+- Refuses to run if a system `ollama.service` reappears, and if the user unit is missing.
+- Ends by calling `ollama_guard` + `ollama_require_models` against the live process rather
+  than printing the unit file. The unit file said one thing and the serving process did
+  another for three weeks; only `/proc/<pid>/environ` is authoritative.
+- `q8` mode still sets FA=1 (llama.cpp requires it for KV quantisation) and now warns that
+  the bench will refuse to run until reverted. That refusal is intended.
+- Guard recovery hints rewritten for user scope; they previously told the operator to run
+  `sudo systemctl start ollama`, which no longer exists.
+
+**Operator actions completed this session.** System unit stopped, renamed to
+`/etc/systemd/system/ollama.service.disabled-20260808`, drop-in directory removed,
+`daemon-reload` run — `systemctl is-enabled ollama` now returns `not-found`. User unit
+rewritten with the full bench environment, enabled, lingering enabled. Verified:
+`PID 1053182 == service MainPID, all 7 required settings verified`, `all 5 matrix models
+present`, listener `127.0.0.1:11434 pid=1053182`.
+
+**Files touched.** `bench/ollama_env.sh`, `bench/lib/ollama.sh`.
+
+**Stop condition.** ADR-005 still OPEN. Round 2 not yet run; the c08-c11 code cells are the
+next action and the environment is now verified for them.
