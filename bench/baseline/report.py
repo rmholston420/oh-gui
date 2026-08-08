@@ -101,6 +101,32 @@ def main() -> int:
              "it happened. Nothing is reconstructed after the fact.")
     L.append("")
 
+    infos = []
+    for p_info in sorted(args.run_dir.glob("*.server_info.json")):
+        try:
+            infos.append(json.loads(p_info.read_text()))
+        except json.JSONDecodeError:
+            continue
+    L.append("## Stack actually under test")
+    L.append("")
+    if infos:
+        seen = sorted({json.dumps(
+            {k: v for k, v in i.items() if "version" in k.lower() or k in ("sdk", "server")},
+            sort_keys=True) for i in infos})
+        L.append("Read from the running app's `/server_info`, not from a pin file:")
+        L.append("")
+        for s_ in seen:
+            L.append(f"- `{s_}`")
+        if len(seen) > 1:
+            L.append("")
+            L.append("**More than one stack version appears across these tasks.** The tasks are "
+                     "not directly comparable and must not be aggregated without explanation.")
+    else:
+        L.append("**Not recorded.** No `/server_info` response was captured, so the backend version "
+                 "behind these numbers is unknown. ADR-008 requires it, because the baseline "
+                 "deliberately runs the app's own backend rather than the pinned image.")
+    L.append("")
+
     all_models = sorted({m for r in rows for m in r["models_observed"]})
     L.append("## Models actually resident (spec item 7)")
     L.append("")

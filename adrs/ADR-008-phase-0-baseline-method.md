@@ -51,6 +51,13 @@ by gitea respectively. This is configuration, not modification — no app code c
 recorded because a baseline whose run conditions are undocumented cannot be re-run, and re-running
 it is the entire point.
 
+**Version evidence.** The stack version is read from the running app's `/server_info` at the start
+of every task and stored beside the task record. First observation on Colossus: the stock app pulls
+**OpenHands SDK 1.40.1 from PyPI**, which is neither the v1.41.0 agent-server image this repo pins
+nor anything implied by the v1.12.0 frontend. That is precisely why the version is measured per
+task rather than asserted once. If two tasks report different stack versions the report says so and
+refuses to present them as comparable.
+
 **Item 7 evidence.** Variant and quantization are taken from `ollama ps` samples captured during
 the run, not from the settings screen. If no samples are captured, `report.py` states that item 7
 is **not** satisfied rather than leaving the field blank.

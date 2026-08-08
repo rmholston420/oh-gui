@@ -2037,3 +2037,24 @@ any build starts. Recorded here; no spec or ADR edited yet.
 - Files: `bench/baseline/README.md`, `adrs/ADR-008-phase-0-baseline-method.md`, BUILD_LOG.
 - Stop condition unchanged: Phase 0 exit item 3 open until `docs/BASELINE-METRICS-<stamp>.md` exists
   and ADR-008's verdict is filled.
+
+## 2026-08-08 10:17 EDT — Baseline harness records the stack version by measurement
+
+- Stage: Phase 0 exit item 3. Stock app came up clean on the shifted ports; ingress 8010, vite 3011,
+  agent-server 18000, automation 18001.
+- **First run revealed the version question ADR-008 anticipated.** The stock app pulled OpenHands
+  SDK **1.40.1 from PyPI** — not the v1.41.0 agent-server image pinned in `docs/UPSTREAM_PINS.md`,
+  and not anything implied by the v1.12.0 frontend. ADR-008 already decided the baseline uses the
+  app's own backend; this is that decision producing a concrete version that must reach the report.
+- Rather than have the operator transcribe it, `run_baseline.sh` now curls `/server_info` per task
+  into the run directory, and `report.py` prints it under "Stack actually under test" — stating
+  explicitly when it is missing, and refusing to present tasks as comparable if two different stack
+  versions appear across them.
+- Also observed at startup, recorded for the report's context: VSCode server binary absent, desktop
+  and VNC disabled, and `ERROR Error preloading chromium` followed by "Tool preload service failed
+  to start". The last one may affect browser-tool tasks; none of t01-t08 need a browser, but if a
+  task fails on a browser tool this is the first thing to check.
+- Tests 10 → 12; both new ones assert the absent case is called out rather than silently skipped.
+- Files: `bench/baseline/run_baseline.sh`, `bench/baseline/report.py`,
+  `bench/baseline/tests/test_baseline_harness.py`, `adrs/ADR-008-phase-0-baseline-method.md`.
+- Stop condition unchanged.

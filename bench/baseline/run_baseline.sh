@@ -58,6 +58,17 @@ else
   FIXTURE_ARG_OK=1
 fi
 
+# Record the stack the baseline actually ran against. ADR-008 turns on the fact that the stock app
+# starts its OWN backend rather than the pinned agent-server image, so the version that answers is
+# the one that must appear in the report - measured here, not transcribed by the operator.
+INGRESS="${OH_GUI_BASELINE_INGRESS:-http://localhost:8010}"
+if curl -sf --max-time 5 "$INGRESS/server_info" -o "$OUT/${TASK}.server_info.json" 2>/dev/null; then
+  echo "server_info recorded from $INGRESS"
+else
+  echo "WARNING: no response from $INGRESS/server_info - the app version behind this task will be"
+  echo "         UNRECORDED. Set OH_GUI_BASELINE_INGRESS if the app is not on 8010."
+fi
+
 echo
 echo "=============================================================================="
 sed 's/^/  /' "$CARD"

@@ -96,3 +96,31 @@ def test_corrective_records_durability(tmp_path):
     s = _session(tmp_path, "t\nc\nrun tests first\ny\nd\n")
     assert s["turns_before_first_corrective"] == 1
     assert s["corrective_encoded_durably"] is True
+
+
+def test_server_info_absent_is_called_out_not_skipped(tmp_path, capsys):
+    (tmp_path / "t01.summary.json").write_text(json.dumps({
+        "task": "t01", "outcome": "completed", "time_to_first_review_s": 1.0,
+        "turns_to_acceptance": 1, "lines_accepted": 1,
+        "lines_accepted_without_inspection": 0, "lost_track_incidents": 0,
+        "turns_before_first_corrective": None, "correctives": [], "tool_failures": [],
+        "notes": [], "wall_seconds": 1,
+    }))
+    sys.argv = ["report.py", str(tmp_path)]
+    report.main()
+    out = capsys.readouterr().out
+    assert "Not recorded" in out and "backend version" in out
+
+
+def test_server_info_is_reported_when_present(tmp_path, capsys):
+    (tmp_path / "t01.summary.json").write_text(json.dumps({
+        "task": "t01", "outcome": "completed", "time_to_first_review_s": 1.0,
+        "turns_to_acceptance": 1, "lines_accepted": 1,
+        "lines_accepted_without_inspection": 0, "lost_track_incidents": 0,
+        "turns_before_first_corrective": None, "correctives": [], "tool_failures": [],
+        "notes": [], "wall_seconds": 1,
+    }))
+    (tmp_path / "t01.server_info.json").write_text(json.dumps({"sdk_version": "1.40.1"}))
+    sys.argv = ["report.py", str(tmp_path)]
+    report.main()
+    assert "1.40.1" in capsys.readouterr().out
