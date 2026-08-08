@@ -27,6 +27,23 @@ bash scripts/provision-reference-checkout.sh --run-copy
 cd ~/.oh-gui/reference/agent-canvas-run && npm ci && npm run dev   # stock app, own backend
 ```
 
+### Colossus port deviation (permanent)
+
+The stock app defaults to ingress `8000` and vite `3001`. On Colossus both are permanently taken —
+`8000` by the Kosmos uvicorn dev server, `3001` by gitea (system service, wildcard bind). Neither is
+disposable, so the baseline runs shifted:
+
+```bash
+PORT=8010 OH_CANVAS_SAFE_VITE_PORT=3011 npm run dev
+```
+
+Open the **ingress** port (8010) in the browser, not the vite port. Variable names read from
+`scripts/dev-with-automation.mjs` at the pinned SHA. This is a configuration deviation from stock
+and nothing more — no app code is modified — but it is recorded here and in ADR-008 because a
+baseline whose run conditions are undocumented cannot be re-run. The automation service hardcodes
+`localhost:3001` in its CORS origin list; harmless here, because the browser talks to ingress, and
+the ingress port is added to that list dynamically.
+
 In the stock app's settings, point it at Ollama and select the ADR-005 pair. Do not record the
 model by hand — the harness reads what is actually resident.
 

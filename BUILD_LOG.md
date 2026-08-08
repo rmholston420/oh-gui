@@ -2014,3 +2014,26 @@ any build starts. Recorded here; no spec or ADR edited yet.
 - **Stop condition: harness complete and self-tested; the run itself is operator work on Colossus.
   Phase 0 exit item 3 is NOT met until `docs/BASELINE-METRICS-<stamp>.md` exists and ADR-008's
   verdict section is filled.** ADR-008 stays Proposed until then.
+
+## 2026-08-08 10:14 EDT — Baseline run conditions: Colossus port deviation recorded
+
+- Stage: Phase 0 exit item 3. Stock app refused to start: ingress 8000 and frontend 3001 both in use.
+- **Identified before touching anything, and neither was disposable.** 8000 is the Kosmos uvicorn
+  dev server (`/home/rmholston/dev/kosmos/.venv/bin/python3.12`, cwd `~/dev/kosmos`, up 8h13m);
+  3001 is gitea (pid 2816, wildcard bind, system service). `ss` showed no process for 3001 because
+  it isn't owned by the user — the reflex `pkill` would have failed, as it already did on pid 16688
+  earlier in this session.
+- Resolution: shift the app, don't kill the services. `PORT=8010 OH_CANVAS_SAFE_VITE_PORT=3011`.
+  Variable names read from `scripts/dev-with-automation.mjs` at pinned SHA
+  4d0fe4983b6b8e52c104c7ffa4b7be8c7ab5a364, not guessed from the error text.
+- Verified from the same source that the automation service's hardcoded `localhost:3001` CORS
+  origin is harmless: the browser talks to ingress, and the ingress port is added to that list
+  dynamically at line 919.
+- Recorded in `bench/baseline/README.md` and ADR-008 "Run conditions" rather than left to memory,
+  because gitea and Kosmos are permanent on Colossus and a baseline whose run conditions are
+  undocumented cannot be re-run — which is the whole purpose of the fixture.
+- Frontend unaffected and re-verified at 704a57d: lint + 25 unit tests + build + **8/8 Playwright
+  e2e green** (axe contrast, clipping, narrow viewport).
+- Files: `bench/baseline/README.md`, `adrs/ADR-008-phase-0-baseline-method.md`, BUILD_LOG.
+- Stop condition unchanged: Phase 0 exit item 3 open until `docs/BASELINE-METRICS-<stamp>.md` exists
+  and ADR-008's verdict is filled.

@@ -45,6 +45,12 @@ additive → behavioral → refactor → cross-cutting, with t08 expected to be 
 recreated byte-identically by `seed_fixture.sh`, so the same eight tasks can be re-run against
 OH-GUI at any later phase and compared.
 
+**Run conditions.** The app is launched with `PORT=8010 OH_CANVAS_SAFE_VITE_PORT=3011`, because
+its defaults (8000, 3001) are permanently occupied on Colossus by the Kosmos uvicorn dev server and
+by gitea respectively. This is configuration, not modification — no app code changes — but it is
+recorded because a baseline whose run conditions are undocumented cannot be re-run, and re-running
+it is the entire point.
+
 **Item 7 evidence.** Variant and quantization are taken from `ollama ps` samples captured during
 the run, not from the settings screen. If no samples are captured, `report.py` states that item 7
 is **not** satisfied rather than leaving the field blank.
