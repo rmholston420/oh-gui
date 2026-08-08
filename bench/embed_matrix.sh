@@ -58,9 +58,15 @@ try:
     real_dims=len(out["embeddings"][0]) if out.get("embeddings") else dims
     vram=int(subprocess.run(["nvidia-smi","--query-gpu=memory.used","--format=csv,noheader,nounits"],
              capture_output=True,text=True).stdout.strip())
-    ps=subprocess.run(["ollama","ps"],capture_output=True,text=True).stdout
-    row=[l for l in ps.splitlines() if model.split(":")[0] in l]
-    proc=" ".join(row[0].split()[-3:-1]) if row else "n/a"
+    # Parse /api/ps JSON, not the `ollama ps` table. The table's UNTIL column is
+    # multi-word, so positional slicing returned "minutes from" instead of the processor.
+    # size_vram==0 is the authoritative signal that the model is on CPU.
+    ps=json.loads(urllib.request.urlopen("http://localhost:11434/api/ps",timeout=30).read())
+    ent=next((m for m in ps.get("models",[]) if m["name"].startswith(model.split(":")[0])),None)
+    if ent is None: proc="not-resident"
+    else:
+        sv,tot=ent.get("size_vram",0),ent.get("size",1)
+        proc="100% CPU" if sv==0 else ("100% GPU" if sv>=tot*0.99 else f"{round(100*(tot-sv)/tot)}% CPU")
     print(f"  {model:26} {placement.upper():3}  dims={real_dims:<5} single={single_ms:>7}ms  "
           f"batch{n}={bt:>6.2f}s  {cps:>6} chunks/s  vram={vram-idle:>5} MiB  [{proc}]")
     open(csv,"a").write(f"{model},{placement},{real_dims},{single_ms},{bt:.2f},{cps},{vram-idle},{proc}\n")
