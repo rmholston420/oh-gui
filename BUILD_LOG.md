@@ -1027,3 +1027,14 @@ Diagnosis pending - see DEBUG_LOG.
 
 - **Stop condition:** full re-run required. Prior results are superseded, not amended.
 
+## 2026-08-08 10:00 EDT - Cold-start target raised to 40 C
+
+- `GPU_COLD_C` default 34 -> 40, per operator: after a 16k-token cell the card takes
+  minutes to drop into the mid-30s, and seven such waits dominate the run.
+- **Trade-off recorded honestly:** cells may now start anywhere in a ~6 C band instead of
+  ~1 C, so the gate equalises starting conditions less well than 34 C would. This is
+  acceptable only because the matrix has never thermally throttled (77 C peak vs the 78 C
+  warn line and 83 C ceiling). **If a future run reports throttled samples, tighten this
+  before trusting any cross-cell timing comparison.**
+- Supersedes the 32 C, 33 C and 34 C entries above. Env-overridable per run.
+

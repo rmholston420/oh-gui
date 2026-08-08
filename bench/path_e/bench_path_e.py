@@ -266,9 +266,9 @@ def run_cell(cell_id: str, out_dir: Path) -> Path:
         "power_cap_w": os.environ.get("BENCH_POWER_CAP_W", "435"),
         "warmup": wu,
         "gpu_at_start": start_gpu,
-        "cold_start_target_c": int(os.environ.get("GPU_COLD_C", "34")),
+        "cold_start_target_c": int(os.environ.get("GPU_COLD_C", "40")),
         "cold_start_ok": (start_gpu.get("temp_c", 999)
-                          <= int(os.environ.get("GPU_COLD_C", "34"))),
+                          <= int(os.environ.get("GPU_COLD_C", "40"))),
         "ts_utc": datetime.now(timezone.utc).isoformat(),
         "results": results,
     }
