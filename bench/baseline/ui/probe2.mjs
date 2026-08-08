@@ -15,6 +15,14 @@
  * `pwd` also settles the working directory from the agent's own view, which the landing page
  * would not show.
  *
+ * ON TESTING THIS SCRIPT LOCALLY: there is a stand-in page under /tmp used during development. It
+ * is a MIRROR OF THIS SCRIPT'S ASSUMPTIONS, not a model of Agent Canvas. It contains the test ids
+ * this script looks for because the same person wrote both. A clean run against it proves the
+ * script does not crash, resolves its imports, and that each step does something -- mechanical
+ * faults only. It proves NOTHING about the real app, and it cannot reproduce an API-level failure
+ * such as the CORS bug at all, because a static file server has no /api. Never report a stand-in
+ * run as evidence about the application.
+ *
  * Run ON Colossus:
  *   cd ~/dev/oh-gui/apps/gui && node ../../bench/baseline/ui/probe2.mjs
  *
@@ -29,7 +37,10 @@ import { createRequire } from "node:module";
 const require = createRequire(new URL("../../../apps/gui/package.json", import.meta.url));
 const { chromium } = require("@playwright/test");
 
-const INGRESS = process.env.OH_GUI_BASELINE_INGRESS || "http://localhost:8010";
+// 127.0.0.1, NOT localhost. The frontend's own client calls http://127.0.0.1:8010/api/*, so a page
+// served from http://localhost:8010 is cross-origin to its own API and every conversation call dies
+// on CORS. Same host, same port, different origin as far as the browser is concerned.
+const INGRESS = process.env.OH_GUI_BASELINE_INGRESS || "http://127.0.0.1:8010";
 const MODEL = process.env.OH_GUI_BASELINE_MODEL || "ollama_chat/qwen3.6:35b-a3b-mtp-q4_K_M";
 const OLLAMA = process.env.OH_GUI_OLLAMA_URL || "http://localhost:11434";
 const OUT = join(process.env.HOME, ".oh-gui", "baseline", "probe2");
@@ -131,6 +142,16 @@ try {
 
   // The conversation view is the thing that has never been looked at. Give the model real time;
   // a 35B on a 5090 is not fast, and a short wait would report an empty screen as a finding.
+  // A blocked API call is indistinguishable from a slow model if we only wait. Fail loudly instead
+  // of burning four minutes and then reporting an onboarding screen as if it were a conversation.
+  const cors = errs.filter((e) => /CORS|ERR_FAILED|Access-Control/i.test(e));
+  if (cors.length) {
+    say(`\n!! API CALLS ARE BEING BLOCKED — the conversation never started.`);
+    cors.slice(0, 4).forEach((e) => say(`   ${e}`));
+    say(`   Page origin is ${new global.URL(page.url()).origin}; check what origin the client calls.`);
+    say(`   NOTHING BELOW THIS LINE describes a conversation view. Do not read it as one.`);
+  }
+
   say("\n   waiting up to 240s for the agent to respond...");
   const t0 = Date.now();
   await page.waitForTimeout(8000);

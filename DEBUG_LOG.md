@@ -662,3 +662,57 @@ run it again.
 (exit 143). Same family as the pid 16688 incident already in this log: `pkill -f` matches the
 command line of any process containing the string, including the one issuing the kill. Use a
 recorded PID file instead, which is what the retest did.
+
+## 2026-08-08 12:58 EDT — Conversation creation blocked by CORS: localhost vs 127.0.0.1
+
+**Symptom:** `Access to fetch at 'http://127.0.0.1:8010/api/conversations' from origin
+'http://localhost:8010' has been blocked by CORS policy: No 'Access-Control-Allow-Origin'` plus
+`Failed to load resource: net::ERR_FAILED`. The probe sat on the say-hello onboarding slide for
+265 s and then reported the onboarding screen's contents as if they were a conversation view.
+
+**Root cause:** the page was loaded at `http://localhost:8010` while the frontend's own client
+issues API calls to `http://127.0.0.1:8010`. Same host, same port, but `localhost` and `127.0.0.1`
+are DIFFERENT ORIGINS to a browser, so every API call is cross-origin and the ingress does not
+send an allow header for it.
+
+**Fix:** load the app at `http://127.0.0.1:8010` so the page origin matches the origin its client
+calls. Probe default changed; no app code touched.
+
+**Affected:** `bench/baseline/ui/probe2.mjs`. Potentially also the manual harness — if the operator
+browses to `localhost:8010` by hand they hit the same wall, and a manual baseline run would record
+zeros for reasons that have nothing to do with the agent. Manual runs must use `127.0.0.1:8010`.
+This is the second silent-zeros trap found in this harness, after the unset `VITE_WORKING_DIR`.
+
+**Method note — a wrong conclusion was nearly recorded.** The probe's output line
+`accept/approve vocabulary present in the UI: NONE` was, on its face, the answer to the question
+stage 2 was built to answer, and it was WRONG: the run never reached a conversation view, so of
+course an onboarding screen contains no accept buttons. Reported as a finding it would have been
+used to amend mark.py and ADR-008 on the basis of a screen that was never under test. The
+detector was sound; the precondition was not checked. Fix applied: the probe now checks for CORS
+and ERR_FAILED errors BEFORE the wait loop, says outright that nothing below that point describes
+a conversation view, and does not let a blocked API masquerade as a slow model for four minutes.
+Generalisation: any detector that reports absence must first prove it was looking at the right
+screen. Absence of evidence from the wrong page is not evidence of absence.
+
+## 2026-08-08 13:02 EDT — Note on the limits of the local stand-in
+
+Operator, on being shown a clean stand-in run: "this is why i always need to see what a test is
+doing." Correct, and worth writing down rather than absorbing silently.
+
+The stand-in page under `/tmp` was written by the same process that wrote the probe. It contains
+the test ids the probe searches for, a planted "Accept changes" button, and a hardcoded fixture
+path. Every detector "firing" therefore confirms that the probe matches my own expectations. It is
+a mirror, not an oracle.
+
+Worse, the specific fix it was run to verify — the `localhost` -> `127.0.0.1` origin change — is
+the one thing the stand-in CANNOT verify. A static file server has no `/api/conversations` and
+cannot produce a CORS failure. The clean run establishes only that the edit did not break the
+script.
+
+What the stand-in is legitimately good for, and did catch: crashes, ESM resolution, the temporal
+dead zone bug, and steps that silently no-op. Mechanical faults.
+
+Rule adopted: when reporting a stand-in run, state what it proves and what it does not, in the same
+breath. A green result presented without its scope reads as stronger evidence than it is, which is
+the same failure as the discarded `accept vocabulary: NONE` line earlier today — a true statement
+about the wrong subject.

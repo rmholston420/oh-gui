@@ -2142,3 +2142,24 @@ any build starts. Recorded here; no spec or ADR edited yet.
   recorded and the 27b-vs-35b planner comparison is awaiting an operator call. The stock app takes
   one model, so this is a single choice and it is spec-flagged. Probe defaults to the coder via
   `OH_GUI_BASELINE_MODEL` purely so the probe can run; the baseline model is not thereby decided.
+
+## 2026-08-08 12:59 EDT — Stage 2 run 1: blocked by CORS, no valid findings
+
+- Stage: Phase 0 exit item 3, driver stage 2.
+- Run produced NO usable answer. `localhost` vs `127.0.0.1` origin mismatch killed every
+  `/api/conversations` call; the probe never left onboarding. See DEBUG_LOG 12:58 EDT.
+- **The output's `accept vocabulary: NONE` line is discarded, not recorded.** It was the answer to
+  the question stage 2 exists to answer and it was produced by looking at the wrong screen.
+  Nothing about the accept gate, the working directory, or the conversation view is known yet.
+- Probe hardened: CORS/ERR_FAILED now checked before the wait loop and reported as fatal, with an
+  explicit line saying nothing after it describes a conversation.
+- Carries a warning for the manual harness too: a hand-driven run at `localhost:8010` would hit the
+  same wall and produce a self-consistent baseline of zeros. Second silent-zeros trap in this
+  harness after the unset `VITE_WORKING_DIR`.
+- Operator decision recorded: baseline is a **2x8 matrix**, `qwen3.6:27b` and
+  `qwen3.6:35b-a3b-mtp-q4_K_M`, 8 tasks each, run sequentially — 26,140 + 26,390 MiB cannot
+  co-reside on a 32,607 MiB card, so the driver must `ollama stop` between models given
+  `OLLAMA_KEEP_ALIVE=-1`. ADR-008 becomes a comparison; restructure deferred until the accept-gate
+  question is actually answered.
+- Files: `bench/baseline/ui/probe2.mjs`, DEBUG_LOG.
+- Stop condition unchanged.
