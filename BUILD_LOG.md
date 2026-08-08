@@ -1497,3 +1497,28 @@ change together or every subsequent preflight fails.
 **Stop condition:** ADR-005 was the last bench blocker on Phase 0 exit. Three non-bench items
 remain (upstream artifact pins, read-only stock Agent Canvas checkout, first-run wizard
 trust-dial stop). No further Path E runs are required for Phase 0.
+
+## 2026-08-08 08:31 EDT — ADR-005 Amendment #1: out-of-sample replication of planner verdict
+
+- Stage: Phase 0 baseline / Path E model selection.
+- Trigger: operator pasted an unplanned second `REPS=3` run of c12/c13 (`20260808_0804`) after
+  ADR-005 was already ratified and pushed (`d38e356`).
+- Scored all 6 replicates against `bench/gold/arch.md`. Medians c12 72 / c13 58 (gap 14, vs 6 in
+  run `0738`). Gold-decision agreement c12 3/3, c13 **0/3**.
+- Combined across both runs: **c12 6/6 Option C, c13 1/6.** Planner selection now rests on six
+  independent draws per cell.
+- New finding: c13 stopped analysing Option C entirely on rep 3 and dismissed it unargued on
+  rep 2 - a comparison-omission defect, not just a wrong choice.
+- Counter-evidence logged: c12 produced this run's two worst arithmetic errors (10x KV
+  miscalculation; fabricated host-RAM fallback) and one self-contradicting fail-open branch.
+- Thermal: peak 71 C, 0 throttled samples, cold gate calibrated to 40 C (45 C preset still not
+  in effect - operator clone is at `49a70c0`). Power max 379 W, which *weakens* rather than
+  confirms the telemetry-artifact hypothesis for run `0738`'s 450 W reading; stays open in
+  KNOWN_ISSUES.md.
+- Harness start-temp guard fired correctly on c13 rep 1 (45 C > 40 C target), flagging its
+  timing as non-comparable. Guard working as designed.
+- Files: `bench/path_e/SCORING-20260808_0804.md` (new), `adrs/ADR-005-...md` (Amendment #1),
+  BUILD_LOG.md, SESSION_HANDOFF.md.
+- Stop condition: ADR-005 remains Ratified; no decision changed. Pre-registered c13 `precise`
+  test still open and still binding.
+- Unrelated: operator's `embed_query_latency.sh` failure is a stale clone, not a bug. `git pull`.

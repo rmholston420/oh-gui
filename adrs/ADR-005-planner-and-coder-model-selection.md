@@ -332,3 +332,45 @@ Phase 0 exit. Blocks the "Baseline metrics report vs. dense Qwen3 27B-35B" open 
 - [All Hands local LLM guidance](https://docs.openhands.dev/openhands/usage/llms/local-llms)
 - [unsloth/Devstral-Small-2507-GGUF](https://huggingface.co/unsloth/Devstral-Small-2507-GGUF)
 - [Qwen3.6-27B model card](https://huggingface.co/Qwen/Qwen3.6-27B)
+
+---
+
+## Amendment #1 — 2026-08-08 — out-of-sample replication of the planner verdict
+
+**Status unchanged: Ratified.** This amendment adds evidence; it changes no decision.
+
+An unplanned second `REPS=3` run of c12/c13 (`20260808_0804`) executed minutes *after* this ADR
+was ratified. Because it postdates ratification it could not have been fitted to the conclusion.
+Scored in `bench/path_e/SCORING-20260808_0804.md` under identical weights.
+
+| Metric | run `0738` | run `0804` | Combined |
+|---|---|---|---|
+| c12 `27b` median | 72 | **72** | — |
+| c13 `35b-mtp` median | 66 | **58** | — |
+| Gap | 6 | **14** | — |
+| c12 reached Option C | 3/3 | **3/3** | **6/6** |
+| c13 reached Option C | 1/3 | **0/3** | **1/6** |
+| c12 median tok/s | 49.13 | 47.79 | — |
+| c13 median tok/s | 92.51 | 94.49 | — |
+
+The planner selection therefore rests on **six independent draws per cell**, not three. c12's
+median is identical in both runs. c13 has reached the gold decision once in six attempts.
+
+**New substantive finding.** c13's failure is not only that it picks Option B. On 2 of 3 draws
+this run it stopped performing the comparison the prompt demanded: rep 2 dismissed Option C in
+one unargued line, rep 3 never analysed Option C at all. For a planner whose output a human must
+audit, silently dropping an option is worse than arguing it badly.
+
+**Counter-evidence recorded honestly.** c12 committed this run's two worst arithmetic errors
+(a 10x KV-growth miscalculation and a fabricated "host-RAM fallback" mechanism for a
+configuration ADR-004 measured at 100% GPU), and one draw contradicted its own fail-closed
+compensation by routing `SUSPICIOUS` to continue-with-flag. c12 wins because its errors sit in
+supporting arithmetic while its decision, fail-closed posture and interface shape hold across
+all six draws; c13's errors sit in the decision itself.
+
+**The pre-registered `precise`-preset test on c13 remains open and remains binding.** Nothing in
+this replication forecloses it. If c13 at temp 0.6 reaches Option C 3/3 with median > 75, the
+planner slot reopens as filed.
+
+**Speed note.** c12's 72.94 tok/s draw in run `0738` did not recur (spread this run: 45.60 to
+49.14). It was anomalous, and the median-of-three rule absorbed it as intended.
