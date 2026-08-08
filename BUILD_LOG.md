@@ -1774,3 +1774,38 @@ trust-dial stop). No further Path E runs are required for Phase 0.
 - **Stop condition: item 2 NOT yet met.** The mechanism is delivered and proven in the sandbox, but
   the checkout does not exist on Colossus until the operator runs the script and the run is logged
   here. Remaining Phase 0 item after that: the first-run wizard (§3.4).
+
+## 2026-08-08 09:14 EDT — Phase 0 exit item 2 CLOSED: reference checkout provisioned on Colossus
+
+- Operator ran `scripts/provision-reference-checkout.sh` on Colossus at 08:59 EDT. Output:
+  `ok commit 4d0fe4983b6b8e52c104c7ffa4b7be8c7ab5a364` · `ok 7 donor paths present` ·
+  `ok LICENSE is MIT` · `ok root package is @openhands/agent-canvas` · installed and locked at
+  `/home/rmholston/dev/oh-gui-ref/agent-canvas/v1.12.0`, **21M**.
+- Matches the sandbox rehearsal exactly, including size. Fresh-clone path taken (no prior checkout).
+- **Not yet independently asserted:** the fresh-clone path applies `chmod -R a-w` but does not
+  re-read the result; only the verify path prints `ok tree is read-only`. A second run confirms the
+  lock held. Folded into the next command batch rather than spent as its own round trip.
+- Re-verify at each phase gate by re-running the script and logging the output here.
+- **Stop condition: Phase 0 exit item 2 MET.**
+
+## 2026-08-08 09:14 EDT — two spec/ADR conflicts found while scoping Phase 0 item 3 — FLAGGED, not resolved
+
+Scoping the remaining Phase 0 work surfaced conflicts that must be settled by the operator before
+any build starts. Recorded here; no spec or ADR edited yet.
+
+1. **Baseline model set is stale.** `docs/specs/11-dev-plan.md` (v4.3 status block) and
+   `docs/specs/README.md` both fix the Phase 0 baseline set as `qwen3.6:27b` (planner) +
+   **`qwen3-coder:30b`** (coder). **ADR-005 selected `qwen3.6:35b-a3b-mtp-q4_K_M` as coder**;
+   `qwen3-coder:30b` was benched and not selected. Newer-wins says ADR-005 governs and the spec is
+   stale, but the *baseline* arguably wants the originally-specified pair for comparability. This
+   changes what the Phase 0 metrics report measures, so it is the operator's call.
+2. **"dense" conflicts with the selected coder.** `11-dev-plan.md` requires the baseline report to
+   run "against a **dense** Qwen3 27B-35B model". `qwen3.6:27b` is dense. **`35b-a3b-mtp` is MoE**
+   (~3B active), so it does not satisfy the literal wording. Either the report runs on the dense
+   planner only, or the word "dense" is retired from the spec.
+3. **Sequencing tension on item 4 (first-run wizard).** §3.4 requires shipping wizard UI, but no
+   frontend project exists (no `package.json` anywhere — see `docs/UPSTREAM_PINS.md`). Scaffolding
+   is Phase 1 work, so Phase 0's exit criterion depends on Phase 1 setup. The wizard also *states*
+   the trust-dial default `ConfirmRisky()`, whose implementation is Phase 1's authorization slice.
+   Phase 0 can only deliver the wizard's copy and shell, not a functioning dial. Boundary needs
+   stating explicitly before building.

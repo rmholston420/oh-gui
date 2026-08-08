@@ -34,21 +34,23 @@ MUST call `ollama stop` on the outgoing role model (`OLLAMA_KEEP_ALIVE=-1`, noth
 
 ## Exact next action
 
-Provision the reference checkout on Colossus and log it:
+**Blocked on an operator decision.** Two Phase 0 conflicts must be settled before item 3 starts —
+see BUILD_LOG 2026-08-08 09:14 EDT:
+
+1. Baseline model set: spec says `qwen3.6:27b` + `qwen3-coder:30b`; ADR-005 selected
+   `qwen3.6:35b-a3b-mtp-q4_K_M` as coder. Which pair does the Phase 0 metrics report measure?
+2. `11-dev-plan.md` demands a **dense** 27B-35B model; the ADR-005 coder is MoE. Dense planner only,
+   or drop "dense"?
+3. First-run wizard (§3.4) needs a frontend that does not exist yet, and states a trust-dial default
+   whose implementation is Phase 1. Confirm Phase 0 ships copy + shell only.
+
+Also fold in, one command, confirms the reference-checkout lock held:
 
 ```bash
-cd ~/dev/oh-gui && git pull && bash scripts/provision-reference-checkout.sh
+bash ~/dev/oh-gui/scripts/provision-reference-checkout.sh
 ```
 
-Expect: `ok commit 4d0fe498…`, `ok 7 donor paths present`, `ok LICENSE is MIT`,
-`ok root package is @openhands/agent-canvas`, ~21 MB at
-`~/dev/oh-gui-ref/agent-canvas/v1.12.0/`. Paste the output back; it gets a BUILD_LOG entry and
-closes Phase 0 exit item 2. Add `--run-copy` later, when baseline metrics are actually being
-measured — it is not needed to close item 2.
-
-Then the last Phase 0 item is the **first-run wizard** (`docs/specs/03-layout.md` §3.4): must state
-and justify the default trust-dial stop `ConfirmRisky()` in its own UI copy, and ship alongside the
-Phase 0 baseline-metrics report.
+Expect `ok tree is read-only` on this second (verify-only) run.
 
 ## Ollama configuration — SETTLED, do not revisit
 
@@ -68,10 +70,11 @@ stopped calling `ollama stop`.
 ## Remaining before Phase 0 Definition of Done
 
 1. ~~Upstream artifact pins~~ — **DONE 2026-08-08**, `docs/UPSTREAM_PINS.md`.
-2. Read-only stock Agent Canvas reference checkout (`docs/specs/03-layout.md` §3.0.1) —
-   **location decided and provisioner written + executed (ADR-001 Amdt #2); awaiting one command
-   on Colossus.** See "Exact next action".
-3. First-run wizard stating the default trust-dial stop `ConfirmRisky()` in-UI (§3.4).
+2. ~~Read-only stock Agent Canvas reference checkout~~ — **DONE 2026-08-08 09:14**, provisioned on
+   Colossus at `~/dev/oh-gui-ref/agent-canvas/v1.12.0` (21M, MIT, commit `4d0fe498`).
+3. **Baseline metrics report** — model set disputed, see "Exact next action".
+4. First-run wizard stating the default trust-dial stop `ConfirmRisky()` in-UI (§3.4) — needs a
+   frontend that does not exist yet.
 
 ## Agent Canvas donor — corrected 2026-08-08, read before vendoring
 
