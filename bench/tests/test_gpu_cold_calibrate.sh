@@ -98,6 +98,27 @@ echo 0 > "$TMP/i"; GPU_COLD_C=39; gpu_cold_calibrate > "$TMP/l5" 2>&1
 expect "preset GPU_COLD_C is honoured" 39 "-" "$TMP/l5"
 expect_log "preset skips calibration" "skipped" "$TMP/l5"
 
+# 5b. A preset gate that sits at the idle floor must WARN. This is the regression that made
+#     the original fixed 45 C gate decorative: floor 45-46 C, gate 45 C, so every cell
+#     passed instantly on a heat-soaked card and timings were silently incomparable.
+SEQ=(); TAIL=44
+echo 0 > "$TMP/i"; GPU_COLD_C=45; GPU_COLD_FLOOR_C=""
+gpu_cold_calibrate > "$TMP/l5b" 2>&1
+expect "preset at the idle floor still sets the gate" 45 "-" "$TMP/l5b"
+expect_log "preset at the idle floor warns" "at or below the idle floor" "$TMP/l5b"
+
+# 5c. The same preset must stay SILENT when it is genuinely above the floor, or the warning
+#     is noise and will be ignored when it matters.
+SEQ=(); TAIL=35
+echo 0 > "$TMP/i"; GPU_COLD_C=45; GPU_COLD_FLOOR_C=""
+gpu_cold_calibrate > "$TMP/l5c" 2>&1
+expect "preset above the floor sets the gate" 45 "-" "$TMP/l5c"
+if grep -q "idle floor" "$TMP/l5c"; then
+  echo "  FAIL  preset above the floor stays silent"; FAILURES=$((FAILURES + 1))
+else
+  echo "  ok    preset above the floor stays silent"
+fi
+
 # 6. Dead/absent sensor must fall back to the documented default, not loop forever and not
 #    set a gate from garbage. Colossus has already lost the fan tach and VRAM temp sensors,
 #    so a missing reading is a real scenario, not a hypothetical.

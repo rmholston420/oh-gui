@@ -12,20 +12,32 @@
 #   80 C  warn                       - report, keep going (report-only, never aborts)
 #   80 C  refuse to start a new run
 #   COLD threshold - not a safety limit. Benching from unequal starting temperatures makes
-#         later cells clock down earlier and quietly penalises whatever ran last. This is
-#         now MEASURED per run by gpu_cold_calibrate rather than hardcoded: the gate is the
-#         observed idle floor plus GPU_COLD_MARGIN_C (default 3).
+#         later cells clock down earlier and quietly penalises whatever ran last.
 #
-#         The previous fixed 45 C was marginal to the point of being decorative. Idle
-#         troughs in runs 0531/0545/0555 measured 45-46 C with the operator's normal
-#         desktop up, so the gate sat AT the floor: it either passed instantly or waited
-#         out its timeout on an ambient degree of drift, and could not distinguish a cold
-#         card from a heat-soaked one. A floor-relative gate adapts to ambient and to
-#         whatever else the desktop is doing, which on a single-user workstation that
-#         cannot be quiesced (the operator needs the browser to talk to the scoring model)
-#         is the only version of this gate that means anything.
+#         DEFAULT: 45 C, preset (operator instruction, 2026-08-08 07:49 EDT).
 #
-#         Set GPU_COLD_C explicitly in the environment to skip calibration.
+#         History, because this value has now been set three different ways and the reason
+#         matters more than the number:
+#           1. Fixed 45 C. Rejected: idle troughs in runs 0531/0545/0555 measured 45-46 C
+#              with the operator's desktop up, so the gate sat AT the floor. It either
+#              passed instantly or waited out its timeout on a degree of ambient drift,
+#              and could not distinguish a cold card from a heat-soaked one - decorative.
+#           2. Calibrated per run: floor + GPU_COLD_MARGIN_C. Adapts to ambient, but on
+#              2026-08-08 it measured a 35 C floor and produced a 38 C gate, which cost
+#              166 s of cooling after a single cell and 30 s of calibration per run.
+#           3. Fixed 45 C again - which is NOT a return to (1), because the condition that
+#              made (1) decorative was floor ~= gate. The floor is now measured at 35 C, so
+#              45 C sits 10 C above it and still distinguishes a cold card from a soaked
+#              one. The gate is meaningful whenever floor + ~5 C < gate.
+#
+#         That condition is not permanent - it depends on ambient and on desktop load. So
+#         the preset branch of gpu_cold_calibrate now SAMPLES the idle card and warns if the
+#         gate is within 2 C of the observed temperature, which is exactly the state that
+#         made (1) worthless. If that warning appears, the gate has stopped meaning
+#         anything and should go back to calibration.
+#
+#         Set GPU_COLD_C="" to force per-run calibration. Set GPU_COLD_C=<n> for any other
+#         fixed gate. Calibration machinery is retained and still tested.
 # The card is capped at 435 W by LACT (power_cap in /etc/lact/config.yaml), and
 # run_path_e.sh refuses to start at any other cap. These limits are still enforced in
 # software rather than inferred from the cap: a cap bounds power, not temperature.
@@ -45,7 +57,9 @@
 GPU_REDLINE_C="${GPU_REDLINE_C:-88}"   # hardware limit, documentation only
 GPU_MAX_C="${GPU_MAX_C:-83}"           # hard ceiling: abort
 GPU_WARN_C="${GPU_WARN_C:-80}"         # warn (report-only; the abort is GPU_MAX_C)
-GPU_COLD_C="${GPU_COLD_C:-}"           # empty = calibrate per run (see gpu_cold_calibrate)
+GPU_COLD_C="${GPU_COLD_C-45}"          # preset gate; set to "" to calibrate per run.
+                                       # Note `-` not `:-`: an explicitly empty value must
+                                       # survive and mean "calibrate", not fall back to 45.
 GPU_COLD_FALLBACK_C="${GPU_COLD_FALLBACK_C:-45}"  # used only if calibration fails
 GPU_COLD_MARGIN_C="${GPU_COLD_MARGIN_C:-3}"       # gate = measured idle floor + this
 GPU_CALIB_MIN_S="${GPU_CALIB_MIN_S:-30}"          # shortest acceptable observation window
@@ -235,6 +249,18 @@ gpu_cool_wait() {
 gpu_cold_calibrate() {
   if [ -n "$GPU_COLD_C" ]; then
     echo "cold gate: ${GPU_COLD_C}C (preset, calibration skipped)"
+    # A preset gate is only meaningful if it sits above the card's idle floor. This is the
+    # exact failure of the original fixed 45 C gate: with the floor at 45-46 C it passed
+    # instantly on a heat-soaked card. Sample once and say so rather than silently
+    # reintroducing that bug when ambient rises.
+    local _t
+    _t="$(gpu_temp 2>/dev/null || echo N/A)"
+    if [ "$_t" != "N/A" ] && [ -n "$_t" ] && [ "$_t" -ge $(( GPU_COLD_C - 2 )) ] 2>/dev/null; then
+      echo "WARNING: card reads ${_t}C at rest but the gate is ${GPU_COLD_C}C." >&2
+      echo "  The gate is at or below the idle floor, so it cannot tell a cold card from a" >&2
+      echo "  heat-soaked one and every cell will pass it instantly. Timings across cells are" >&2
+      echo "  NOT comparable on this basis. Use GPU_COLD_C=\"\" to calibrate, or raise it." >&2
+    fi
     return 0
   fi
 

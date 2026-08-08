@@ -1349,3 +1349,42 @@ materialise. Machine scoring not yet run.
 
 **Stop condition.** ADR-005 still OPEN — awaiting `score_code.py` on run 20260808_0705 and the
 c12/c13 planner replicates. The embedder question is now CLOSED.
+
+## 2026-08-08 07:52 EDT — cold gate raised to a preset 45C
+
+**Stage.** Phase 0 / Path E bench harness (`bench/lib/gpu.sh`).
+
+**Operator instruction.** "your cold gate of 36 still seems too low and takes too long, raise
+it to 45."
+
+**Changed.** `GPU_COLD_C` now defaults to `45` instead of empty. Written as `${GPU_COLD_C-45}`
+(single dash) so an explicitly empty value survives and still means "calibrate" — with `:-` the
+documented escape hatch would silently collapse back to 45. Verified in a subshell.
+Calibration machinery retained and still tested; `GPU_COLD_C=""` restores it.
+
+**Effect.** Removes the 30 s calibration window per run and the long tail of cooling waits —
+the 07:05 run spent 166 s cooling to 38 C after a single cell.
+
+**This is not a straight revert to the old fixed 45 C.** That gate was rejected because the
+idle floor was 45-46 C, so it sat AT the floor and could not distinguish a cold card from a
+heat-soaked one. Today's calibration measured a 35 C floor, so 45 C sits ~10 C above it and
+still discriminates. The gate is meaningful only while `floor + ~5C < gate`, and that condition
+depends on ambient and desktop load, so it is now **enforced rather than assumed**: the preset
+branch samples the idle card and warns if the gate is within 2 C of the reading — precisely the
+state that made the original gate decorative. Two regression tests cover it (warns at the
+floor, silent above it). Cold-gate suite 9 -> 13 assertions; `validate_harness.py` layer 4
+guard updated, since it asserted the old empty default and would otherwise have failed on this
+change.
+
+**Comparability caveat, recorded for ADR-005.** Round 1 (`20260808_0555`) and the round 2 code
+cells (`20260808_0705`) both ran with a 38 C gate. The c12/c13 planner replicates will start at
+up to 45 C. Peak under load was 72 C with 0 throttled samples and 0 s above the 80 C warn line,
+so throttling cannot explain any difference, but a 7 C warmer start can shift boost clocks
+slightly. ADR-005 criterion 10 uses speed only as a tiebreak inside a 3-point quality band, so
+the risk to the verdict is low — but if c12 and c13 land inside that band, the tiebreak must
+note that the two rounds ran under different start temperatures.
+
+**Files touched.** `bench/lib/gpu.sh`, `bench/tests/test_gpu_cold_calibrate.sh`,
+`bench/validate_harness.py`.
+
+**Stop condition.** Unchanged: ADR-005 OPEN pending c12/c13.

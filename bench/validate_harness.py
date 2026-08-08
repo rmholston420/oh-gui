@@ -74,7 +74,8 @@ harness = (BENCH / "path_e" / "bench_path_e.py").read_text()
 
 checks = [
     (gpu, "gpu_cold_calibrate()", "gpu.sh defines gpu_cold_calibrate"),
-    (gpu, 'GPU_COLD_C="${GPU_COLD_C:-}"', "cold gate defaults to calibrated, not hardcoded"),
+    (gpu, 'GPU_COLD_C="${GPU_COLD_C-45}"', "cold gate preset to 45C, overridable to \"\" for calibration"),
+    (gpu, "GPU_COLD_C - 2", "preset cold gate warns when it sits at the idle floor"),
     (gpu, "GPU_COLD_MARGIN_C", "cold margin is configurable"),
     (run, "gpu_cold_calibrate", "driver calibrates the cold gate"),
     (run, "unloading any resident models before cell 1", "driver unloads before cell 1"),
