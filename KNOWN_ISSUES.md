@@ -297,3 +297,27 @@ better than another. They are a baseline of record for the app, not a model rank
   pairs, 50-70% acceptance band, replicates retained, fold rule pre-registered), then define the two
   stacks. Capture tok/s and latency alongside pass/fail, since the axes disagree and both matter.
 - **Related DEBUG_LOG search terms:** vllm, ollama, gguf, tok/s, runtime, quantization, confound
+
+### 2026-08-08 — The SWE-bench harness disagrees with itself on 40% of repeated tasks
+
+- **Blocks:** any decisive local model comparison. Does **not** block Phase 0 exit (ADR-016) or
+  Phase 1.
+- **Symptom:** Of 58 tasks run more than once under an identical configuration
+  (`c01_coder_vllm_qwen36_27b_int4`), **23 returned different `resolved` values between runs**.
+  Mean per-task pass probability across those 23 is **0.515**. Examples:
+  `scikit-learn__scikit-learn-14629` → `[T,T,T,T,T,T,F,T,F,T]`;
+  `matplotlib__matplotlib-24570` → `[F,T,T,T,T,F,F,T,F,T]`.
+- **Why it matters:** it caps benchmark power far below what task count alone predicts. One GPU
+  hour yields 36% power against a 20-point model gap; 80% power costs 3-5 hours (ADR-013 clause 8).
+  Noise reduction is a cheaper route to a decisive answer than more runs.
+- **Suspected contributors (unverified, do not cite as cause):**
+  1. Malformed tool-call JSON, ~2/cell, already recorded under ADR-013 clause 6.
+  2. Sampling non-determinism — the coder preset is `temperature=0.7, top_p=0.8` (ADR-011).
+  3. Genuine flakiness in the upstream SWE-bench test suites themselves.
+  None of these is yet demonstrated to be *the* cause and no run has been executed to separate them.
+- **Next investigation:** re-run one high-flip task (`scikit-learn__scikit-learn-14629`, 10 runs
+  already on disk) N times at reduced temperature, holding everything else fixed. If the flip rate
+  collapses, sampling dominates; if not, look at tool-call failures and upstream flakiness. Cheap:
+  single task, single model.
+- **Related DEBUG_LOG search terms:** flip rate, run-to-run variance, resolved mismatch, mid-p,
+  discordant pairs, statistical power, MDE

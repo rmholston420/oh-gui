@@ -4,6 +4,55 @@
 **Lock-in phase:** Phase 0 (blocks Phase 0 exit)
 **Supersedes:** —
 
+> **STATUS AMENDMENT (2026-08-08 19:55 EDT) — clause 8 added: attainability is necessary but not
+> sufficient; a power floor is now required.**
+>
+> Executing the go/no-go gate mandated by ADR-016 clause 5 against the surviving Path F calibration
+> data (`~/.forge-oh/swebench_runs`, 754 report dirs, 385 distinct tasks, cell
+> `c01_coder_vllm_qwen36_27b_int4`) produced a result that this ADR's original clauses would have
+> passed and should not have.
+>
+> **The finding.** 58 tasks were run more than once under an *identical* configuration. **23 of
+> those 58 (40%) returned different answers between runs.** Pooled over their 119 runs those 23
+> tasks accept at **53.8%** — dead centre of the clause 2 band — with a mean per-task pass
+> probability of **0.515**. They are not near the decision boundary in the useful sense. They are
+> coin flips.
+>
+> **Why that breaks clause 1.** Discordance headroom is trivially satisfied by noisy tasks: two
+> candidates disagree constantly when a single candidate already disagrees with itself. A task set
+> selected *for* mixed outcomes maximises attainable discordant pairs and simultaneously minimises
+> the share of that discordance carrying signal. Clause 1 can therefore be satisfied by the worst
+> possible task set. Type I error remains correctly controlled (measured 3.6–4.3% at zero true gap,
+> as mid-p guarantees), so the danger is not false positives — it is spending GPU hours on a run
+> that was always overwhelmingly likely to return "inconclusive".
+>
+> **Measured power**, simulated over the empirical per-task pass probabilities, single replicate:
+>
+> | true gap | N=18 | N=23 | N=28 |
+> |---:|---:|---:|---:|
+> | 10 pts | 7.9% | 9.9% | 12.0% |
+> | 20 pts | 22.7% | 30.2% | 36.2% |
+> | 30 pts | 47.1% | 59.9% | 69.7% |
+>
+> One hour of GPU buys N=28 at one replicate: **36% power against a 20-point gap.** Cost to reach
+> 80% on that same gap, at 64 s/task: **N=80 single-rep (171 min)** or **N=50 × 3 reps (320 min)**.
+> A properly powered local model comparison on this instrument costs three to five hours, not one.
+>
+> **Clause 8 (new, binding).** A benchmark manifest must state its **minimum detectable effect at
+> 80% power**, computed over the empirical per-task pass probabilities of the selected task set,
+> before the run. Attainability of ≥ 5 discordant pairs (clause 1) remains necessary and is no
+> longer sufficient. A run whose MDE exceeds the gap it is meant to detect is not published, under
+> clause 7.
+>
+> **Clause 9 (new, binding).** Per-task run-to-run variance under a fixed configuration is a
+> reportable property of the harness. Where repeat data exists it must be used to compute clause 8;
+> where it does not, the manifest says so and the MDE is reported as `null`, never assumed.
+>
+> **Consequence.** The binding constraint on this benchmark is **instrument noise, not sample
+> size** — halving the flip rate buys more power than tripling the tasks. Reducing that noise
+> (ADR-013 clause 6 malformed tool calls; sampling determinism under ADR-011) is code work, and is
+> the cheaper path to a decisive comparison. No GPU time was spent to learn this.
+
 ## Context
 
 `docs/specs/11-dev-plan.md` gates Phase 0 exit on a **baseline metrics report**. `KNOWN_ISSUES.md`

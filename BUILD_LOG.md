@@ -2831,3 +2831,35 @@ split.
 - **PORTING_LEDGER / ADR updated:** ADR-016 filed; ADR-013 Consequences amended by reference
 - **Stop-condition status:** met. Phase 1 authorization slice is unblocked and starts next.
   Risk accepted and recorded in ADR-016: Phase 0 closes without a published model comparison.
+
+## 2026-08-08 19:55 EDT — Go/no-go gate executed: benchmark NOT run, 1 GPU hour saved
+
+- **Stage / plugin / port:** Phase 0 parallel track · benchmark measurement spine · no port touched
+- **What changed:** Ran ADR-016 clause 5's pre-GPU attainability check against the surviving Path F
+  calibration data. **Verdict: NO-GO. Zero GPU time spent.**
+  - Data recovered: 754 report dirs, 385 distinct tasks, 573 task-runs, one cell
+    (`c01_coder_vllm_qwen36_27b_int4`). Acceptance 32.5% all-pass / 38.4% any-pass — **below**
+    ADR-013's 50-70% band, where the six Phase 0 blocks were above it at 87.5%.
+  - 58 tasks ran more than once; **23 (40%) flipped** between identical runs. Pooled acceptance on
+    those 23 is 53.8%, mean per-task pass probability 0.515.
+  - Simulated power over the empirical per-task probabilities: one hour buys N=28 at 1 replicate =
+    **36% power against a 20-point gap**, 12% against 10 points. 80% power costs 171-320 min.
+  - Type I error verified at 3.6-4.3% for a zero true gap, and the mid-p implementation reproduces
+    ADR-013's published table exactly (0.0625 / 0.03125 / 0.0156), so the sim is trustworthy.
+- **Correction to my own prior reasoning:** last turn I called the mixed-outcome tasks "the
+  strongest possible selection signal for discordance headroom." That was wrong. Selecting for
+  mixed outcomes selects for *noise*: two candidates disagree constantly on a task where one
+  candidate already disagrees with itself. It maximises attainable discordant pairs while
+  minimising the share that carries signal — satisfying ADR-013 clause 1 with the worst possible
+  task set. Amended rather than quietly dropped.
+- **ADR-013 amended** with clause 8 (manifest must state minimum detectable effect at 80% power
+  before the run; attainability is necessary, not sufficient) and clause 9 (run-to-run variance is
+  a reportable harness property; MDE is `null` where repeat data is absent, never assumed).
+- **Files touched:**
+  - `adrs/ADR-013-benchmark-discrimination-floor.md` (status amendment, clauses 8-9)
+  - `adrs/README.md`, `KNOWN_ISSUES.md`, `BUILD_LOG.md`
+  - `/home/user/workspace/power.py` (sim, agent-side, not committed)
+- **Ports / adapters affected:** none
+- **PORTING_LEDGER / ADR updated:** ADR-013 amended
+- **Stop-condition status:** met. Benchmark deferred with a measured reason rather than a hunch.
+  Next: Phase 1 authorization slice.
