@@ -9,11 +9,17 @@
  * Run ON Colossus (the app is on its localhost):
  *   cd ~/dev/oh-gui/apps/gui && node ../../bench/baseline/ui/probe.mjs
  */
-import { chromium } from "playwright";
 import { writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
+import { createRequire } from "node:module";
 
-const URL = process.env.OH_GUI_BASELINE_INGRESS || "http://localhost:8010";
+// Playwright lives in apps/gui/node_modules, and ESM resolves from THIS file's directory rather
+// than the cwd, so a bare import fails no matter where the script is invoked from. Resolve against
+// the workspace that actually owns the dependency.
+const require = createRequire(new URL("../../../apps/gui/package.json", import.meta.url));
+const { chromium } = require("@playwright/test");
+
+const INGRESS = process.env.OH_GUI_BASELINE_INGRESS || "http://localhost:8010";
 const OUT = join(process.env.HOME, ".oh-gui", "baseline", "probe");
 mkdirSync(OUT, { recursive: true });
 
@@ -65,7 +71,7 @@ const consoleErrors = [];
 page.on("console", (m) => m.type() === "error" && consoleErrors.push(m.text().slice(0, 200)));
 
 try {
-  await page.goto(URL, { waitUntil: "networkidle", timeout: 60000 });
+  await page.goto(INGRESS, { waitUntil: "networkidle", timeout: 60000 });
   await page.waitForTimeout(2500);
   await inventory(page, "01-landing");
 

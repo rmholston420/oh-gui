@@ -2096,3 +2096,17 @@ any build starts. Recorded here; no spec or ADR edited yet.
 - Files: `bench/baseline/ui/probe.mjs`. No behavior change to the manual harness, which stays valid.
 - Stop condition unchanged: Phase 0 exit item 3 open until the report exists and ADR-008's verdict
   is filled. ADR-008 will need an amendment recording which metrics an automated run can carry.
+
+## 2026-08-08 10:26 EDT — Probe fixed and proven by execution
+
+- Stage: Phase 0 exit item 3, automated driver stage 1.
+- Two defects, both mine, both in DEBUG_LOG: ESM resolving from the file's directory rather than
+  the cwd, and a `const URL` shadowing the global it needed one line earlier.
+- **The first reached the operator's terminal because `node --check` passed and I treated that as
+  verification.** Syntax checking says nothing about module resolution or temporal dead zones. Rule
+  already adopted this session and violated here: no causal claim enters an artifact until it has
+  been executed. A script handed over is a claim.
+- Re-verified by running the probe against a throwaway local page that exercises every branch,
+  including the click path and the working-dir detection, before asking for it to be re-run.
+- Files: `bench/baseline/ui/probe.mjs`, DEBUG_LOG.
+- Stop condition unchanged.

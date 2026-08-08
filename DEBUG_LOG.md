@@ -628,3 +628,37 @@ and names the variable).
 
 **Note:** the first t01 attempt was abandoned for this reason. It is a harness fault, not stock-app
 data, and must be excluded from the report.
+
+## 2026-08-08 10:25 EDT — Probe failed twice before running: module resolution, then a shadowed global
+
+**Symptom 1:** `Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'playwright' imported from
+/home/rmholston/dev/oh-gui/bench/baseline/ui/probe.mjs`, despite being invoked from `apps/gui`
+where Playwright is installed.
+
+**Root cause 1:** ESM resolves bare specifiers from the importing FILE's directory, not the cwd.
+`bench/baseline/ui/` has no `node_modules`. Running from `apps/gui` changes nothing.
+
+**Fix 1:** `createRequire(new URL("../../../apps/gui/package.json", import.meta.url))` and
+`require("@playwright/test")`, resolving against the workspace that owns the dependency.
+
+**Symptom 2:** `ReferenceError: Cannot access 'URL' before initialization` at the createRequire line.
+
+**Root cause 2:** the script declared `const URL = <ingress>` further down. A `const` shadows the
+global for the ENTIRE module scope, so the earlier `new URL(...)` hit the temporal dead zone. The
+error points at the createRequire line while the actual defect is twenty lines below it.
+
+**Fix 2:** renamed to `INGRESS`, which is what it always meant.
+
+**Affected:** `bench/baseline/ui/probe.mjs` only. No app or port code.
+
+**Note on method:** both defects were mine, and the first one reached the operator's terminal
+because the script was shipped `node --check`-clean but never executed. Syntax checking proves
+nothing about resolution or runtime scope. The fix was verified by running the probe against a
+throwaway local page exercising every branch — inventory, the no-editable-field path, the
+new-conversation click, working-dir detection, and the file writes — before asking the operator to
+run it again.
+
+**Second note:** while testing, `pkill -f "http.server 8791"` killed the tool shell itself
+(exit 143). Same family as the pid 16688 incident already in this log: `pkill -f` matches the
+command line of any process containing the string, including the one issuing the kill. Use a
+recorded PID file instead, which is what the retest did.
