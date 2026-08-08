@@ -2227,3 +2227,36 @@ any build starts. Recorded here; no spec or ADR edited yet.
   `https://registry.npmjs.org/@openhands/agent-canvas/latest` on load. OH-GUI must not phone home.
 - Files: `bench/baseline/ui/{session.mjs,probe3.mjs,probe4.mjs,watch.sh}`, `bench/baseline/mcp_baseline.sh`.
 - Stop condition unchanged: Phase 0 item 3 open.
+
+## 2026-08-08 13:44 EDT — Workspace selection answered; the agent works IN the fixture
+
+**Stage:** Phase 0, item 3 (baseline metrics) — ADR-008.
+**Files:** `bench/baseline/ui/probe5.mjs` (new), `seed_fixture.sh`, `run_baseline.sh`,
+`mcp_baseline.sh`, `ui/probe{2,3,4}.mjs`, `README.md`, `DEBUG_LOG.md`.
+
+**Executed, not inferred** (probe5 run 20260808T174224):
+- `pwd` → `/home/rmholston/oh-gui-baseline/fixture`. No per-conversation subdirectory.
+- `ls -a` → `.git .gitignore README.md notes_api requirements.txt tests` — the real fixture.
+- On-disk contents unchanged after the run.
+
+**Why this matters:** it is the OPPOSITE of `VITE_WORKING_DIR`, where the agent got a fresh empty
+subdir and never saw the fixture. Selecting a workspace puts the agent in the directory itself, so
+the eight tasks are viable — and the driver MUST restore the fixture between all sixteen runs or
+task N+1 inherits task N's edits. The fixture is a git repo with a seed commit, so
+`git reset --hard && git clean -fd` is the restore.
+
+**Other observations from the same run:**
+- Launch control is `launch-workspace` — generic, not per-workspace. Fine with one workspace;
+  needs disambiguation if a second is ever registered. Also present: `manage-workspaces-button`.
+- Re-adding the same folder produced ONE entry, not two. The app dedupes.
+- `/api/workspaces`, `/api/conversations/workspaces`, `/api/settings` all returned **401** from the
+  page context. Server-side ground truth is not available without a session key, so UI assertions
+  cannot currently be cross-checked against the server.
+- Submit→idle for a trivial `pwd`+`ls`: 31.9s → 42.1s.
+
+**Fixture relocated** to `~/oh-gui-baseline/fixture` — the Add Workspace browser lists no
+dot-entries and has no path input, so the old `~/.oh-gui/baseline/fixture` was unreachable through
+the app's own mechanism. Path is now `${OH_GUI_BASELINE_FIXTURE:-...}`, one override point.
+
+**Stop condition:** Phase 0 item 3 still OPEN. Blocking work is now the driver itself: no unknowns
+remain about how to put the agent in front of the fixture.
