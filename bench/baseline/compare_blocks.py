@@ -30,7 +30,7 @@ def load_block(run_dir: Path) -> dict:
     for p in sorted(run_dir.glob("*.summary.json")):
         s = json.loads(p.read_text())
         a = s.get("automated") or {}
-        h = s.get("agent_error_events") or harvest(s.get("conversation_id"))
+        h = s.get("agent_error_events") or harvest(a.get("conversation_id"))
         cells[s["task"]] = {
             "accepted": a.get("accepted"),
             "gate": a.get("acceptance_gate"),

@@ -2418,3 +2418,22 @@ reads UNKNOWN in red rather than a plausible-looking `ACCEPTED=no`. 11 tests, in
 escape codes survive a pipe. Baseline suite 57, mtp suite 5.
 
 Stop condition: Phase 0 item 3 OPEN. Needs the third matrix block AND the MTP microbench.
+
+## 2026-08-08 16:32 EDT — Matrix run 3 complete; acceptance is a tie
+
+Both blocks 7/8. `qwen3.6-27b` missed t01 on a regression (gate passed, fixture tests failed);
+`qwen3.6-35b-a3b-mtp-q4_K_M` missed t08 with turns=1, files=0 — it did not attempt the task, which
+is not the same kind of miss and is reported as UNKNOWN rather than a quality failure.
+
+Thermals were a non-issue: peak 75C, zero samples at or over 80C, zero throttled samples across all
+sixteen cells. The 45C cold gate holds.
+
+Acceptance being tied is precisely the condition ADR-010 anticipated: the decision falls to speed,
+and these two models are not speed-comparable. Wall-clock differed sharply (783s vs 386s) but that
+is equally explained by MTP or by a 3B-active MoE, and the harness counts no tokens, so
+`compare_blocks.py` suppresses the comparison rather than reporting it.
+
+Fixed the cid nesting defect above; reports and comparison regenerated.
+Suites: baseline 61, mtp 5.
+
+Stop condition: Phase 0 item 3 OPEN. Blocking on the MTP microbench, then the third matrix block.

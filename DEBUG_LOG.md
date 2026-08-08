@@ -1163,3 +1163,32 @@ time keyed by the conversation id each cell already records, so it applies retro
 now in flight — no interruption needed. Unreadable record yields `?`, never 0; a readable record
 with no errors yields 0. `report.py` gains a `Tool errs` column and a caveat paragraph. 7 new tests,
 suite at 46.
+
+## 2026-08-08 16:32 EDT — Tool-error column read "?" on every cell: cid read from the wrong nesting level
+
+**Symptom.** `compare_blocks.py` printed `?` in the Tool errors column for both blocks. Probing a
+real summary: `s.get('conversation_id')` -> `None`.
+
+**Affected.** Phase 0 item 3 — `bench/baseline/report.py`, `bench/baseline/compare_blocks.py`.
+
+**Root cause.** The driver DOES record it, at `automated.conversation_id` (`drive_task.mjs`, inside
+the `automated:` block). Both readers looked for it at the top level of the summary. The harvester
+never received a cid on any real cell, so the feature shipped in e22f51d has never once worked.
+
+Its unit tests passed throughout because they call `harvest(cid)` with a cid supplied directly —
+they exercised everything except the one step that was broken, which was FINDING the cid.
+
+This is the identical defect shape as the meta.json bug earlier today: `working_dir` is nested under
+`workspace`, not top-level, and I read it top-level. Second time in one session.
+
+**Fix.** Both readers now read `automated.conversation_id` with a top-level fallback.
+`tests/test_summary_cid_wiring.py` (4) drives `report.py` and `compare_blocks.py` end to end over a
+summary shaped the way the driver actually writes one, plus a source assertion that fails if the
+driver ever moves the field. A missing cid must still render `?`, never `0` — absence of a count is
+not a count of zero.
+
+**Files.** `bench/baseline/report.py`, `bench/baseline/compare_blocks.py`,
+`bench/baseline/tests/test_summary_cid_wiring.py`.
+
+**Rule.** A unit test that hands the code the value it failed to find is not a test of the wiring.
+Any accessor reading a nested field must be exercised against a realistically shaped record.

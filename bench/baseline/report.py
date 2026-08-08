@@ -88,7 +88,10 @@ def main() -> int:
         # finished — the events are on disk keyed by the conversation id each cell recorded.
         if not s.get("agent_error_events"):
             try:
-                s["agent_error_events"] = harvest(s.get("conversation_id"))
+                # The driver nests this under `automated` (drive_task.mjs). Reading it from the
+                # top level silently yielded None on every cell and made this whole column "?".
+                _cid = (s.get("automated") or {}).get("conversation_id") or s.get("conversation_id")
+                s["agent_error_events"] = harvest(_cid)
             except Exception as e:
                 s["agent_error_events"] = {"agent_errors": None, "note": f"harvest failed: {e}"}
         models = args.run_dir / f"{s['task']}.ollama_ps.tsv"
