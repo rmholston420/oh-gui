@@ -81,8 +81,11 @@ which was masked on 2026-08-08 (see `DEBUG_LOG.md`, same date). Images live in `
 which the surviving snap daemon cannot read.
 
 - **Reading donor source is unaffected** — `~/dev/forge-oh` and the GitHub repo are both intact.
-- **Running the Forge-OH stack for behavioural comparison is not possible** without either
-  unmasking the apt daemon or rebuilding its images under the snap daemon.
+- **Running the Forge-OH stack for behavioural comparison requires a rebuild under the snap
+  daemon.** As of 2026-08-08 19:40 EDT this is the *only* remaining option: `/var/lib/docker` was
+  deleted to reclaim 154 GB, so `forge-oh-bff:latest` and the SearXNG image are gone and unmasking
+  the apt daemon would no longer recover them. Consistent with the already-ratified source-only
+  review decision; the cost is a rebuild, not a lost capability.
 
 This matters because several Tier 1/2 modules are best verified by observing them running. Any port
 that needs a live reference run must budget for a rebuild first.

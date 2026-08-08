@@ -33,9 +33,13 @@
    constraint: no like-for-like A/B exists (vLLM's GGUF path is experimental/under-optimized;
    INT4-AutoRound/NVFP4/AWQ have no Ollama path), so the rerun must be scoped as a **stack**
    comparison, not a runtime comparison.
-3. Reclaim the 154 GB under the masked apt Docker daemon and the 137 GB SWE-bench repo cache?
+3. ~~Disk reclaim~~ — **DONE 2026-08-08 19:40 EDT.** 247 GB reclaimed (434G -> 681G free):
+   `/var/lib/docker` 154 GB and `/var/lib/containerd` 94 GB, both orphaned apt-stack data-roots.
+   The "137 GB SWE-bench repo cache" in the original question **did not exist** — `~/.forge-oh`
+   is 602 MB total. Still open for the operator, not urgent: ~35 GB of reclaimable images and
+   stopped containers on the live snap daemon. Its 122 GB of volumes must not be pruned blind.
 
 ## Exact next action
-No operator answer outstanding except Q3 (disk reclaim). Next: write the ADR-013-compliant task set before
+No operator answer outstanding — Q3 is closed. Next: write the ADR-013-compliant task set before
 any GPU time is spent — it is the prerequisite for both the Phase 0 baseline report and the
 deferred stack comparison.

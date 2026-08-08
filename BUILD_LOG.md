@@ -2750,3 +2750,37 @@ split.
   DERIVED formulas
 - **Stop-condition status:** met. ADR-015 has no remaining OPEN items. Phase 0 blocking work is
   unchanged: the ADR-013-compliant task set.
+
+## 2026-08-08 19:40 EDT — Reclaimed 247 GB by deleting both dead apt container stacks
+
+- **Stage / plugin / port:** Phase 0 · host maintenance · no port touched
+- **What changed:** Deleted the data-roots of the two orphaned apt-Docker components on Colossus,
+  after a read-only survey and three executable guards per deletion.
+  - `/var/lib/docker` — 154 GB, data-root of the masked apt dockerd. Guards proved: no non-snap
+    `dockerd` alive, live `DockerRootDir=/var/snap/docker/common/var-lib-docker`, 0 kernel mounts
+    held. Free space 434G -> 588G.
+  - `/var/lib/containerd` — 94 GB, state of the apt `containerd.service`, which was found still
+    **active and enabled** (pid 2835) and holding `meta.db` open. It was never masked on 2026-08-08;
+    only `docker.service`/`docker.socket` were. `disable --now` + `mask`, then deleted. Free space
+    588G -> 681G. Breakdown: 67 GB overlayfs snapshotter, 27 GB content store.
+  - Snap docker verified unaffected after each phase: root unchanged, `ContainersRunning=2`,
+    `kosmos-valkey` and `kosmos-adr010-searxng` still up.
+- **Two corrections to prior records in this repo:**
+  1. The "137 GB SWE-bench repo cache" carried in `SESSION_HANDOFF.md` Q3 **did not exist**.
+     `~/.forge-oh` measures 602 MB in total; `bench_pathF_swebench` is 21 MB. Nothing was reclaimed
+     there because there was nothing to reclaim. The figure was an unverified carry-forward.
+  2. I claimed masking was a "band-aid" versus purging the apt packages. Wrong on the mechanism: a
+     mask is a root-created symlink to `/dev/null` under `/etc/systemd/system`, which dpkg does not
+     remove on upgrade — it is already durable. `apt-get purge --dry-run docker-ce containerd.io`
+     also reported it would **install NEW packages**, and the working CLI is `docker-ce-cli`
+     (`/usr/bin/docker`); `/snap/bin/docker` is only the generic `/usr/bin/snap` wrapper. Purge was
+     rejected. Masking is the adopted fix for both units.
+- **Files touched:**
+  - `BUILD_LOG.md`, `DEBUG_LOG.md`, `SESSION_HANDOFF.md`
+  - `docs/forge-oh-port-survey.md` (rebuild is now the only option, not one of two)
+- **Ports / adapters affected:** none
+- **PORTING_LEDGER / ADR updated:** none
+- **Stop-condition status:** met. 247 GB reclaimed; 434G -> 681G free. Not done and deliberately
+  left to the operator: the live snap daemon still reports ~30 GB reclaimable images and ~4.9 GB of
+  stopped containers. Its 122 GB of local volumes is **not** to be pruned — that is where Kosmos and
+  other persistent state lives.

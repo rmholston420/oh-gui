@@ -1263,3 +1263,38 @@ the snap daemon. Recorded in `docs/forge-oh-port-survey.md`.
 **Files changed.** None in this repo — host configuration only.
 
 **Related BUILD_LOG entry:** 2026-08-08 18:35 EDT
+
+## 2026-08-08 19:40 EDT — Half the apt container stack was still running after the 18:35 daemon fix
+
+- **Symptom:** `/var/lib/containerd` measured 94 GB on a host believed to have had its apt Docker
+  stack fully disabled. `systemctl is-active containerd.service` returned `active`, `is-enabled`
+  returned `enabled`, and `lsof +D` showed pid 2835 `/usr/bin/containerd` holding
+  `io.containerd.metadata.v1.bolt/meta.db` and the overlayfs `metadata.db` open for write.
+- **Affected stage / plugin / port:** Phase 0 · host / Docker · no port
+- **Root cause:** The 2026-08-08 18:35 fix masked `docker.service` and `docker.socket` only.
+  `containerd.service` is a **separate unit from the `containerd.io` package** and was left enabled,
+  so the apt dockerd's containerd kept running and kept its 94 GB of snapshots and content live.
+  Masking a daemon does not mask its runtime.
+- **Fix applied:** `systemctl disable --now containerd.service` + `systemctl mask
+  containerd.service`, then `rm -rf /var/lib/containerd`. Verified idle first: 0 containers and
+  0 tasks in both the `moby` and `moby_history` namespaces via
+  `ctr -a /run/containerd/containerd.sock`, and both live `containerd-shim` processes proved to
+  belong to snap (cmdline contains `snap.docker`). Snap runs its own containerd (pid 3700,
+  `--config /run/snap.docker/containerd/containerd.toml`) and has no `containerd` key in its
+  `daemon.json`, so it never referenced `/var/lib/containerd`.
+- **Two tooling defects found and fixed while writing the survey, worth not repeating:**
+  1. `pgrep -af dockerd` **self-matches a pasted script**, because the pasting shell's own command
+     line contains the string `dockerd`. A guard written that way aborts unconditionally. Proven in
+     the sandbox: old form matched 2 phantom processes, `pgrep -x dockerd` matched 0. Use `-x`
+     (exact process name) and read `/proc/<pid>/cmdline` to classify snap vs apt.
+  2. `sudo du -sh /var/lib/containerd/*` prints **nothing** for a root-only directory: the glob is
+     expanded by the unprivileged shell before `sudo` runs, fails to match, and the literal `*` error
+     goes to the suppressed stderr. The empty output reads as "directory is empty" when it holds
+     94 GB. Use `sudo sh -c 'du -sh /var/lib/containerd/*'` so the glob expands as root.
+  3. `exit 1` inside a `while` loop fed by a pipeline runs in a subshell and does not abort the
+     script. Use `mapfile -t` plus a `for` loop when a loop body must be able to abort.
+- **Guard verification:** the abort path was proven against a real defect rather than assumed — a
+  process named exactly `dockerd` with a non-snap cmdline was started in the sandbox, the guard
+  aborted with exit 1, and passed once it was killed.
+- **Files changed:** none in this repo — host configuration only.
+- **Related BUILD_LOG entry:** 2026-08-08 19:40 EDT
