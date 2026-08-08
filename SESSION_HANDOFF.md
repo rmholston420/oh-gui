@@ -34,18 +34,19 @@ MUST call `ollama stop` on the outgoing role model (`OLLAMA_KEEP_ALIVE=-1`, noth
 
 ## Exact next action
 
-Pull and confirm the scaffold gate is green on Colossus (also confirms the reference-checkout lock):
+Pull and confirm the scaffold gate is green on Colossus:
 
 ```bash
-cd ~/dev/oh-gui && git pull \
-  && bash scripts/provision-reference-checkout.sh \
-  && cd apps/gui && node --version && npm ci && npm run gate
+cd ~/dev/oh-gui && git pull && cd apps/gui && npm ci && npm run gate
 ```
 
-Expect `ok tree is read-only` from the first, then lint clean, **4 tests passed**, `tsc -b` clean,
-and a `vite build` summary. **If `node --version` is < 22.14**, say so before we write component
-tests - jsdom 30 crashes on Node 20 (`webidl.util.markAsUncloneable`). The current suite avoids
-jsdom deliberately, so the gate itself passes on Node 20.
+Expect lint clean, **4 tests passed**, `tsc -b` clean, `vite build` summary.
+
+Verified on Colossus 2026-08-08 09:27: the reference checkout re-verified
+**`ok tree is read-only`** (the check still owed from 09:14 — the fresh-clone path chmods without
+re-reading, so the lock had never actually been observed), and Node is **v24.16.0**, so jsdom is
+available whenever we want component tests. The `tsc -b` failure in that run (TS2591, undeclared
+`@types/node`) is fixed — DEBUG_LOG 09:28.
 
 Then the next slice is the **first-run wizard** (`docs/specs/03-layout.md` §3.4): seven steps,
 must state and justify the default trust-dial stop `ConfirmRisky()` in its own UI copy, seed the
