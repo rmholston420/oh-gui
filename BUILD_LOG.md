@@ -210,3 +210,23 @@ Entry format:
 - **ADR/ledger:** ADR-004 amended with a STATUS AMENDMENT block; decision pending data.
 - **Stop condition:** Phase 0 exit still NOT met.
 
+## 2026-08-08 03:55 EDT - Co-residency validated; embedder eviction found; switch cost measured
+
+- **Stage:** Phase 0 (baseline metrics)
+- **Ran:** `bench/validate_config.sh` (idle 679 MiB, gpu_total 32607 MiB).
+- **Results:**
+  - `qwen3.6:27b` @131072 + `qwen3-embedding:0.6b` @512 - BOTH resident, 100% GPU,
+    **27738 MiB used, 4869 MiB free**, 4.0s load. Genuinely co-resident.
+  - `qwen3-coder:30b` @65536 + embedder - **embedder was EVICTED by the Ollama
+    scheduler**; only the coder is in `ollama ps` (25280 MiB used, 7327 free). The two
+    should fit (~25.6 GB + 1 GiB reserve), so this is conservative estimator behaviour,
+    not a hard limit. Non-deterministic and therefore unacceptable for the retrieval path.
+  - Role-switch cost: ->coder 2.8s / 3.6s, ->planner 6.9s / 5.5s. Cheap; hot-swap routing
+    is viable.
+- **Bug found in own tooling:** `validate_config.sh` reported `verdict=FITS` for the coder
+  row despite the eviction, because it only checked for CPU spill. Fixed to require all
+  expected models resident AND 100% GPU before passing.
+- **Consequence:** the CPU-embedder proposal is now the leading option on correctness
+  grounds, not just VRAM - CPU placement removes the eviction race entirely.
+- **Stop condition:** Phase 0 exit still NOT met. Next: `bench/embed_cpu_vs_gpu.sh`.
+

@@ -40,8 +40,17 @@ for pair in "$PLANNER $PLANNER_CTX" "$CODER $CODER_CTX"; do
   u=$(used)
   echo "== $m @ ${c} + $EMB @ ${EMB_CTX}"
   ollama ps
-  spill=$(ollama ps | grep -cE '[0-9]+% CPU' || true)
-  echo "   vram_used=${u} MiB   free=$(( total - u )) MiB   load=${secs}s   verdict=$([ "$spill" -eq 0 ] && echo FITS || echo SPILLED)"
+  # v2 fix: the old check only looked for CPU spill and reported FITS even when Ollama
+  # had EVICTED the embedding model to make room. Both models must be resident AND 100% GPU.
+  ps_out=$(ollama ps)
+  spill=$(echo "$ps_out" | grep -cE '[0-9]+% CPU' || true)
+  have_llm=$(echo "$ps_out" | grep -c "$m" || true)
+  have_emb=$(echo "$ps_out" | grep -c "$EMB" || true)
+  if   [ "$have_llm" -eq 0 ]; then verdict="FAIL (llm not resident)"
+  elif [ "$have_emb" -eq 0 ]; then verdict="FAIL (embedder EVICTED by Ollama scheduler)"
+  elif [ "$spill" -ne 0 ];    then verdict="FAIL (CPU spill)"
+  else verdict="CO-RESIDENT"; fi
+  echo "   vram_used=${u} MiB   free=$(( total - u )) MiB   load=${secs}s   verdict=${verdict}"
   echo
 done
 
