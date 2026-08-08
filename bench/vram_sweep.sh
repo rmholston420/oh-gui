@@ -18,26 +18,32 @@ CSV="$OUT/${STAMP}_${MODE}.csv"
 
 total=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits)
 
-if [[ "$MODE" == "q8" ]]; then
-  echo "# restarting Ollama with flash attention + q8_0 KV cache"
-  sudo systemctl set-environment OLLAMA_FLASH_ATTENTION=1 OLLAMA_KV_CACHE_TYPE=q8_0 2>/dev/null || true
-  sudo systemctl restart ollama 2>/dev/null || {
-    pkill -x ollama; sleep 2
-    OLLAMA_FLASH_ATTENTION=1 OLLAMA_KV_CACHE_TYPE=q8_0 nohup ollama serve >/tmp/ollama.log 2>&1 &
-  }
-  sleep 6
-fi
+# v2: this script no longer changes server env. Run bench/ollama_env.sh first and
+# confirm it reported the setting as active. MODE is a label for the output file only.
+echo "# mode label: $MODE (server env is whatever bench/ollama_env.sh last applied)"
+systemctl show ollama --property=Environment 2>/dev/null | tr ' ' '\n' | grep -i "KV_CACHE\|FLASH" || true
 
-# idle baseline AFTER any restart, with nothing loaded
-for m in "${MODELS[@]}"; do ollama stop "$m" >/dev/null 2>&1; done
+# idle baseline: unload EVERY resident model, not just the sweep candidates.
+# (v2 fix: the embedding model stayed loaded in v1 and contaminated the q8 baseline.)
+unload_all() {
+  curl -s http://localhost:11434/api/ps \
+    | python3 -c 'import sys,json;[print(m["name"]) for m in json.load(sys.stdin).get("models",[])]' 2>/dev/null \
+    | while read -r n; do [ -n "$n" ] && ollama stop "$n" >/dev/null 2>&1; done
+}
+unload_all
 sleep 3
+resident=$(curl -s http://localhost:11434/api/ps | python3 -c 'import sys,json;print(len(json.load(sys.stdin).get("models",[])))' 2>/dev/null || echo "?")
+if [ "$resident" != "0" ]; then
+  echo "ABORT: $resident model(s) still resident; idle baseline would be wrong." >&2
+  ollama ps >&2; exit 1
+fi
 idle=$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits)
 echo "gpu_total_mib=$total  idle_used_mib=$idle  mode=$MODE"
 echo "model,ctx,ollama_size,processor,vram_used_mib,vram_free_mib,model_cost_mib,status" > "$CSV"
 
 for m in "${MODELS[@]}"; do
   for ctx in "${CTXS[@]}"; do
-    ollama stop "$m" >/dev/null 2>&1; sleep 2
+    unload_all; sleep 2
 
     body=$(printf '{"model":"%s","prompt":"hi","stream":false,"keep_alive":"2m","options":{"num_ctx":%d,"num_predict":1}}' "$m" "$ctx")
     err=$(curl -s -m 600 -X POST http://localhost:11434/api/generate \
@@ -62,23 +68,28 @@ for m in "${MODELS[@]}"; do
     echo "$m,$ctx,$size,$proc,$used,$free,$cost,$status" >> "$CSV"
     printf '%-18s %7d  size=%-8s %-16s used=%6s free=%6s  %s\n' "$m" "$ctx" "$size" "$proc" "$used" "$free" "$status"
 
-    ollama stop "$m" >/dev/null 2>&1
+    unload_all
     [[ "$status" != "OK" ]] && { echo "   -> stopping sweep for $m, larger contexts will also spill"; break; }
   done
 done
 
 # co-residency: largest passing ctx for the planner + the embedding model
 echo
-echo "== embedding co-residency check =="
-ollama stop qwen3.6:27b >/dev/null 2>&1; sleep 2
-curl -s -X POST http://localhost:11434/api/embed \
-  -H 'Content-Type: application/json' \
-  -d '{"model":"qwen3-embedding:0.6b","input":"warmup","keep_alive":"2m"}' >/dev/null
-embed_used=$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits)
-echo "embedding resident: used=${embed_used} MiB (cost $(( embed_used - idle )) MiB)"
-ollama ps
+echo "== embedding footprint vs num_ctx =="
+echo "(v1 loaded this at the 32768 default and it cost 6110 MiB for a 639 MB model)"
+echo "embed_ctx,ollama_size,vram_used_mib,cost_mib" > "$OUT/${STAMP}_${MODE}_embed.csv"
+for ectx in 512 2048 8192 32768; do
+  unload_all; sleep 2
+  curl -s -X POST http://localhost:11434/api/embed -H 'Content-Type: application/json' \
+    -d "{\"model\":\"qwen3-embedding:0.6b\",\"input\":\"warmup\",\"keep_alive\":\"2m\",\"options\":{\"num_ctx\":$ectx}}" >/dev/null
+  eu=$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits)
+  es=$(ollama ps | awk '/qwen3-embedding/ {print $3" "$4}')
+  printf '  num_ctx=%-6s size=%-8s used=%6s  cost=%6s MiB\n' "$ectx" "$es" "$eu" "$(( eu - idle ))"
+  echo "$ectx,$es,$eu,$(( eu - idle ))" >> "$OUT/${STAMP}_${MODE}_embed.csv"
+done
+unload_all
 
 echo
 echo "CSV: $CSV"
-[[ "$MODE" == "q8" ]] && echo "NOTE: Ollama is still running with q8_0 KV. To revert:
-  sudo systemctl unset-environment OLLAMA_FLASH_ATTENTION OLLAMA_KV_CACHE_TYPE && sudo systemctl restart ollama"
+echo "Embed CSV: $OUT/${STAMP}_${MODE}_embed.csv"
+echo "Revert server env with: bash bench/ollama_env.sh f16"
