@@ -21,6 +21,15 @@ echo
 echo "== throttle reasons (all should read 'Not Active' when unconstrained) =="
 nvidia-smi -q -d PERFORMANCE | sed -n '/Clocks Event Reasons/,/^$/p' || true
 
+if [[ "$ACTION" == "power" ]]; then
+  # The card reported power.limit=435 W against power.max_limit=600 W, and the
+  # "SW Power Capping" counter was already non-zero (854,692 us) at IDLE - the card has
+  # been hitting its cap. Raising the limit lets Blackwell hold boost clocks under a
+  # sustained decode load. Check PSU headroom and case thermals before using this.
+  sudo nvidia-smi -pl 600 && echo "power limit raised to 600 W"
+  echo "Revert with: sudo nvidia-smi -pl 435"
+fi
+
 if [[ "$ACTION" == "lock" ]]; then
   MAXSM=$(nvidia-smi --query-gpu=clocks.max.sm --format=csv,noheader,nounits)
   sudo nvidia-smi -lgc "${MAXSM},${MAXSM}" && echo "graphics clocks LOCKED at ${MAXSM} MHz"

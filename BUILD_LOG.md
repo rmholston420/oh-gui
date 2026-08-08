@@ -570,3 +570,31 @@ Entry format:
 
 - **Stop condition:** Phase 0 exit still NOT met.
 
+## 2026-08-08 05:50 EDT - MAX_LOADED_MODELS=2 CONFIRMED; flash attention still unproven
+
+- **Stage:** Phase 0 (baseline metrics)
+- **`OLLAMA_MAX_LOADED_MODELS=2` verified correct.** `/api/ps` after loading both:
+  `qwen3-embedding:4b` with `size_vram: 0` (CPU) and `qwen3.6:35b-a3b-mtp-q4_K_M` with
+  `size_vram: 22,236,427,713` (20.7 GiB, GPU). Two entries under a limit of 2 confirms the
+  open assumption from 05:35: **a CPU-placed model does occupy a model slot.** So 1 would
+  have thrashed the embedder and 2 is the correct value. Assumption closed by measurement.
+- **Operator decision:** the `OLLAMA_LLM_LIBRARY` / llama.cpp + q8_0 KV experiment runs
+  **after** the quality bench, not before. Sequencing confirmed; envelope stays intact.
+- **Flash attention: SECOND verification attempt FAILED.** `OLLAMA_DEBUG=1` plus a probe
+  request captured no runner flags; the startup grep is still `(none found)`. Two failed
+  log-based attempts is enough - **the method is wrong, not the setting.** Ollama's Go
+  engine appears not to log runner flags at this level.
+- **`bench/fa_probe.sh` added - falsification by measurement instead of by log.** Same
+  method that settled q8_0: run `qwen3.6:27b` @131072 (74.6 KB/token, the largest KV signal
+  among the candidates) with a ~24k-token prompt, once at `FA=1` and once at `FA=0`, and
+  compare resident VRAM and prefill throughput. Identical results on both axes means flash
+  attention is a no-op on this runtime, exactly like q8_0 KV. Includes the same
+  abort-if-resident precondition that the original q8 script lacked.
+- **GPU finding: the card is power-capped below its own limit.** `power.limit=435 W` against
+  `power.max_limit=600 W`, and the SW Power Capping counter already read **854,692 us at
+  idle** with the GPU at 6% utilisation and 34 C. Under sustained decode this will cost
+  clocks. `bench/gpu_pin.sh power` added to raise the limit to 600 W; NOT applied
+  automatically - PSU headroom and case thermals are the operator's call.
+- **Persistence mode is ON** (targets the fixed portion of the 2.8-6.9 s role-switch cost).
+- **Stop condition:** Phase 0 exit still NOT met.
+
