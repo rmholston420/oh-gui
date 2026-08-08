@@ -873,3 +873,27 @@ image vs. disable MCP — so no change until the traceback or the profile conten
   UI, since the UI already misled me once here.
 - **Still unknown, and NOT to be reported as a negative result:** whether `folder-browser-use`
   registered the fixture. The run does not answer that either way.
+
+## 2026-08-08 13:58 EDT — t01 sat for six minutes with no LLM traffic, and the driver could not say why
+
+- **Symptom:** `drive_task.mjs` printed `18.6s submitted t01` and then nothing. After ~6 min: GPU
+  at 0% / 32 W with `qwen3.6:27b` resident (28 GB, `UNTIL Forever`), fixture untouched
+  (`git status --porcelain` empty), no summary written.
+- **App log:** only `GET /api/settings`, `GET /server_info` and
+  `GET /api/conversations?ids=40a8a3b4-...` polling, every few seconds. **No run activity, no LLM
+  traffic.** The conversation exists and is being polled; nothing is executing in it. The resident
+  27b is consistent with a load for title generation followed by nothing.
+- **Root cause: NOT YET ESTABLISHED.** Two candidates remain open — the submit never registered,
+  or the run started and died silently. Recording this as unknown rather than picking one.
+- **The real defect, which is mine:** the driver could not distinguish those two states. It polled
+  for `agent-message` and idle status only, so an error or a dead run would have waited out the
+  full 1800s and been reported as `timeout` — a symptom, labelled as a cause. It also printed
+  nothing while polling, which is the same complaint the operator already made once.
+- **Fixes applied:**
+  - Assert the card actually landed in the chat input, and check the input cleared and a
+    `user-message` bubble rendered after clicking submit. Distinguishes "never sent" directly.
+  - Heartbeat every 15 s: status ids, whether `stop-button` is present, agent-message count.
+  - Scan the screen for error text each second and abort with the error quoted.
+  - Stall detector: 120 s with no new message and nothing running, abort rather than burn 30 min.
+  - Dump url, relevant ids and the body tail on any non-completion.
+  - `OH_GUI_KEEP_OPEN=1` holds the browser open 300 s on failure so the screen can be inspected.

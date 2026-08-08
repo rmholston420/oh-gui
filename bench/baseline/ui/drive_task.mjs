@@ -93,15 +93,57 @@ try {
   if (!(await box.count())) throw new Error(`no chat-input on ${page.url()}`);
   await box.click();
   await page.keyboard.insertText(CARD_TEXT);
+  // Assert the text actually landed in the box before claiming it was submitted. t01's first run
+  // sat for six minutes with no LLM traffic at all, and nothing in the driver could tell me
+  // whether the message was never sent or the run had started and died.
+  const typed = await box.inputValue().catch(async () =>
+    (await box.innerText().catch(() => "")));
+  say(`chat input holds ${typed.length} chars (card is ${CARD_TEXT.length})`);
+  if (typed.length < 20) throw new Error(`card did not land in the chat input (got ${typed.length} chars)`);
   await page.locator('[data-testid="submit-button"]').first().click();
+  await page.waitForTimeout(2000);
+  const after = await box.inputValue().catch(() => "");
+  say(`after submit the input holds ${after.length} chars${after.length ? " — MESSAGE MAY NOT HAVE SENT" : " (cleared)"}`);
+  const userMsgs = await page.locator('[data-testid="user-message"]').count().catch(() => 0);
+  say(`user-message bubbles on screen: ${userMsgs}`);
+  if (userMsgs === 0) say(`   WARNING: no user message rendered — the submit may not have registered`);
   t.submitted_s = Number(el());
   say(`${t.submitted_s}s submitted ${TASK}`);
 
-  // ---- 5. poll to idle
+  // ---- 5. poll to idle, saying out loud what it sees
+  const ERR_RE = /error|failed|exception|unauthor|refused|timed out|rate limit|invalid|no such model/i;
+  let stall = 0, lastN = 0;
   for (let i = 0; i < TIMEOUT_S; i++) {
     await page.waitForTimeout(1000);
     const cur = await ids(page);
     const n = await page.locator('[data-testid="agent-message"]').count().catch(() => 0);
+
+    // Heartbeat. A run that prints nothing for thirty minutes is indistinguishable from a hung one.
+    if (i % 15 === 0) {
+      const status = cur.filter((x) => x.startsWith("conversation-status-")).join(",") || "none";
+      const busy = cur.includes("stop-button") ? "stop-button PRESENT" : "no stop-button";
+      say(`   [${el()}s] status=${status} | ${busy} | agent-messages=${n}`);
+    }
+
+    // Surface an error instead of waiting out the full timeout and calling it a timeout.
+    const body = await page.locator("body").innerText().catch(() => "");
+    const hit = body.split("\n").map((l) => l.trim())
+      .find((l) => l.length > 8 && l.length < 300 && ERR_RE.test(l) && !/error_detail/.test(l));
+    if (hit && !cur.includes("stop-button")) {
+      say(`   ERROR ON SCREEN: ${hit}`);
+      failure = `error on screen: ${hit}`;
+      await shot("98-error");
+      break;
+    }
+
+    // Nothing moving, nothing running: stop early rather than burn the timeout.
+    if (n === lastN && !cur.includes("stop-button")) stall++; else stall = 0;
+    lastN = n;
+    if (stall >= 120 && n === 0) {
+      failure = "no agent activity for 120s and nothing running — run never started";
+      say(`   ${failure}`);
+      break;
+    }
     if (n > turns) { turns = n; if (t.first_message_s === null) {
       t.first_message_s = Number(el()); say(`${t.first_message_s}s first agent message`);
       // Sample what Ollama actually loaded, once generation has demonstrably begun.
@@ -112,7 +154,15 @@ try {
       t.idle_s = Number(el()); say(`${t.idle_s}s idle after ${turns} agent messages`); break;
     }
   }
-  if (t.idle_s === null) { failure = `timeout after ${TIMEOUT_S}s`; say(`   ${failure}`); }
+  if (t.idle_s === null && !failure) { failure = `timeout after ${TIMEOUT_S}s`; say(`   ${failure}`); }
+  if (t.idle_s === null) {
+    // Dump what is on screen. On a failure the screen is the evidence, and it is about to close.
+    say(`\n-- screen at failure --`);
+    say(`   url: ${page.url()}`);
+    say(`   ids: ${(await ids(page)).filter((x) => /status|message|error|stop|chat/i.test(x)).join(", ")}`);
+    const body = (await page.locator("body").innerText().catch(() => "")).replace(/\s+/g, " ");
+    say(`   body tail: ${body.slice(-1200)}`);
+  }
   await shot("20-final");
 
   cid = (page.url().match(/conversations\/([0-9a-f-]{36})/) || [])[1] || null;
@@ -183,6 +233,10 @@ try {
   writeFileSync(join(OUTDIR, `${TASK}.transcript.txt`), transcript);
   say(`\noutcome=${outcome} turns=${turns} files=${filesChanged} +${added}/-${removed} tests=${tests}`);
   say(`summary: ${join(OUTDIR, `${TASK}.summary.json`)}`);
+  if (outcome !== "completed" && process.env.OH_GUI_KEEP_OPEN === "1") {
+    say(`\nOH_GUI_KEEP_OPEN=1 — leaving the browser up for 300s so you can look at it yourself.`);
+    await page.waitForTimeout(300000);
+  }
   await S.close();
   process.exit(outcome === "completed" ? 0 : 1);
 }
