@@ -156,6 +156,45 @@ def main() -> int:
         )
     L.append("")
 
+    # The item-5 table above is human-metric shaped and is ALL NULL on an automated run — the
+    # first matrix would have produced a page of dashes and nothing else. This is what the harness
+    # actually measured. `accepted` is the headline: the task's own gate passed AND nothing
+    # pre-existing broke. `tests=pass` alone is not acceptance — the fixture's tests pass on
+    # untouched code, and in the first matrix a cell that changed zero files was recorded as
+    # passing.
+    L.append("## What was actually measured (automated run)")
+    L.append("")
+    L.append("| Task | ACCEPTED | Gate | Regression | Turns | Files | +Lines | 1st msg | To idle | Peak °C | Errors |")
+    L.append("|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|")
+    for r in rows:
+        a = r.get("automated") or {}
+        t = r.get("thermal") or {}
+        L.append(
+            f"| {r['task']} | {'**yes**' if a.get('accepted') else 'no'} | "
+            f"{a.get('acceptance_gate') or '—'} | "
+            f"{'none' if a.get('fixture_tests') == 'pass' else (a.get('fixture_tests') or '—')} | "
+            f"{fmt(r.get('total_turns'))} | {fmt(a.get('files_changed'))} | "
+            f"{fmt(a.get('lines_written'))} | {fmt(a.get('submit_to_first_message_s'), ' s')} | "
+            f"{fmt(a.get('submit_to_idle_s'), ' s')} | {fmt(t.get('temp_max_c'))} | "
+            f"{fmt(a.get('error_events_seen'))} |"
+        )
+    L.append("")
+    zero_work = [r["task"] for r in rows
+                 if (r.get("automated") or {}).get("files_changed") == 0]
+    if zero_work:
+        L.append(f"**Changed no files at all: {', '.join(zero_work)}.** These did not attempt the "
+                 f"task. Any pass recorded against them would be an artifact of the harness.")
+        L.append("")
+    pys = {(r.get("automated") or {}).get("gate_python") for r in rows} - {None}
+    if len(pys) > 1:
+        L.append(f"**Gate ran on more than one interpreter: {', '.join(sorted(pys))}.** Cells are "
+                 f"not comparable.")
+        L.append("")
+    elif pys:
+        L.append(f"Acceptance gates ran on {pys.pop()}. If this differs from the agent's runtime, "
+                 f"annotation semantics differ (PEP 649) and results are suspect.")
+        L.append("")
+
     L.append("## Aggregate over completed tasks only")
     L.append("")
     # These are human-only metrics and are null by design when a run was driven automatically.

@@ -991,3 +991,65 @@ machine-shaped failures.
 42 minutes without intervention; the profile is correct on every cell and no stray model loaded
 after the ordering fix; thermals peaked 82C with 0 samples at the 83C ceiling and 0 throttling
 across the whole matrix. The plumbing works. The measurement did not.
+
+## 2026-08-08 15:14 EDT — ReferenceError in every cell, caught by pre-flight instead of by the matrix
+
+Operator asked me to double-check before spending another 42 minutes. Found a defect that would
+have thrown at the end of all 16 cells.
+
+**Symptom (would have been):** `ReferenceError: gate is not defined` in the `finally` block of
+drive_task.mjs, after each cell's agent run had already completed. Every cell would have run to
+completion, cost its full wall time, and written no summary.
+
+**Root cause:** my scripted edit inserted the gate block before `const rec = {`, but the variable
+is `const summary = {`. Python `str.replace` on a non-matching pattern is a silent no-op, so the
+block never landed — while a second replace that *references* `gate` and `gateDetail` matched and
+did land. `node --check` passed because it validates SYNTAX, not resolution: an undefined
+identifier is a runtime error, not a parse error. I had treated a clean `node --check` as
+verification.
+
+**Fix:** the grading logic is now `bench/baseline/ui/grade.mjs` — a module with no browser
+dependency and a CLI entry point, so it can be executed directly against a fixture instead of only
+through a 3-minute browser run. drive_task.mjs imports `gradeCell` and spreads its result. Verified
+by running the grader for real against a seeded fixture, all five outcomes:
+
+| scenario | fixture_tests | gate | accepted |
+|---|---|---|---|
+| pristine (agent did nothing) | pass | fail | false |
+| task implemented correctly | pass | pass | **true** |
+| task done, pre-existing test broken | fail | fail | false |
+| venv missing | no-venv | no-venv | false |
+| no gate for that task | pass | no-gate | false |
+
+Also confirmed the gate leaves no residue — `git status` clean after grading.
+
+**Second finding, same pass: the config mutation was not crash-safe.** The default-profile repoint
+kept its backup in a JS variable restored on `process.on("exit")`. Ctrl-C during a 45-minute matrix
+does not run exit handlers, so an interrupted run would have left the operator's default.json
+rewritten with no record of the original. Now `ui/default_profile.mjs`: backup written to DISK
+before the edit, restore bound to SIGINT/SIGTERM/SIGHUP/uncaughtException, and a stale backup found
+at startup is restored first so a hard kill self-heals on the next run.
+
+**Third: the report was going to be a page of dashes.** report.py's per-task table is built from
+the item-5 human metrics, which are null by design on an automated run. It no longer crashed after
+the null fix, but it also carried no information. Added a "What was actually measured" table
+(accepted / gate / regression / turns / files / lines / timing / peak °C / errors), an explicit
+call-out of any cell that changed zero files, and a check that all gates ran on one interpreter.
+
+**Fourth: the error detector.** Tested the narrowed regex against 3 real failure lines from the
+first matrix and 6 lines of ordinary agent prose containing the word "error". 3/3 caught, 0/6 false
+positives.
+
+**Prevention, so none of this depends on me looking:** `bench/baseline/preflight.sh` fails in
+seconds on any condition that invalidated the last run — stale fixture seed still carrying
+`def list`, missing `from __future__ import annotations`, venv missing deps, a task card with no
+gate, missing profile, model not pulled, app not responding, node < 24, and the harness self-tests
+failing. Verified it returns a real exit 1. New permanent tests: `tests/test_grade_module.py`
+(6 tests, the table above) and `tests/test_report_nulls.py` (2). Suite is 31 passing, up from 13.
+
+`run_matrix.sh` now writes each model block's report as soon as that block finishes, rather than
+both at the end, and a failed cell no longer risks the remaining fifteen.
+
+**Lesson, added to the standing list:** *a clean syntax check is not a clean reference check* — and
+more generally, an automated edit that reports success only proves the tool ran, not that the
+pattern matched.

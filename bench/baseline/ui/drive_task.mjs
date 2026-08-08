@@ -17,6 +17,8 @@
  * Usage: node drive_task.mjs --task t01 --outdir DIR --profile qwen3.6-27b [--timeout 1800]
  */
 import { openSession, ids, has, ensureConfigured } from "./session.mjs";
+import { gradeCell } from "./grade.mjs";
+import { pointAtModel, bindRestoreToExit } from "./default_profile.mjs";
 import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync, writeFileSync, copyFileSync, rmSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -45,26 +47,11 @@ const { page, say, shot, el, errs } = S;
 const nowISO = () => new Date().toISOString();
 let outcome = "aborted", failure = null;
 
-// The first matrix logged `litellm.NotFoundError: model 'devstral-small-2:24b' not found`. The
-// `default` profile is invoked mid-run by auxiliary machinery (title generation and friends) and
-// pointed at a model that was never pulled — a third model in the loop, failing on every cell, and
-// the likely source of the "Agent error" that appeared at 47-60s in nearly every one. Point the
-// default profile at the cell's own model for the duration, and put it back afterwards.
-const DEFAULT_PROFILE = `${process.env.HOME}/.openhands/profiles/default.json`;
-let defaultBackup = null;
-const pointDefaultAtCellModel = () => {
-  if (!existsSync(DEFAULT_PROFILE)) return;
-  defaultBackup = readFileSync(DEFAULT_PROFILE, "utf8");
-  const mine = JSON.parse(readFileSync(`${process.env.HOME}/.openhands/profiles/${PROFILE}.json`, "utf8"));
-  const dflt = JSON.parse(defaultBackup);
-  if (dflt.model === mine.model) { defaultBackup = null; return; }
-  say(`default profile: ${dflt.model} -> ${mine.model} (restored after the run)`);
-  writeFileSync(DEFAULT_PROFILE, JSON.stringify({ ...dflt, model: mine.model, base_url: mine.base_url }, null, 2));
-};
-const restoreDefault = () => {
-  if (defaultBackup !== null) { writeFileSync(DEFAULT_PROFILE, defaultBackup); defaultBackup = null; }
-};
-process.on("exit", restoreDefault);
+// The first matrix logged `litellm.NotFoundError: model 'devstral-small-2:24b' not found` on every
+// cell: the default profile points at a model that was never pulled and is invoked mid-run by
+// auxiliary machinery. Repoint it at this cell's model, with restoration that survives Ctrl-C.
+// See ui/default_profile.mjs — it is a separate module because it mutates the operator's config.
+bindRestoreToExit();
 const t = { submitted_s: null, first_message_s: null, idle_s: null };
 let turns = 0, transcript = "", modelObserved = null, cid = null;
 const errorsSeen = [];
@@ -241,25 +228,9 @@ try {
     }
   } catch (e) { say(`   git read failed: ${e.message}`); }
 
-  // Objective check the agent cannot talk its way past.
-  // t01 run 2 reported tests=fail when the truth was that system Python 3.14 has no fastapi and
-  // pytest exited 2 on a collection ImportError. Nonzero is not "the agent's code failed". Use the
-  // venv, and distinguish the exit codes instead of collapsing them.
-  let tests = null, testsDetail = "";
-  const venvPy = `${dirname(FIXTURE)}/venv/bin/python`;
-  try { readFileSync(venvPy); } catch { tests = "no-venv"; }
-  if (tests === null) {
-    try {
-      execFileSync(venvPy, ["-m", "pytest", "-q"], { cwd: FIXTURE, encoding: "utf8", timeout: 300000 });
-      tests = "pass";
-    } catch (e) {
-      testsDetail = `${e.stdout || ""}${e.stderr || ""}`.slice(-1500);
-      tests = e.status === 1 ? "fail"
-        : e.status === 5 ? "no-tests"
-        : e.status === undefined ? "not-run"
-        : `harness-error(exit ${e.status})`;   // 2/3/4 = collection or usage error, NOT the agent's fault
-    }
-  }
+  // Objective checks the agent cannot talk its way past. Both required for acceptance.
+  const g = gradeCell({ fixture: FIXTURE, task: TASK, verifyDir: join(HERE, "..", "verify") });
+  const tests = g.fixture_tests, gate = g.acceptance_gate;
 
   const summary = {
     task: TASK, outcome,
@@ -288,12 +259,7 @@ try {
         ? Number((t.idle_s - t.submitted_s).toFixed(1)) : null,
       files_changed: filesChanged, lines_written: added, lines_removed: removed,
       untracked_files: untracked, numstat,
-      fixture_tests: tests, fixture_tests_detail: testsDetail || null,
-      acceptance_gate: gate, acceptance_gate_detail: gateDetail || null,
-      // Task done AND nothing pre-existing broken. Either alone is not acceptance.
-      accepted: gate === "pass" && tests === "pass",
-      gate_python: (() => { try { return execFileSync(venvPy, ["--version"],
-        { encoding: "utf8" }).trim(); } catch { return null; } })(),
+      ...g,
       error_events_seen: errorsSeen,
       console_errors: [...new Set(errs)].slice(0, 10),
     },
@@ -301,7 +267,7 @@ try {
   writeFileSync(join(OUTDIR, `${TASK}.summary.json`), JSON.stringify(summary, null, 2) + "\n");
   writeFileSync(join(OUTDIR, `${TASK}.transcript.txt`), transcript);
   say(`\noutcome=${outcome} turns=${turns} files=${filesChanged} +${added}/-${removed} ` +
-      `tests=${tests} gate=${gate} ACCEPTED=${gate === "pass" && tests === "pass" ? "yes" : "NO"}`);
+      `tests=${tests} gate=${gate} ACCEPTED=${g.accepted ? "yes" : "NO"}`);
   say(`summary: ${join(OUTDIR, `${TASK}.summary.json`)}`);
   if (outcome !== "completed" && process.env.OH_GUI_KEEP_OPEN === "1") {
     say(`\nOH_GUI_KEEP_OPEN=1 — leaving the browser up for 300s so you can look at it yourself.`);

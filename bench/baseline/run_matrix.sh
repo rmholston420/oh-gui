@@ -36,15 +36,21 @@ for profile in "${PLIST[@]}"; do
   for task in "${TASKS[@]}"; do
     echo
     echo "--- $profile / $task ---"
-    bash "$HERE/run_baseline.sh" "$task" --auto --profile "$profile"
+    bash "$HERE/run_baseline.sh" "$task" --auto --profile "$profile" \
+      || echo "  (cell failed; continuing — one bad cell must not cost the other fifteen)"
   done
+
+  # Report for THIS block now, not after both. The first matrix produced no report at all because
+  # the reporter crashed after all 16 cells had already run.
+  d="$HOME/.oh-gui/baseline/${STAMP}_${profile}_run"
+  out="$HERE/../../docs/BASELINE-METRICS-${STAMP}-${profile}.md"
+  python3 "$HERE/report.py" "$d" --out "$out" && echo "  report: $out" \
+    || echo "  REPORT FAILED for $profile — raw JSON is intact in $d"
 done
 
 echo
 echo "=============================================================================="
-echo "  reports"
+echo "  accepted cells per model"
 for profile in "${PLIST[@]}"; do
-  d="$HOME/.oh-gui/baseline/${STAMP}_${profile}_run"
-  out="$HERE/../../docs/BASELINE-METRICS-${STAMP}-${profile}.md"
-  python3 "$HERE/report.py" "$d" --out "$out" && echo "    $out"
+  python3 "$HERE/accepted_summary.py" "$HOME/.oh-gui/baseline/${STAMP}_${profile}_run" "$profile"
 done
