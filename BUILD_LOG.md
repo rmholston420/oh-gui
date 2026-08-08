@@ -1083,3 +1083,34 @@ Diagnosis pending - see DEBUG_LOG.
 - **My error, twice in one session:** correcting a measured value with an assumed one.
   Desktop VRAM is now captured at the start of every run.
 
+
+## 2026-08-08 06:05 EDT - RTX 5090 thermal reference researched; VRAM sensor confirmed absent
+
+Stage/phase: Phase 0, Path E bench instrumentation.
+Files: docs/THERMAL-5090.md (new), bench/probe_memtemp.py (new), adrs/README.md (2 rows corrected).
+
+Findings:
+- Hotspot sensor was REMOVED by NVIDIA on RTX 50; the LACT/NVML "hotspot" value is a
+  duplicate of core temperature. Our +/-1 C edge-to-hotspot agreement across every run
+  corroborates this. Corrects the stated REASON for the record-only hotspot decision;
+  the decision itself is unchanged.
+- VRAM temperature is NOT exposed on driver 610.57.04. `nvidia-smi -q -d TEMPERATURE`
+  gives `Memory Current Temp: N/A`; NVML field 82 (NVML_FI_DEV_MEMORY_TEMP) returns
+  NVML_ERROR_NOT_SUPPORTED. Probe validated by a working sanity field (energy counter
+  returned live data), so this is a genuine capability gap, not a broken call.
+- Published 5090 data puts memory 15-20 C ABOVE core under load (TechPowerUp FE:
+  77 C core / 94 C memory). Decode is memory-bound, so this workload may stress VRAM
+  harder than the gaming loads those figures come from. STANDING CAVEAT: "77 C peak,
+  0 throttled" describes the core only and is not evidence of VRAM headroom.
+- GPU_MAX_C=83 validated against NVIDIA's own 83 C boost setpoint. Card's true limit
+  confirmed at 90 C on this host via T.Limit arithmetic (48 C current + 42 C margin).
+- 435 W cap corroborated by an independent 5090 compute benchmark (600W 36s / 475W 42s /
+  400W 48s) and by our own 12% prefill / 2% decode deltas.
+- Fan aggression: recommend NO change. Tachometer dead and VRAM temp unobservable, so a
+  curve change would be tuned blind; core has 6 C margin to the guard at 77 C peak.
+
+Open issue raised: idle core measured 48 C at 06:02, ABOVE the GPU_COLD_C=45 gate. If
+that is the sustained floor, every cell burns the full 300 s cooldown timeout and then
+proceeds anyway. Awaiting operator decision before the matrix run.
+
+Stop condition: unchanged - ADR-005 still OPEN pending a scored Path E matrix.

@@ -34,8 +34,8 @@ old one and mark the old one `Amended · superseded by ADR-###`.
 | Scope of "remove the auth stuff" | ADR-003 - multi-user removed, safety plane retained |
 | Phase 0 baseline model set | qwen3.6:27b (planner) + qwen3-coder:30b (coder); qwen3:32b dropped as superseded |
 | LICENSE for this repo | MIT, added 2026-08-08 with NOTICE for donor attribution |
-| Thermal operating point | 435 W ratified; 600 W rejected at 82 C with throttling (BUILD_LOG 2026-08-08 08:20) |
-| GPU hotspot enforcement | Record-only; measured within +/-1 C of edge, no hidden margin |
+| Thermal operating point | 435 W ratified; 600 W rejected at 82 C with throttling (BUILD_LOG 2026-08-08 08:20). Core sensor only - VRAM temp is not exposed by this driver (`docs/THERMAL-5090.md`) |
+| GPU hotspot enforcement | Record-only; NVIDIA removed the hotspot sensor on RTX 50 - the reading is a duplicate of core (`docs/THERMAL-5090.md`) |
 | Desktop VRAM overhead | 657-666 MiB measured with browser open; the ~3,500 MiB estimate is retracted (ADR-004 A#6) |
 | `OLLAMA_FLASH_ATTENTION` | Confirmed no-op on all three axes (VRAM, prefill, decode) |
 | Repo layout for code | `apps/gui/` + `services/middleware/`, confirmed 2026-08-08 |
