@@ -1,10 +1,16 @@
-# 15. Multi-User Household Profiles (NEW in v4.0, Phase 1/3 Boundary)
+# 15. Multi-User Household Profiles (NEW in v4.0 — PHASE 1, fixed by ADR-002)
 
 ## 15.1 Rationale
 
 The base spec scopes trust dial, budget, and Session Profile Card per-conversation/per-project, with an implicit single-operator assumption. A household deployment with mixed technical proficiency (expert operator plus non-technical family members) requires per-user identity to be a first-class dimension, not an afterthought bolted onto conversation metadata.
 
 Timing decision (set at Phase 0, see 02-repo-setup.md item 9): ship in Phase 1 if a non-technical user will use the system within the first month of deployment; otherwise defer to Phase 3 alongside the Plan-model slice, since both phases touch conversation ownership semantics.
+
+> **DECIDED 2026-08-08 by [ADR-002](../../adrs/ADR-002-household-mode-phase-1.md): PHASE 1.**
+> The conditional above is resolved. Household mode ships with the Phase 1 authorization
+> slice, not Phase 3. Every "if elected at Phase 0" / "Phase 1 or Phase 3" qualifier in
+> this file and in 11-dev-plan.md now reads as Phase 1. The §15 exit criterion below is a
+> Phase 1 exit gate.
 
 ## 15.2 User profile schema
 
@@ -45,4 +51,4 @@ HouseholdUser: id, display_name, proficiency_tier (novice / intermediate / exper
 - [ ] Delegated approval remains optional and owner-initiated; enabling it never removes the owner's ability to act from an eligible viewport.
 - [ ] A delegated-review request targets only the selected delegate(s), not all expert users.
 
-Exit criterion (ships with Phase 1 or Phase 3 per 15.1 timing decision): two household profiles with different proficiency tiers correctly receive independent default trust-dial stops at first run; a cross-user "assist" action is correctly attributed to both the assisting and owning user in the audit log; a shared conversation correctly renders read-only for a non-owner until explicitly forked; per-user "needs you" inbox entries never leak to a different profile's inbox in a synthetic two-user test; an optional delegated-review request from a novice-owned conversation on a sub-900px viewport reaches only the chosen delegate and preserves owner autonomy.
+Exit criterion (**Phase 1**, per ADR-002): two household profiles with different proficiency tiers correctly receive independent default trust-dial stops at first run; a cross-user "assist" action is correctly attributed to both the assisting and owning user in the audit log; a shared conversation correctly renders read-only for a non-owner until explicitly forked; per-user "needs you" inbox entries never leak to a different profile's inbox in a synthetic two-user test; an optional delegated-review request from a novice-owned conversation on a sub-900px viewport reaches only the chosen delegate and preserves owner autonomy.

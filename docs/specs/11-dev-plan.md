@@ -5,10 +5,14 @@ Files: 00-ground-truth.md, 02-repo-setup.md
 Architecture decision + baseline metrics report against a dense Qwen3 27B-35B model, including GPU temp/power and mental-model-formation baselines, plus the stock-Agent-Canvas regression baseline. v4.0: also decide household-mode onboarding timing.
 Exit criterion: architecture decision record + baseline metrics report + first-run wizard shipped with default trust-dial stop stated in-UI + household-mode timing decision recorded.
 
+> **v4.2 status:** ADR-001 (integration boundary) and ADR-002 (household mode -> Phase 1)
+> are both filed and ratified. Outstanding for Phase 0 exit: baseline metrics report,
+> read-only stock Agent Canvas reference checkout, and the first-run wizard.
+
 ## Phase 1 - Authorization slice
-Files: 04-authorization.md, 04a-prompt-injection.md, 08-telemetry.md (8.0-8.1, 8.5, 8.6), 06-change-review.md (6.4.1-6.4.2 only), 15-household-profiles.md (if elected at Phase 0)
+Files: 04-authorization.md, 04a-prompt-injection.md, 08-telemetry.md (8.0-8.1, 8.5, 8.6), 06-change-review.md (6.4.1-6.4.2 only), **15-household-profiles.md (CONFIRMED Phase 1 by ADR-002)**
 Trust dial, interrupt/authorization cards, reject-with-reason, capability manifest, emergency stop, execute_tool bypass closure, untrusted-content quarantine, authorization audit log, thin telemetry seed, speculative-execution hooks, stuck-state intervention surface, budget model, cloud-fallback escape hatch, reliability-tier display, scope-shape review screen.
-Exit criterion: see 04-authorization.md.
+Exit criterion: cumulative across 04-authorization.md, 08-telemetry.md, 06-change-review.md §§6.4.1-6.4.2, and 15-household-profiles.md. All must be demonstrated in both Vibe and Pro lenses (Principle 11).
 
 ## Phase 2 - Change Review Workbench slice (remainder)
 Files: 06-change-review.md (6.1-6.3, 6.5-6.11)
@@ -16,8 +20,8 @@ Benchmark diff engines against the five-metric gate. Worker-side/virtualized dif
 Exit criterion: see 06-change-review.md.
 
 ## Phase 3 - Plan/drift/rewind slice
-Files: 05-plan-model.md, 15-household-profiles.md (if not done in Phase 1)
-Extend planner-tab.tsx into a durable Plan object + hybrid trace projection + drift indicator + fork taxonomy + explicit Plan-revision forking + plan-level provenance gate + Session Profile Card + conditional non-determinism disclosure.
+Files: 05-plan-model.md (15-household-profiles.md moved to Phase 1 by ADR-002 - no household work remains here; §5.7 Session Profile Card may assume created_by already exists)
+Evolve the vendored planner-tab.tsx donor copy (ADR-001) into a durable Plan object + hybrid trace projection + drift indicator + fork taxonomy + explicit Plan-revision forking + plan-level provenance gate + Session Profile Card + conditional non-determinism disclosure.
 Exit criterion: see 05-plan-model.md.
 
 ## Phase 4 - Design system extraction

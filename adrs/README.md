@@ -12,11 +12,21 @@ old one and mark the old one `Amended · superseded by ADR-###`.
 | ID | Title | Status | Lock-in phase |
 |---|---|---|---|
 | [ADR-001](ADR-001-integration-boundary.md) | OpenHands Integration Boundary: Standalone App over Agent Server API | Ratified | Phase 0 |
+| [ADR-002](ADR-002-household-mode-phase-1.md) | Household Multi-User Mode Ships in Phase 1 | Ratified | Phase 0 |
 
 ## Open items awaiting a decision
 
 | Item | Blocking | Source |
 |---|---|---|
-| Household-mode onboarding timing (Phase 1 vs Phase 3) | Phase 0 exit | `docs/specs/02-repo-setup.md` item 9, `docs/specs/15-household-profiles.md` §15.1 |
-| LICENSE for this repo | Public-repo hygiene; vendoring MIT donor code | User declined at bootstrap; revisit |
-| Upstream pin re-verification before each phase gate | Phase 0 kickoff | `docs/specs/00-ground-truth.md` |
+| Upstream artifact pins (agent-server digest, pip/npm versions) | Phase 0 exit | ADR-001, `docs/specs/02-repo-setup.md` item 1 |
+| Baseline metrics report vs. dense Qwen3 27B-35B | Phase 0 exit | `docs/specs/02-repo-setup.md` items 5-7 |
+| Read-only stock Agent Canvas reference checkout | Phase 0 exit | `docs/specs/03-layout.md` §3.0.1 |
+| First-run wizard stating default trust-dial stop in-UI | Phase 0 exit | `docs/specs/03-layout.md` §3.4 |
+
+## Closed
+
+| Item | Resolved by |
+|---|---|
+| Household-mode onboarding timing | ADR-002 - Phase 1 |
+| LICENSE for this repo | MIT, added 2026-08-08 with NOTICE for donor attribution |
+| Repo layout for code | `apps/gui/` + `services/middleware/`, confirmed 2026-08-08 |

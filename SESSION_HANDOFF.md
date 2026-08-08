@@ -1,7 +1,7 @@
 # OH-GUI Session Handoff
 
 **This file reflects current state only. Overwrite it each session end.**
-Last updated: 2026-08-08 02:45 EDT
+Last updated: 2026-08-08 02:53 EDT
 
 ## Current stage
 
@@ -46,27 +46,29 @@ Browser frontend  ->  OH-GUI Python middleware  ->  OpenHands Agent Server
 ## Remaining before the Phase 0 Definition of Done
 
 - [x] Architecture decision record filed (ADR-001).
-- [ ] Household-mode timing decision (Phase 1 vs Phase 3) - `02-repo-setup.md` item 9.
+- [x] Household-mode timing decision recorded (ADR-002 - **Phase 1**).
 - [ ] Baseline metrics report against a dense Qwen3 27B-35B model: 5-10 tasks logging
       time-to-first-review, turns-to-acceptance, lines-accepted-without-inspection,
       "lost track" incidents, GPU temp/power, mental-model-formation baseline.
+- [ ] Upstream artifact pins recorded in BUILD_LOG: agent-server image **digest**, pip
+      versions for the openhands-sdk family, npm version for the typescript-client.
 - [ ] Stock Agent Canvas pinned as the read-only regression baseline checkout.
 - [ ] First-run wizard shipped, stating the default trust-dial stop (`ConfirmRisky()`)
-      explicitly in its own UI copy.
+      explicitly in its own UI copy, and including the household fork.
+
+## Decisions closed 2026-08-08
+
+- **Household mode -> Phase 1** (ADR-002). Phase 1 is now the largest slice in the plan
+  and carries the project's only comprehension-testing gate (§4.2 authorization-card copy
+  verified with a non-technical reviewer). Do not compress that check.
+- **MIT licensed.** `LICENSE` + `NOTICE` added; NOTICE carries Agent Canvas attribution.
+- **Layout fixed:** `apps/gui/` and `services/middleware/`, each with a README stating its
+  boundary contract. No code inside either - deliberately.
 
 ## Open questions awaiting the user
 
-1. **Household-mode timing** - Phase 1 or Phase 3? Blocks Phase 0 exit. Ship in Phase 1 if
-   a non-technical user will use the system within the first month of deployment.
-2. **LICENSE** - declined at bootstrap. A public repo with no license is
-   all-rights-reserved by default, which sits awkwardly with vendoring MIT donor code
-   into it. Recommend MIT. Needs a yes/no.
-3. **Repo layout for code** - proposed but not created:
-   `apps/gui/` (frontend) and `services/middleware/` (Python). Not scaffolded, since that
-   is Phase 0/1 work. Confirm the shape before anything is created.
-4. **Upstream pin re-verification** - `00-ground-truth.md` pins `v1.12.0` /
-   `4d0fe4983b6b8e52c104c7ffa4b7be8c7ab5a364`. Under ADR-001 what matters instead is the
-   `agent-server` image digest and the pip/npm versions. None are pinned yet.
+None blocking. Next decision point is the Phase 0 baseline-metrics run, which needs a
+model choice in the dense Qwen3 27B-35B band and a set of 5-10 representative tasks.
 
 ## Known risks carried forward
 
@@ -78,6 +80,7 @@ Browser frontend  ->  OH-GUI Python middleware  ->  OpenHands Agent Server
 
 ## Exact next action
 
-Clone to `~/dev/oh-gui` on Colossus, read `adrs/ADR-001-integration-boundary.md`, then
-answer open questions 1-3. Do not start Phase 0 until the household-mode timing decision
-is recorded.
+Pull to `~/dev/oh-gui` on Colossus and read both ADRs. Then begin Phase 0 proper by
+recording upstream artifact pins - resolve the `agent-server` image to a digest and pin
+the openhands-sdk pip family - logging each to `BUILD_LOG.md`. The baseline metrics run
+follows; it needs a chosen dense Qwen3 27B-35B model and 5-10 representative tasks.

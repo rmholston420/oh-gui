@@ -81,3 +81,42 @@ Entry format:
   ratified. **Stopped here.** No scaffolding created, no code written, Phase 0 not
   started. Phase 0 exit criterion remains unmet: baseline metrics report, first-run
   wizard, and the household-mode timing decision are all outstanding.
+
+## 2026-08-08 02:52 EDT - ADR-002 ratified, MIT licensed, repo layout fixed
+
+- Stage/phase: Pre-Phase-0 (three kickoff decisions closed)
+- Component/port: none; no code written
+- What changed:
+  1. **Household mode -> Phase 1.** ADR-002 filed and ratified. Spec's §15.1 conditional
+     resolved. Phase 1 now absorbs the HouseholdUser schema, created_by attribution across
+     conversation/audit/budget records, per-user inbox and notification scoping, assist
+     mode with dual-identity attribution, optional delegated approval including the
+     sub-900px affordance, the household fork in the first-run wizard, novice AlwaysConfirm
+     step-down window, and per-user budget ceilings with shared-GPU contention notice.
+     Rationale: created_by is an identity dimension threaded through three schemas;
+     retrofitting in Phase 3 would require migrating every record written during Phases 1-2
+     and re-auditing the authorization log. Identity is cheapest at first write.
+  2. **MIT LICENSE added**, plus NOTICE recording OpenHands Agent Canvas MIT attribution
+     for vendored donor code and clarifying that upstream runtime artifacts are consumed
+     unmodified, not redistributed.
+  3. **Repo layout confirmed and created:** `apps/gui/` (frontend) and
+     `services/middleware/` (Python policy plane). README contracts written into both.
+     Directories intentionally contain no code - scaffolding is Phase 0/1 work.
+- Files touched: `LICENSE` (new), `NOTICE` (new),
+  `adrs/ADR-002-household-mode-phase-1.md` (new), `adrs/README.md`,
+  `apps/gui/README.md` (new), `services/middleware/README.md` (new),
+  `docs/specs/README.md`, `docs/specs/02-repo-setup.md`, `docs/specs/05-plan-model.md`,
+  `docs/specs/06-change-review.md`, `docs/specs/11-dev-plan.md`,
+  `docs/specs/15-household-profiles.md`
+- Ports/adapters affected: none newly ported. Middleware anti-corruption layer and the
+  telemetry adapter are now documented as owned components in the middleware README.
+- ADR / ledger updated: ADR-002 filed; ADR index gained a Closed section recording the
+  household-timing, LICENSE, and layout resolutions. PORTING_LEDGER unchanged this entry.
+- Spec cleanup: swept every remaining reference that assumed editing upstream files in
+  place. `05-plan-model.md` §5.2, `06-change-review.md` §6.1, and `11-dev-plan.md` Phase 3
+  now read donor-side per ADR-001. Verified by grep - no unamended "extend in place" or
+  in-place tab-editing instruction remains in docs/specs.
+- Stop-condition status: All three Phase 0 blocking questions are now closed. **Stopped
+  here.** No application code written. Phase 0 exit still requires: baseline metrics
+  report vs. a dense Qwen3 27B-35B model, upstream artifact pins recorded, read-only stock
+  Agent Canvas reference checkout, and the first-run wizard.

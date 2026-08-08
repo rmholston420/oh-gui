@@ -2,7 +2,7 @@
 
 ## 6.1 Existing precursors - audit first
 
-src/routes/changes-tab.tsx, commits-tab.tsx (per-commit diffs, v1.5.0), task-list-tab.tsx already exist.
+Agent Canvas's src/routes/changes-tab.tsx, commits-tab.tsx (per-commit diffs, v1.5.0), and task-list-tab.tsx are **donor sources** under [ADR-001](../../adrs/ADR-001-integration-boundary.md) - audit them, vendor what is useful with attribution, log each port in `PORTING_LEDGER.md`, then build on the vendored copy. Do not edit them upstream.
 
 ## 6.2 Target failure mode: rubber-stamping, not invisibility
 

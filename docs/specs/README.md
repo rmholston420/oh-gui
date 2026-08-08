@@ -52,6 +52,9 @@ over, and execute against one phase at a time without exceeding practical contex
 - "Extend in place, never duplicate" gate retired; six v4.2 gates added to 13-hard-constraints.md.
 - 02-repo-setup.md items 1-2 replaced with dependency-pinning procedure.
 - Options A/B/C and the TypeScript-middleware alternative recorded in 99-appendix-superseded.md.
+- ADR-002 ratified: household multi-user mode ships in **Phase 1**, not Phase 3.
+- MIT LICENSE + NOTICE added; repo layout fixed as apps/gui + services/middleware.
+- 05-plan-model.md and 06-change-review.md precursor sections reframed donor-side.
 
 ## What changed v3.0 to v4.0
 

@@ -1,0 +1,15 @@
+OH-GUI
+Copyright (c) 2026 R. M. Holston
+
+This product includes software developed by the OpenHands project.
+
+Portions of this software are derived from OpenHands Agent Canvas
+(https://github.com/OpenHands/agent-canvas), licensed under the MIT License,
+Copyright (c) OpenHands contributors. Vendored components retain their original
+copyright notices and are individually recorded in PORTING_LEDGER.md with source
+URL, commit SHA, SPDX identifier, and modification notes.
+
+OpenHands runtime components (openhands-sdk, openhands-tools, openhands-workspace,
+openhands-agent-server, @openhands/typescript-client, and the agent-server container
+image) are consumed as unmodified upstream dependencies and are not redistributed
+as part of this repository.

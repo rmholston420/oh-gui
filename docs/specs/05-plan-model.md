@@ -6,7 +6,13 @@ The event log is a flat, append-only trace; a plan is a hierarchy of intent. Mul
 
 ## 5.2 Existing precursor - extend, don't rebuild
 
-src/routes/planner-tab.tsx already exists. Evolve it into a plan workbench. Net-new schema required:
+> **AMENDED v4.2 by [ADR-001](../../adrs/ADR-001-integration-boundary.md).** "Extend, don't
+> rebuild" still holds, but the mechanism changed: `planner-tab.tsx` is a **donor**, not a
+> file you edit. Vendor it into OH-GUI with attribution, log the port in
+> `PORTING_LEDGER.md`, then evolve the vendored copy. The Plan/Goal/Task/Attempt schema and
+> its persistence live in the **Python middleware**, not the browser.
+
+Agent Canvas's src/routes/planner-tab.tsx is the donor precursor. Vendor it, then evolve the copy into a plan workbench. Net-new schema required:
 
 Goal: id, title, success_criteria list, status, created_from_event_id
 Task: id, parent_id, title, description, status, dependencies list, assigned_agent, worktree_id, scope_paths list, risk_level, acceptance_criteria list, evidence list, revision
