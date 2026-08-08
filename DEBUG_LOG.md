@@ -387,3 +387,31 @@ and otherwise prints `run interrupted by signal (no thermal breach)`. A guard th
 gets ignored, which is how the 04:46 cutout-then-continue defect went unnoticed.
 
 **Files changed.** `bench/lib/gpu.sh`.
+
+## 2026-08-08 07:16 EDT — `local a=.. b="${a}".."` aborts under set -u on bash 5.3.9
+
+**Symptom.** `bench/oneoff/embed_igpu_ab.sh: line 61: arm: unbound variable`, immediately on
+the first `run_arm cpu 0` call, before the arm header printed.
+
+**Affected.** `bench/oneoff/embed_igpu_ab.sh` (embedder CPU vs iGPU A/B). No bench data.
+
+**Root cause.** The line was
+`local arm="$1" igpu="$2" log="$OUT/${arm}_server.log" pid`. Bash declares **every** name in a
+`local` list before performing **any** of the assignments, so `${arm}` in the third assignment
+resolves to the freshly-declared, still-unset local `arm` rather than to `$1`. Under
+`set -u` that aborts.
+
+**Verified by execution, not inferred:**
+```
+$ bash --version | head -1
+GNU bash, version 5.3.9(1)-release (x86_64-pc-linux-gnu)
+$ OUT=/t bash -uc 'f(){ local a="$1" b="$OUT/${a}_x"; echo "b=$b"; }; f cpu'
+bash: line 1: a: unbound variable
+```
+
+**Fix.** Split into one `local` per name. Repo swept with grep for the same pattern: this was
+the only occurrence.
+
+**Note.** This is the same *class* of error as the earlier `local win=()` episode, where I
+asserted a bash behaviour without running it and wrote a false comment into `gpu.sh`. The
+difference here is that the claim above was reproduced in a shell before being written down.

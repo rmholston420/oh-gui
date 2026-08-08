@@ -58,7 +58,14 @@ PY
 gpu_watch_start "$HOME/.oh-gui/thermal/${STAMP}_embed_ab.csv"
 
 run_arm() {                              # run_arm <arm> <igpu_enable>
-  local arm="$1" igpu="$2" log="$OUT/${arm}_server.log" pid
+  # Declared separately, NOT as one `local a=.. b="${a}".."` statement: bash 5.3.9 declares
+  # every name in a `local` list before performing any assignment, so a later assignment
+  # referencing an earlier name sees an unset local and aborts under `set -u`. Verified:
+  #   bash -uc 'f(){ local a="$1" b="x/${a}"; }; f cpu'  ->  a: unbound variable
+  local arm="$1"
+  local igpu="$2"
+  local log="$OUT/${arm}_server.log"
+  local pid
   echo
   echo "================ arm: ${arm} (OLLAMA_IGPU_ENABLE=${igpu}) ================"
 
