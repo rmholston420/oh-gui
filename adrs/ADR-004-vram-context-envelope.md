@@ -62,11 +62,29 @@ env var is ignored for models running on it rather than erroring
 **2. The embedding model is pinned to `num_ctx 512`** and always loaded explicitly with
 that option. Never allow it to load at the Ollama default.
 
-> **STATUS AMENDMENT (2026-08-08):** CPU placement for the embedder (`num_gpu: 0`) is
-> under evaluation via `bench/embed_cpu_vs_gpu.sh`. Colossus has 128 GB RAM and the model
-> is 0.6B, so it is plausible; if CPU latency is acceptable this reclaims the full
-> 1,502 MiB and reopens option (b) in §5 for the security analyzer. `num_ctx 512` remains
-> correct regardless of placement. Decision pending measurement.
+> **STATUS AMENDMENT (2026-08-08) — RATIFIED:** The embedder runs on **CPU**
+> (`num_gpu: 0`), model `qwen3-embedding:0.6b` retained, `num_ctx 512`.
+>
+> Measured on Colossus (24 threads, 124 GB RAM), two runs:
+>
+> | Placement | Single chunk | 64-chunk batch | VRAM cost |
+> |---|---:|---:|---:|
+> | GPU | 91–93 ms | 211–216 chunks/s | 1,511–1,540 MiB |
+> | CPU | 110–118 ms | 39–42 chunks/s | **16–28 MiB** |
+>
+> Query-time embedding is single-chunk, so the user-visible cost is **+25 ms**. Batch
+> ingest drops 5×, but 39 chunks/s indexes a 10,000-chunk corpus in ~4 minutes — a
+> one-time cost paid off the interactive path.
+>
+> Justification is correctness before VRAM: CPU placement makes the embedder **immune to
+> the Ollama scheduler eviction** observed with `qwen3-coder:30b` @65536, where the
+> embedder was silently dropped from GPU with no error. Retrieval no longer depends on the
+> estimator guessing right.
+>
+> `nomic-embed-text` (137M, 768 dims, ~62–64 MTEB) considered and **rejected**:
+> Qwen3-Embedding-0.6B scores ~70.7 MTEB-eng-v2, and on CPU the weight-size advantage is
+> irrelevant against 124 GB of RAM. 110 ms does not justify trading ~7 MTEB points.
+> Dimensionality also differs (1024 vs 768), making it a vector-store schema change.
 
 **3. KV-cache quantization is abandoned on Ollama.** Server env stays
 `OLLAMA_KV_CACHE_TYPE=f16` so the configuration does not misrepresent itself.
@@ -79,10 +97,11 @@ switch**, because this host runs `OLLAMA_KEEP_ALIVE=-1` and models never auto-un
 Role-switch latency is a first-class cost in the router design, not an implementation
 detail.
 
-**5. The LLM-based security analyzer does not get a dedicated resident model.** No VRAM
-exists for a third concurrent model. Options deferred to the analyzer slice: reuse the
-resident agent model, use a CPU-resident small model, or rely on the Pattern and
-PolicyRail analyzers in the ensemble and omit the LLM analyzer.
+**5. The LLM-based security analyzer does not get a dedicated resident GPU model.** No
+VRAM exists for a third concurrent GPU model. With CPU inference now demonstrated viable
+(0.6B at ~110 ms), a **CPU-resident analyzer is the leading option** and must be measured
+at its own parameter count before adoption. Fallbacks: reuse the resident agent model, or
+run Pattern + PolicyRail only and omit the LLM analyzer.
 
 **6. If the coder needs 128K, that requires leaving Ollama.** vLLM supports
 `--kv-cache-dtype fp8`, which would bring the coder's 128K cache from ~11 GB to ~6 GB.

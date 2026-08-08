@@ -25,7 +25,7 @@ Spec at v4.3. No application code written yet (both `apps/gui` and
 |---|---|---:|---:|
 | Planner | `qwen3.6:27b` | 131072 | 26113 MiB |
 | Coder | `qwen3-coder:30b` | 65536 | 25167 MiB |
-| Embedding | `qwen3-embedding:0.6b` | **512 (pinned)** | 1502 MiB (CPU placement under eval) |
+| Embedding | `qwen3-embedding:0.6b` | **512 (pinned)** | **CPU** (`num_gpu: 0`), ~20 MiB VRAM |
 
 Server env: `OLLAMA_FLASH_ATTENTION=1`, `OLLAMA_KV_CACHE_TYPE=f16`,
 `OLLAMA_GPU_OVERHEAD=1073741824`. q8_0 KV is a confirmed no-op on Ollama's new engine.
@@ -34,11 +34,13 @@ Server env: `OLLAMA_FLASH_ATTENTION=1`, `OLLAMA_KV_CACHE_TYPE=f16`,
 
 ```bash
 cd ~/dev/oh-gui && git pull
-bash bench/ollama_env.sh f16
-ollama pull nomic-embed-text; ollama pull embeddinggemma:300m
-bash bench/embed_matrix.sh       # decides embedder model AND placement first
-bash bench/validate_config.sh    # then validates the resulting config
+mkdir -p bench/prompts
 ```
+
+Then author `bench/prompts/{debug,arch,plan}.txt` from real OH-GUI work. Phase 0's
+remaining blocker is the quality bench; per `local-llm-bench`, Perplexity gold answers are
+generated FIRST, prompts live on disk, `<think>` is stripped before scoring, and both
+`output_tokens` and `wall_seconds` are captured per cell.
 
 Confirms planner@128K and coder@64K each fit co-resident with the embedding model at
 `num_ctx 512`, and measures role-switch latency (the router's cost model depends on it).
@@ -48,9 +50,8 @@ Confirms planner@128K and coder@64K each fit co-resident with the embedding mode
 1. **Security analyzer VRAM.** No room for a third resident model. Reuse the resident
    agent model / CPU-resident small model / omit the LLM analyzer from the ensemble?
    Deferred to the analyzer slice (ADR-004 §5).
-2. **Quality bench not yet run.** `local-llm-bench` protocol requires Perplexity gold
-   answers generated FIRST, prompts on disk under `bench/prompts/`, `<think>` stripped
-   before scoring. `bench/prompts/` does not exist yet.
+2. **Quality bench not yet run.** `bench/prompts/` does not exist. Needs three real
+   OH-GUI tasks (debug / arch / plan) authored from actual project work, not synthetic.
 
 ## Remaining before Phase 0 exit
 

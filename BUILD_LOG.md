@@ -249,3 +249,28 @@ Entry format:
   later requires re-embedding the entire corpus.
 - **Stop condition:** Phase 0 exit still NOT met.
 
+## 2026-08-08 04:05 EDT - Embedder placement RATIFIED: CPU
+
+- **Stage:** Phase 0 (baseline metrics)
+- **Ran:** `bench/embed_cpu_vs_gpu.sh` twice (24 threads, 124 GB RAM, num_ctx 512).
+
+  | Placement | single | batch64 | chunks/s | VRAM cost |
+  |---|---|---|---|---|
+  | GPU | 91.1 / 93.2 ms | 0.30 / 0.30 s | 216.0 / 210.9 | 1511 / 1540 MiB |
+  | CPU | 109.3 / 117.7 ms | 1.53 / 1.65 s | 42.0 / 38.8 | 16 / 28 MiB |
+
+- **Decision:** embedder -> CPU (`num_gpu: 0`), `qwen3-embedding:0.6b` retained at
+  `num_ctx 512`. ADR-004 amended to Ratified. +25 ms on the query path; ~4 min to index a
+  10k-chunk corpus. Reclaims ~1.5 GB and removes the scheduler-eviction race.
+- **nomic-embed-text REJECTED** - Qwen CPU latency is acceptable, so the ~7 MTEB-point
+  quality gap is not worth trading. `bench/embed_matrix.sh` retained for future
+  re-evaluation but not required for the Phase 0 decision.
+- **Bug found in own tooling:** both embed scripts printed `processor=[minutes from]` -
+  positional slicing of the `ollama ps` table broke on the multi-word UNTIL column. CPU
+  placement was therefore confirmed by VRAM cost (16-28 MiB vs 1511), not by the processor
+  field. `embed_matrix.sh` now parses `/api/ps` JSON and uses `size_vram==0`.
+- **Resulting envelope (embedder on CPU):** planner @131072 ~6.4 GB free;
+  coder @65536 ~7.4 GB free; no co-residency conflict, no eviction risk.
+- **Stop condition:** Phase 0 exit still NOT met. Remaining: quality bench vs Perplexity
+  gold, upstream artifact pins, stock Agent Canvas reference checkout, first-run wizard.
+
