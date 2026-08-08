@@ -1,4 +1,11 @@
-# OH-GUI Master Build Spec v4.0 - Split-File Edition
+# OH-GUI Master Build Spec v4.2 - Split-File Edition
+
+> **v4.2 (2026-08-08) - read [ADR-001](../../adrs/ADR-001-integration-boundary.md) before
+> any other file.** OH-GUI is a **standalone application** with a **Python middleware**.
+> OpenHands is a pinned runtime dependency and its source is never modified. Agent Canvas
+> is a **donor**, not a base. This supersedes the "EXTEND, not fork / extend in place"
+> premise that appears throughout 00-ground-truth.md and 02-repo-setup.md. Amended files
+> carry inline v4.2 banners.
 
 This spec was split from a single 103KB monolith (v3.0) into per-section files so that
 a single Perplexity Computer session (or a Qwen3 27B-35B local model) can load, reason
@@ -6,7 +13,9 @@ over, and execute against one phase at a time without exceeding practical contex
 
 ## How to use this directory
 
-1. Read 00-ground-truth.md first, always, in every session.
+0. Read adrs/ADR-001-integration-boundary.md first - it supersedes the architecture
+   premise of several files below.
+1. Read 00-ground-truth.md next, always, in every session.
 2. Read 01-principles.md next.
 3. Load ONLY the phase file(s) relevant to your current work session (see table below).
 4. 13-hard-constraints.md is machine-checkable - run it before every PR.
@@ -34,6 +43,15 @@ over, and execute against one phase at a time without exceeding practical contex
 | 14-spec-wizard.md | Phase 0/1 boundary | Natural-language-to-spec conversion |
 | 15-household-profiles.md | Phase 1/3 | Multi-user, per-user trust dial/inbox (NEW) |
 | 99-appendix-superseded.md | reference | Rejected ideas, do not resurrect |
+
+## What changed v4.1 to v4.2
+
+- ADR-001 ratified: standalone app over the Agent Server API; OpenHands never modified.
+- Middleware language decided: Python (owns the entire policy plane).
+- Agent Canvas reclassified from base to donor source; vendoring logged in PORTING_LEDGER.md.
+- "Extend in place, never duplicate" gate retired; six v4.2 gates added to 13-hard-constraints.md.
+- 02-repo-setup.md items 1-2 replaced with dependency-pinning procedure.
+- Options A/B/C and the TypeScript-middleware alternative recorded in 99-appendix-superseded.md.
 
 ## What changed v3.0 to v4.0
 

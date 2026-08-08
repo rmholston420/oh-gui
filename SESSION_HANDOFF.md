@@ -1,65 +1,83 @@
 # OH-GUI Session Handoff
 
 **This file reflects current state only. Overwrite it each session end.**
-Last updated: 2026-08-08 02:26 EDT
+Last updated: 2026-08-08 02:45 EDT
 
 ## Current stage
 
-Pre-Phase-0. Repository bootstrap complete. **No build work has started.**
+Pre-Phase-0. Repository bootstrapped, ADR-001 ratified, spec reconciled to v4.2.
+**No code has been written and Phase 0 has not started.**
+
+## Architecture as of now (ADR-001, ratified)
+
+OH-GUI is a **standalone application**, not an extension of Agent Canvas.
+
+```
+Browser frontend  ->  OH-GUI Python middleware  ->  OpenHands Agent Server
+   (vendored               (policy plane:              (pinned Docker
+    Agent Canvas            trust dial, analyzers,      image, HTTP + WS)
+    components)             StuckDetector, quarantine,
+                            audit log, ACL layer)
+```
+
+- OpenHands source is **never** modified, forked, or patched.
+- OpenHands is consumed as pinned artifacts only: `agent-server` Docker image (by digest)
+  and the `openhands-sdk` pip family.
+- Middleware is **Python**, because the policy primitives are Python SDK objects.
+- The frontend never calls the Agent Server directly for anything policy-bearing.
+- Agent Canvas is a **donor** (MIT, archived 2026-07-27 = frozen and stable). Vendor its
+  components with attribution and log every port in `PORTING_LEDGER.md`.
+- A read-only stock Agent Canvas checkout is kept only for the Phase 0 regression baseline.
 
 ## Completed this session
 
-- Read all 21 attached spec files in full (20 v4.0/v4.1 split files + the v3.0 monolith).
-- Created public repo `rmholston420/oh-gui`, default branch `main`.
-- Pushed the 20 authoritative v4 files to `docs/specs/`.
-- Isolated the superseded v3.0 monolith to `docs/specs/archive/` with a README
-  enumerating the rejected ideas it still contains unmarked.
-- Seeded `BUILD_LOG.md` (with the bootstrap entry), `DEBUG_LOG.md`, `PORTING_LEDGER.md`.
-
-## Decisions made (user-confirmed this session)
-
-1. **Repo role: overlay repo, not a fork.** `OpenHands/OpenHands` at tag `v1.12.0`
-   is cloned separately and extended in place per `docs/specs/00-ground-truth.md`.
-   `oh-gui` holds specs, ADRs, operational logs, and OH-GUI-owned source, tracking
-   the delta against upstream. **This is a load-bearing architectural decision and
-   still needs a formal ADR (candidate ADR-0001) - it has not been filed.**
-2. v3.0 monolith archived rather than deleted or shelved flat.
-3. Initial commit scope: specs + three operational logs only. No LICENSE, no root
-   README (user explicitly declined both).
-4. Local clone path on Colossus: `~/dev/oh-gui`.
+- Read all 21 attached spec files in full.
+- Created public repo `rmholston420/oh-gui` (default branch `main`).
+- Pushed the 20 v4 spec files to `docs/specs/`; isolated the superseded v3.0 monolith to
+  `docs/specs/archive/` with a rejected-ideas notice.
+- Seeded `BUILD_LOG.md`, `DEBUG_LOG.md`, `PORTING_LEDGER.md`.
+- Investigated the live upstream integration surface and found the Agent Server /
+  typescript-client / pip-SDK consumption path the spec never mentioned.
+- Filed and ratified `adrs/ADR-001-integration-boundary.md`; created `adrs/README.md`.
+- Reconciled the spec to **v4.2**: amended `README.md`, `00-ground-truth.md`,
+  `02-repo-setup.md`, `12-portable-components.md`, `13-hard-constraints.md`,
+  `99-appendix-superseded.md`. Retired the "extend in place" gate, added six v4.2 gates.
 
 ## Remaining before the Phase 0 Definition of Done
 
-Per `docs/specs/02-repo-setup.md` and `docs/specs/11-dev-plan.md`, Phase 0 exit
-requires all four of:
-
-- [ ] Architecture decision record filed.
-- [ ] Baseline metrics report against a dense Qwen3 27B-35B model (5-10 tasks:
+- [x] Architecture decision record filed (ADR-001).
+- [ ] Household-mode timing decision (Phase 1 vs Phase 3) - `02-repo-setup.md` item 9.
+- [ ] Baseline metrics report against a dense Qwen3 27B-35B model: 5-10 tasks logging
       time-to-first-review, turns-to-acceptance, lines-accepted-without-inspection,
-      "lost track" incidents, GPU temp/power, mental-model-formation baseline).
+      "lost track" incidents, GPU temp/power, mental-model-formation baseline.
+- [ ] Stock Agent Canvas pinned as the read-only regression baseline checkout.
 - [ ] First-run wizard shipped, stating the default trust-dial stop (`ConfirmRisky()`)
       explicitly in its own UI copy.
-- [ ] Household-mode timing decision recorded (Phase 1 vs Phase 3, per
-      `docs/specs/15-household-profiles.md` section 15.1).
-
-Also required at Phase 0: capture the stock-Agent-Canvas regression baseline as a
-permanent pinned reference checkout.
 
 ## Open questions awaiting the user
 
-1. **ADR-0001 not yet filed.** The overlay-repo decision was confirmed
-   conversationally but has no ADR. Should an `adrs/` directory be established in
-   this repo, and does it follow the Kosmos ADR template or a new OH-GUI one?
-2. **No LICENSE file.** Upstream OpenHands is MIT. A public repo with no license
-   defaults to all-rights-reserved. Confirm whether MIT should be added.
-3. **Upstream tag re-verification.** `00-ground-truth.md` pins `v1.12.0` /
-   `4d0fe4983b6b8e52c104c7ffa4b7be8c7ab5a364` and requires re-verifying before each
-   phase gate. Not yet re-verified against the live upstream repo.
-4. **Household-mode timing** (Phase 1 vs Phase 3) is a Phase 0 kickoff decision the
-   user has not yet made.
+1. **Household-mode timing** - Phase 1 or Phase 3? Blocks Phase 0 exit. Ship in Phase 1 if
+   a non-technical user will use the system within the first month of deployment.
+2. **LICENSE** - declined at bootstrap. A public repo with no license is
+   all-rights-reserved by default, which sits awkwardly with vendoring MIT donor code
+   into it. Recommend MIT. Needs a yes/no.
+3. **Repo layout for code** - proposed but not created:
+   `apps/gui/` (frontend) and `services/middleware/` (Python). Not scaffolded, since that
+   is Phase 0/1 work. Confirm the shape before anything is created.
+4. **Upstream pin re-verification** - `00-ground-truth.md` pins `v1.12.0` /
+   `4d0fe4983b6b8e52c104c7ffa4b7be8c7ab5a364`. Under ADR-001 what matters instead is the
+   `agent-server` image digest and the pip/npm versions. None are pinned yet.
+
+## Known risks carried forward
+
+- `@openhands/typescript-client` is **alpha**; its API "may change significantly between
+  versions without notice." Mitigation: middleware anti-corruption layer.
+- `agent-server` image tags are commit SHAs, not semver. Pin by digest.
+- No formal OpenAPI document, versioning policy, or deprecation guarantee was found for
+  the Agent Server API. Revisit if upstream publishes one.
 
 ## Exact next action
 
-Clone the repo to `~/dev/oh-gui` on Colossus, then answer open questions 1, 2, and
-4 above. Do not begin Phase 0 work until the household-mode timing decision is
-recorded and ADR-0001 is filed.
+Clone to `~/dev/oh-gui` on Colossus, read `adrs/ADR-001-integration-boundary.md`, then
+answer open questions 1-3. Do not start Phase 0 until the household-mode timing decision
+is recorded.

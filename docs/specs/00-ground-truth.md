@@ -4,7 +4,16 @@ Canonical source location: github.com/OpenHands/OpenHands, tag v1.12.0, commit 4
 
 Archival status, re-verified and confirmed accurate: OpenHands/agent-canvas carries the "Public archive" label - archived by the owner on Jul 27, 2026, now read-only. Confirmed independently across the issues page, releases page, CI workflow page, and individual PR pages. The repo also carries a permanent Beta disclaimer even pre-archival. Last active release was 1.6.0 (Jul 19, 2026). Action: retain only a one-line confirmation in the Phase 0 audit log. Caution: stale crawl artifacts of this repo's homepage can misreport an active-looking state; always cross-check the issues/releases/CI pages, not just the homepage.
 
-Architecture Decision: EXTEND, not fork. Clone/checkout OpenHands/OpenHands directly. Pin to a specific tag at project start, re-verify before each phase gate. Reinforced by OpenHands' own "Agent Canvas Initiative" (GitHub issue 14374), which declares Agent Canvas the main interface going forward.
+> **SUPERSEDED v4.2 (2026-08-08) by [ADR-001](../../adrs/ADR-001-integration-boundary.md).**
+> The "EXTEND, not fork" decision below, and every instruction in this file to modify
+> upstream source in place, is **no longer in force**. OH-GUI is a standalone application;
+> OpenHands is a versioned runtime dependency (pinned `agent-server` Docker digest + the
+> `openhands-sdk` pip family) and its source is never modified, forked, or patched.
+> Agent Canvas is reclassified from *base* to *donor* — vendor its MIT components into
+> OH-GUI and log them in `PORTING_LEDGER.md`. The paragraph and the inventory table below
+> are retained as accurate upstream reference material only.
+
+Architecture Decision (SUPERSEDED — see ADR-001): EXTEND, not fork. Clone/checkout OpenHands/OpenHands directly. Pin to a specific tag at project start, re-verify before each phase gate. Reinforced by OpenHands' own "Agent Canvas Initiative" (GitHub issue 14374), which declares Agent Canvas the main interface going forward.
 
 Pre-code audit - confirm this file/route inventory against the live checkout before writing anything new:
 
@@ -22,9 +31,20 @@ Pre-code audit - confirm this file/route inventory against the live checkout bef
 | CI workflows | .github/workflows/*.yml | Confirmed |
 | Dependencies | @monaco-editor/react, monaco-editor, @openhands/typescript-client pinned at 1.36.1 | Confirmed |
 
-Do not treat this as a greenfield build. planner-tab.tsx, changes-tab.tsx, commits-tab.tsx, task-list-tab.tsx already exist and MUST be extended in place, never duplicated.
+Do not treat this as a greenfield build. planner-tab.tsx, changes-tab.tsx, commits-tab.tsx, task-list-tab.tsx already exist.
+
+> **AMENDED v4.2 (2026-08-08) by ADR-001.** "MUST be extended in place, never duplicated"
+> is retired. These routes are **donor sources**: read them, vendor what is useful into
+> OH-GUI under MIT with attribution, and log each port in `PORTING_LEDGER.md`. Do not edit
+> them in the upstream checkout. The point of the original rule — do not rebuild from
+> scratch what already exists — still stands and is now enforced by the porting ledger.
 
 ## Confirmed SDK primitives you will wire against
+
+> **AMENDED v4.2 (2026-08-08) by ADR-001.** These are **Python** SDK primitives and run
+> in the OH-GUI middleware, not in the browser. `@openhands/typescript-client` supports
+> remote conversations only. The frontend reaches policy behaviour through the OH-GUI
+> middleware API, never by calling these directly.
 
 - Confirmation policies: AlwaysConfirm(), NeverConfirm(), ConfirmRisky(threshold=HIGH, confirm_unknown=True) - each implements should_confirm(risk) returning bool, receiving only a SecurityRisk enum value, never paths/hosts/text. ConfirmRisky takes an explicit threshold argument (default HIGH) and defaults confirm_unknown to True - both must be named explicitly in the trust-dial table.
 - Security analyzer risk levels: LOW/MEDIUM/HIGH/UNKNOWN, produced by PatternSecurityAnalyzer, PolicyRailSecurityAnalyzer, LLMSecurityAnalyzer (default), GraySwanAnalyzer, EnsembleSecurityAnalyzer (max-severity aggregation). Analyzers implement security_risk(action) - DOES receive the full action.

@@ -19,7 +19,7 @@
 - [ ] Screen-reader mode is detectable and functional across conversation, authorization-card, terminal, plan-tree, and diff-view surfaces.
 - [ ] Non-rewindable side effects are explicitly surfaced in any rewind/fork-from-step UI, and a rewind produces a new Plan revision rather than overwriting.
 - [ ] Fork-from-step, rewind, and the v1.2.0 conversation-branch feature route through one shared primitive; plan-revision history renders as a DAG, not an assumed tree.
-- [ ] Before adding a new tab/route, confirm it doesn't duplicate an existing one - extend in place.
+- [ ] ~~Before adding a new tab/route, confirm it doesn't duplicate an existing one - extend in place.~~ **RETIRED v4.2 by ADR-001** - replaced by the v4.2 gates below.
 - [ ] StuckDetector is wired directly, not rebuilt.
 - [ ] ask_agent() backs the explain affordance, not a bespoke call.
 - [ ] Any action rated LOW risk under the current trust dial produces zero modal interruptions.
@@ -65,3 +65,21 @@
 - [ ] Delegated-review requests are delivered only to the selected delegate(s) and logged with owner, delegate, and outcome.
 - [ ] The sub-900px delegated-review affordance is available only for requesting review, never for direct approval/rejection/relaxation.
 - [ ] Household onboarding explains delegated approval with a harmless example and states that owner autonomy is preserved.
+
+## v4.2 additions (ADR-001 - integration boundary)
+
+- [ ] No OpenHands source file is modified, forked, or patched by this project. The
+      upstream checkout is read-only.
+- [ ] OpenHands is consumed only as pinned artifacts: `agent-server` Docker image pinned
+      by digest, `openhands-sdk` family pinned in the Python lockfile,
+      `@openhands/typescript-client` pinned in the frontend lockfile.
+- [ ] Before building any new surface, confirm no Agent Canvas donor component already
+      solves it; if one does, vendor it and log the port in `PORTING_LEDGER.md` with
+      source URL, commit SHA, SPDX license, and modification notes.
+- [ ] All policy-bearing logic - confirmation policies, security analyzers, StuckDetector,
+      block_action/block_message, untrusted-content quarantine, audit log - lives in the
+      Python middleware, never in the browser.
+- [ ] The frontend never calls the Agent Server directly for anything policy-bearing; it
+      goes through the OH-GUI middleware API.
+- [ ] Third-party client surface is confined behind the middleware anti-corruption layer,
+      so an upstream API change touches one module.

@@ -13,3 +13,12 @@ considered and rejected across the v2.0-v4.0 revision history.
 - Treating Aceternity UI / Magic UI as npm-installable dependencies - incorrect; they are copy-paste component libraries. See 12-portable-components.md.
 - Bundling WCAG 2.5.8 (Target Size Minimum, Level AA) and 2.4.13 (Focus Appearance, Level AAA) under a single "AA" conformance claim - inaccurate; label them separately. See 07-visual-design.md section 7.3.
 - Assuming a single-operator household - superseded by 15-household-profiles.md (v4.0 addition) once a multi-user deployment was identified.
+
+## v4.2 additions (ADR-001 - integration boundary)
+
+- Extending Agent Canvas source in place ("EXTEND, not fork"; "MUST be extended in place, never duplicated") - **retired**. Incompatible with the requirement to keep upgrading OpenHands freely against a ~2-3 day upstream release cadence. OH-GUI is a standalone app; OpenHands is a pinned runtime dependency. See adrs/ADR-001.
+- Overlay repo holding patches against a live modified OpenHands checkout (option A) - rejected. Still modifies upstream source; patch rot is the dominant failure mode.
+- GitHub fork of OpenHands/OpenHands as the OH-GUI base (option B) - rejected. Contradicts the no-source-modification requirement and drags differently-licensed enterprise/ into the tree.
+- Overlay repo now, fork the canvas at Phase 1 (option C) - rejected. Defers rather than solves; still ends in a maintained fork.
+- TypeScript middleware (option D-alt) - rejected. Confirmation policies, security analyzers, StuckDetector, and block_action/block_message are Python SDK objects; a TS middleware could reach them only through an Agent Server API surface that could not be verified complete. Middleware is Python.
+- Calling openhands-sdk primitives from the browser - architecturally impossible. @openhands/typescript-client supports remote conversations only; policy primitives are server-side Python.
