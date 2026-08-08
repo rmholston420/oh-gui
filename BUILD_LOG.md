@@ -1975,3 +1975,42 @@ any build starts. Recorded here; no spec or ADR edited yet.
 - Files: `apps/gui/playwright.config.ts`, `apps/gui/e2e/wizard.spec.ts`, DEBUG_LOG, BUILD_LOG,
   ADR-007 (amendment).
 - Stop condition unchanged: Phase 0 exit item 3 (baseline metrics report) remains the only open item.
+
+## 2026-08-08 10:12 EDT — Phase 0 exit item 3: baseline metrics harness (ADR-008 Proposed)
+
+- Stage: Phase 0 exit item 3, `docs/specs/02-repo-setup.md` items 5-7. Ports touched: none.
+- **The spec's own metrics rule out automation.** Two of item 5's five are irreducibly human:
+  "lost track" is a state of the operator's mind, "accepted without inspection" is a fact about
+  whether a person read a diff. Built an instrumented observation harness instead — the operator
+  drives the stock app, the harness measures. A scripted agent run would have produced turns and
+  tokens, looked rigorous, and fabricated the one number `13-hard-constraints.md:16` exists to
+  control.
+- Accepted lines are counted from `git --numstat` at each accept, not from operator recall; the
+  operator answers exactly one judgement per accept (did you read it). Objective count × one
+  judgement = the metric the spec names.
+- **Backend call made and recorded in ADR-008.** The reference checkout is Agent Canvas v1.12.0,
+  depending on `@openhands/typescript-client@1.36.1`; this repo pins the Agent Server image at
+  v1.41.0. Running one against the other measures a pairing nobody ships. The baseline therefore
+  runs the stock app from source, using the backend it pins itself via `uvx`; the image pin governs
+  Phase 1 only. Verified from the donor's own `package.json` and README at the pinned SHA.
+- **Item 7 is evidenced by measurement.** Variant and quantization come from `ollama ps` sampled
+  during the run, not from the settings screen. With no samples, `report.py` states item 7 is NOT
+  satisfied rather than leaving a blank that reads as success.
+- Fixture is a script-seeded `notes-api` (FastAPI + pytest), recreated byte-identically, so the same
+  eight tasks re-run against OH-GUI at any later phase. Tasks ordered additive → behavioral →
+  refactor → cross-cutting, t08 expected to fail.
+- Thermal: standard `bench/lib/gpu.sh` — 83 °C ceiling, 80 °C warn, 45 °C cold gate, 1 Hz, unload
+  and abort on breach. The app runs the model rather than the script; the card does not care.
+- **Verified before handing over:** 10 tests pass, and the full chain was dry-run end to end
+  (seed → three simulated sessions including one abandonment → aggregated report). The thermal
+  parser was tested against synthetic CSVs covering the case that matters — a power-capped sample
+  (`10`) must NOT be reported as throttling, or every run at the 435 W cap looks invalid, while a
+  thermal-slowdown sample (`01`) must be.
+- `report.py` excludes abandoned tasks from means and lists them separately; absent data prints
+  as `—`, never as `0`.
+- Files: `bench/baseline/{README.md,seed_fixture.sh,run_baseline.sh,mark.py,report.py}`,
+  `bench/baseline/tasks/t0{1..8}-*.md`, `bench/baseline/tests/test_baseline_harness.py`,
+  `adrs/ADR-008-phase-0-baseline-method.md`, `adrs/README.md`, BUILD_LOG.
+- **Stop condition: harness complete and self-tested; the run itself is operator work on Colossus.
+  Phase 0 exit item 3 is NOT met until `docs/BASELINE-METRICS-<stamp>.md` exists and ADR-008's
+  verdict section is filled.** ADR-008 stays Proposed until then.

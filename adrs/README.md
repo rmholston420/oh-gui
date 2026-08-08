@@ -18,6 +18,7 @@ old one and mark the old one `Amended · superseded by ADR-###`.
 | [ADR-005](ADR-005-planner-and-coder-model-selection.md) | Planner and Coder Model Selection for OH-GUI | Ratified | Phase 0 |
 | [ADR-006](ADR-006-out-of-worktree-stop-elevates-to-high.md) | The Out-of-Worktree Trust-Dial Stop Elevates to HIGH | Ratified | Phase 0 mirror; binding on Phase 1 |
 | [ADR-007](ADR-007-frontend-visual-gate.md) | The Frontend Gate Renders in a Real Browser | Ratified | Phase 0 |
+| [ADR-008](ADR-008-phase-0-baseline-method.md) | Phase 0 Baseline Metrics: Method, and Verdict | **Proposed** (verdict pending the run) | Phase 0 exit |
 
 ## Open items awaiting a decision
 

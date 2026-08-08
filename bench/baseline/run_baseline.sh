@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+# Phase 0 baseline metrics run — one task, fully instrumented.
+#
+# Required by docs/specs/02-repo-setup.md items 5-7 (Phase 0 exit criterion).
+#
+# What this does NOT do: drive the agent. The operator drives the STOCK Agent Canvas run copy by
+# hand, because every metric item 5 names except GPU telemetry is a human judgement. This script
+# is the instrumentation around that session — thermal guard, 1 Hz GPU sampling, a record of which
+# model Ollama actually had resident, and a timestamped event log.
+#
+# The GPU watcher is mandatory (operator standing instruction): any script that runs a local model
+# monitors and records temperature inline, and aborts at the ceiling. Here the model is run by the
+# app rather than by us, which changes nothing about the card.
+#
+# Usage:
+#   bash bench/baseline/run_baseline.sh t01
+#   bash bench/baseline/run_baseline.sh t01 --dry-run   # no GPU, no Ollama; harness self-test
+set -euo pipefail
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TASK="${1:-}"; shift || true
+DRY=0
+for a in "$@"; do [ "$a" = "--dry-run" ] && DRY=1; done
+
+[ -n "$TASK" ] || { echo "usage: run_baseline.sh <task-id> [--dry-run]" >&2; exit 2; }
+CARD=$(ls "$HERE/tasks/${TASK}"-*.md 2>/dev/null | head -1) \
+  || { echo "no task card for '$TASK' in $HERE/tasks" >&2; exit 2; }
+[ -n "$CARD" ] || { echo "no task card for '$TASK' in $HERE/tasks" >&2; exit 2; }
+
+FIXTURE="${OH_GUI_FIXTURE:-$HOME/.oh-gui/baseline/fixture}"
+STAMP="${OH_GUI_BASELINE_STAMP:-$(date +%Y%m%d_%H%M)}"
+OUT="$HOME/.oh-gui/baseline/${STAMP}_run"
+mkdir -p "$OUT"
+
+if [ "$DRY" -eq 0 ]; then
+  [ -d "$FIXTURE/.git" ] || { echo "FAIL: no fixture at $FIXTURE — run seed_fixture.sh" >&2; exit 1; }
+  # shellcheck source=../lib/gpu.sh
+  source "$HERE/../lib/gpu.sh"
+  # shellcheck source=../lib/ollama.sh
+  source "$HERE/../lib/ollama.sh"
+
+  gpu_guard
+  gpu_cool_wait
+  gpu_watch_start "$OUT/${TASK}.thermal.csv"
+
+  # Which model was ACTUALLY resident, sampled rather than assumed. This is what satisfies
+  # item 7's "record variant and quantization" — a claim about the model taken from the
+  # runtime, not from whatever the settings screen was believed to say.
+  ( while true; do
+      printf '%s\t%s\n' "$(date +%H:%M:%S)" "$(ollama ps 2>/dev/null | tail -n +2 | tr '\n' ';')" \
+        >> "$OUT/${TASK}.ollama_ps.tsv"
+      sleep 5
+    done ) &
+  OLLAMA_SAMPLER=$!
+  trap 'kill $OLLAMA_SAMPLER 2>/dev/null || true' EXIT
+else
+  echo "[dry run] GPU guard, thermal watcher and Ollama sampler skipped"
+  FIXTURE_ARG_OK=1
+fi
+
+echo
+echo "=============================================================================="
+sed 's/^/  /' "$CARD"
+echo "=============================================================================="
+echo "  fixture:  $FIXTURE"
+echo "  output:   $OUT"
+echo
+echo "  Give the agent the task text above VERBATIM. Mark events as they happen."
+echo "=============================================================================="
+echo
+
+ARGS=(--task "$TASK" --outdir "$OUT")
+[ -d "$FIXTURE/.git" ] && ARGS+=(--fixture "$FIXTURE")
+python3 "$HERE/mark.py" "${ARGS[@]}"
+
+if [ "$DRY" -eq 0 ]; then
+  kill "$OLLAMA_SAMPLER" 2>/dev/null || true
+  gpu_watch_stop
+  echo
+  echo "resident models observed during this task:"
+  cut -f2 "$OUT/${TASK}.ollama_ps.tsv" 2>/dev/null | tr ';' '\n' | awk 'NF' | sort -u | sed 's/^/  /'
+fi
+echo
+echo "task record: $OUT/${TASK}.summary.json"
