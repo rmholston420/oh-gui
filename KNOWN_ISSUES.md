@@ -85,7 +85,26 @@ fixed overhead; per-token work is invisible below 256 tokens.
 
 ## 2026-08-08 08:52 EDT — `MAX_LOADED_MODELS=2` eviction order is unmeasured
 
-**Status: OPEN, probe written and unrun.**
+**Status: OPEN. Probe v1 run 20260808_0850 was INVALID; v2 written and unrun.**
+
+> **UPDATE 2026-08-08 08:56 EDT — one half of this is now SETTLED, the other reframed.**
+>
+> **Settled: co-residency is physically impossible, so this setting was never the protection.**
+> Measured at `num_ctx=4096`, planner 20,364 MiB + coder 25,578 MiB = **45,942 MiB** against a
+> 32,607 MiB card. Weights dominate at every context, so the two role models cannot both be
+> resident at any `num_ctx`. The **VRAM ceiling** is what forbids co-residency;
+> `MAX_LOADED_MODELS` cannot be credited with it. Step 3 of run `0850` confirmed the scheduler
+> evicts as much as it needs — loading the coder evicted **both** resident models, not just the
+> one the slot limit required.
+>
+> **Reframed: what the setting actually governs is embedder reload churn.** Whether `=2` reserves
+> a slot for the CPU embedder is still unmeasured.
+>
+> **Why v1 was invalid:** it omitted `"num_gpu": 0`, so the embedder loaded onto the **GPU** at
+> 2,754 MiB rather than CPU-resident at 0 (ADR-004 A#2). Evicting a GPU-resident embedder frees
+> real VRAM, so its eviction cannot be attributed to the slot limit — the precise confound the
+> probe existed to eliminate. v2 forces `num_gpu:0` and **hard-fails** if step 1 does not report
+> `size_vram: 0`.
 
 `OLLAMA_MAX_LOADED_MODELS=2` is intended to mean "one GPU role model plus the CPU-resident
 embedder", enforcing ADR-004's never-co-resident invariant at the server. **Which model the

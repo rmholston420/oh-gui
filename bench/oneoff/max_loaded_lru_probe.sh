@@ -12,9 +12,23 @@
 #   resident - 26,140 + 26,390 MiB at 131,072 against a 32,607 MiB card - which is the exact
 #   co-residency ADR-004 forbids. If it evicts the PLANNER, =2 is a correct backstop.
 #
-#   num_ctx is deliberately SMALL (4096). At 131,072 the two role models cannot both fit
-#   regardless of slot policy, so a VRAM failure would mask the scheduling answer. Shrinking the
-#   context lets both physically fit, which isolates the question to LRU policy alone.
+#   v1 (run 20260808_0850) was INCONCLUSIVE for two reasons, both fixed here:
+#     (a) It omitted "num_gpu": 0 on the embed call, so the embedder loaded onto the GPU at
+#         2,754 MiB instead of CPU-resident at 0. Evicting a GPU-resident embedder frees real
+#         VRAM, which is exactly the slot-policy/VRAM-pressure confound this probe exists to
+#         remove. ADR-004 A#2 places the embedder on CPU; the probe must reproduce that.
+#     (b) Its stated rationale - that num_ctx=4096 lets both role models fit, isolating slot
+#         policy - was false. Measured at 4096: 20,364 + 25,578 = 45,942 MiB against a
+#         32,607 MiB card. WEIGHTS dominate at every context, so the two role models can never
+#         co-reside on this card at any num_ctx. Small num_ctx is still correct (it minimises
+#         KV noise) but it does NOT isolate slot policy, and claiming it did was arithmetic
+#         asserted rather than computed.
+#
+#   WHAT MAKES THE TEST CLEAN INSTEAD
+#     With the embedder CPU-resident, size_vram == 0, so evicting it frees ZERO VRAM. If it is
+#     evicted anyway, only the slot limit can be responsible. That is the discriminator, not
+#     the context size. This script now HARD-FAILS if step 1 does not show size_vram == 0,
+#     because every conclusion below depends on that placement.
 #
 # READ-ONLY with respect to configuration: changes no env var, edits no unit, restarts nothing.
 set -uo pipefail
@@ -63,9 +77,11 @@ PY
 load() {  # $1 = model, $2 = kind
   echo "loading $1 (num_ctx=$CTX) ..."
   if [ "$2" = "embed" ]; then
+    # num_gpu:0 forces CPU placement per ADR-004 A#2. Omitting it in v1 is what invalidated
+    # run 20260808_0850 - the embedder went to the GPU at 2,754 MiB.
     curl -sf "$EP/api/embed" -d "$(python3 -c '
 import json,sys; print(json.dumps({"model": sys.argv[1], "input": "slot probe",
-  "options": {"num_ctx": 512}}))' "$1")" >/dev/null
+  "options": {"num_ctx": 512, "num_gpu": 0}}))' "$1")" >/dev/null
   else
     curl -sf "$EP/api/chat" -d "$(python3 -c '
 import json,sys; print(json.dumps({"model": sys.argv[1], "stream": False, "think": False,
@@ -85,9 +101,29 @@ for m in "$EMBED" "$PLANNER" "$CODER"; do ollama stop "$m" >/dev/null 2>&1 || tr
 sleep 3
 ps_snapshot 0_clear
 
-echo; echo "== step 1: embedder only =="
+echo; echo "== step 1: embedder only (MUST be CPU-resident) =="
 load "$EMBED" embed || exit 1
 ps_snapshot 1_embed
+# Refuse loudly rather than produce an uninterpretable verdict. Every conclusion in this probe
+# depends on the embedder holding 0 VRAM, so that a slot eviction cannot be confused with a
+# VRAM eviction. This is the check whose absence made v1 worthless.
+python3 - "$OUT/ps_1_embed.json" "$EMBED" <<'GATE' || exit 1
+import json, pathlib, sys
+ms = json.loads(pathlib.Path(sys.argv[1]).read_text()).get("models", [])
+m = next((x for x in ms if x["name"] == sys.argv[2]), None)
+if m is None:
+    print(f"ABORT: {sys.argv[2]} is not resident after the embed call.", file=sys.stderr)
+    sys.exit(1)
+v = m.get("size_vram", 0)
+if v:
+    print(f"ABORT: embedder is GPU-resident ({v/1048576:.0f} MiB), expected CPU (0 MiB).\n"
+          "  num_gpu:0 did not take effect. Evicting a GPU-resident embedder frees real VRAM,\n"
+          "  so a slot eviction could not be distinguished from a VRAM eviction and the run\n"
+          "  would be uninterpretable - this is how run 20260808_0850 was wasted.",
+          file=sys.stderr)
+    sys.exit(1)
+print("   OK: embedder CPU-resident, size_vram=0 - evicting it would free zero VRAM.")
+GATE
 
 echo; echo "== step 2: + planner (should be 2 resident, at the limit) =="
 load "$PLANNER" chat || exit 1
@@ -99,24 +135,33 @@ ps_snapshot 3_all_three
 
 echo
 echo "=============================== VERDICT ==============================="
-python3 - "$OUT" "$EMBED" "$PLANNER" "$CODER" <<'PY'
+python3 - "$OUT" "$EMBED" "$PLANNER" "$CODER" <<'VERDICT'
 import json, pathlib, sys
-out, embed, planner, coder = pathlib.Path(sys.argv[1]), *sys.argv[2:5]
-names = lambda f: {m["name"] for m in json.loads((out/f).read_text()).get("models", [])}
-final = names("ps_3_all_three.json")
+out = pathlib.Path(sys.argv[1]); embed, planner, coder = sys.argv[2:5]
+final = {m["name"]: m.get("size_vram", 0)
+         for m in json.loads((out / "ps_3_all_three.json").read_text()).get("models", [])}
 print(f"resident after step 3: {sorted(final) or '(none)'}")
-both_roles = planner in final and coder in final
-if both_roles:
-    print("RESULT: BOTH ROLE MODELS RESIDENT - the scheduler evicted the embedder.")
-    print("  =2 does NOT prevent role co-residency. The router MUST call `ollama stop` on the")
-    print("  outgoing role model explicitly; MAX_LOADED_MODELS is not a sufficient backstop.")
-    print("  At 131,072 this configuration would demand 52,530 MiB on a 32,607 MiB card.")
-elif planner in final and embed in final:
-    print("RESULT: coder did not displace the pair - inspect ps_3 manually.")
-elif coder in final and embed in final:
-    print("RESULT: the scheduler evicted the PLANNER and kept the embedder.")
-    print("  =2 IS a correct backstop: exactly one role model plus the CPU embedder.")
+print()
+if embed in final and planner not in final and coder in final:
+    print("RESULT: the slot limit evicted the PLANNER and KEPT the CPU embedder.")
+    print("  Evicting the embedder would have freed 0 MiB, so the scheduler is not blindly")
+    print("  VRAM-greedy: =2 behaves as intended - one GPU role model plus the CPU embedder.")
+elif embed not in final and coder in final:
+    print("RESULT: the CPU embedder was EVICTED despite holding 0 MiB of VRAM.")
+    print("  Freeing it bought nothing, so only the slot limit explains it. =2 does NOT reserve")
+    print("  a slot for the embedder; it will reload on every role switch. Options: raise to 3")
+    print("  (which permits two GPU role models by slot policy - harmless here only because the")
+    print("  VRAM ceiling forbids it anyway), or accept the reload and measure its cost.")
+elif coder not in final:
+    print("RESULT: the coder is not resident - the load failed or was unloaded immediately.")
+    print("  Inspect the ps_*.json files; draw no slot-policy conclusion from this.")
 else:
-    print("RESULT: unexpected - inspect the ps_*.json files.")
+    print("RESULT: unexpected combination - inspect the ps_*.json files.")
+print()
+print("Independent of slot policy, measured in run 20260808_0850 at num_ctx=4096:")
+print("  planner 20,364 MiB + coder 25,578 MiB = 45,942 MiB vs a 32,607 MiB card.")
+print("  Weights dominate at every context, so the two role models can NEVER co-reside on this")
+print("  card. MAX_LOADED_MODELS is therefore NOT what prevents co-residency - the VRAM ceiling")
+print("  is. What the setting actually governs is reload churn.")
 print(f"\nartifacts: {out}")
-PY
+VERDICT

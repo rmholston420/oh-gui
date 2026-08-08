@@ -1623,3 +1623,35 @@ trust-dial stop). No further Path E runs are required for Phase 0.
   KNOWN_ISSUES.md, BUILD_LOG.md, SESSION_HANDOFF.md.
 - Stop condition: ADR-005 Ratified. Its last pending consequence is now retracted rather than
   applied, so **ADR-005 has no open actions.**
+
+## 2026-08-08 08:56 EDT — LRU probe v1 INVALID; co-residency question settled by arithmetic instead
+
+- Stage: Phase 0 baseline. Run `20260808_0850`, artifacts
+  `~/.oh-gui/oneoff/max_loaded_lru/20260808_0850`.
+- **Probe v1 was invalid — my defect, two independent errors.**
+  1. It omitted `"num_gpu": 0` on the `/api/embed` call, so the embedder loaded onto the **GPU**
+     at `size_vram=2754 MiB` instead of CPU-resident at 0 (ADR-004 A#2). Evicting a GPU-resident
+     embedder frees real VRAM, so its eviction cannot be attributed to the slot limit. That
+     confound is the entire reason the probe exists.
+  2. Its stated rationale was false. I wrote that `num_ctx=4096` "lets both physically fit, which
+     isolates the question to LRU policy alone." Measured: planner **20,364** + coder **25,578** =
+     **45,942 MiB** vs a **32,607 MiB** card. Weights dominate at every context. I asserted the
+     arithmetic instead of computing it — the same error class I had flagged twice in the previous
+     two hours, once against my own scoring and once against a model's `-5,057 MiB` conclusion.
+- **What the run nonetheless SETTLED.** The two role models can never co-reside on this card at
+  any `num_ctx`. So `OLLAMA_MAX_LOADED_MODELS` was **never** what prevents co-residency — the VRAM
+  ceiling is, and ADR-005's framing of the setting as the enforcement mechanism was wrong in both
+  directions (the retracted `=1` and the retained `=2`). Step 3 also showed the scheduler evicts
+  beyond the slot minimum: loading the coder evicted **both** resident models.
+- **What remains open, reframed.** The setting governs **embedder reload churn**, not OOM
+  protection. Whether `=2` reserves a slot for the CPU embedder is still unmeasured.
+- **Probe v2.** Forces `num_gpu:0`, and **hard-fails with an explicit diagnosis** if step 1 does
+  not report `size_vram: 0`, rather than proceeding to an uninterpretable verdict — per the
+  standing rule that a knob a caller can reach for must work or refuse loudly. Verdict logic
+  rewritten around the real discriminator: a CPU-resident embedder holds 0 MiB, so if it is
+  evicted anyway, only the slot limit can explain it.
+- Thermal: peak 39 C, 112 W max, 0 throttled, 20 s. Non-issue.
+- Files: `bench/oneoff/max_loaded_lru_probe.sh` (v2), KNOWN_ISSUES.md, BUILD_LOG.md,
+  SESSION_HANDOFF.md.
+- Stop condition: ADR-005 still has no open actions; this is a KNOWN_ISSUES item, not an ADR
+  blocker.

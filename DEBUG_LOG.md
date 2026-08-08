@@ -495,3 +495,29 @@ but not read by the code it appears to configure is this same bug. `NUM_CTX` in
 session (`NUM_CTX=2048` then a separate command) and therefore never reached the script, which
 ran at its 512 default. That one is shell semantics rather than a harness defect, but the
 observable outcome — a requested parameter silently not applied — is identical.
+
+## 2026-08-08 08:56 EDT — probe measured the wrong configuration: embedder on GPU, not CPU
+
+- **Symptom:** `bench/oneoff/max_loaded_lru_probe.sh` step 1 reported
+  `qwen3-embedding:4b  GPU  size_vram=2754 MiB`, and the verdict printed
+  `RESULT: unexpected - inspect the ps_*.json files.`
+- **Affected:** Phase 0 baseline, `bench/oneoff/max_loaded_lru_probe.sh` (v1), ADR-004 A#2
+  placement invariant.
+- **Root cause:** the `/api/embed` payload sent `{"num_ctx": 512}` with **no `"num_gpu": 0`**.
+  Ollama defaults to GPU placement, so the probe silently measured a configuration the project
+  does not use. The 05:50 EDT measurement that originally settled the slot question had used
+  `num_gpu:0` and reported `size_vram: 0`; I did not carry that option across.
+- **Why it mattered rather than being cosmetic:** the probe's whole discriminator is that a
+  CPU-resident embedder holds 0 MiB, so evicting it frees nothing and can only be explained by the
+  slot limit. A GPU-resident embedder frees 2,754 MiB, making slot eviction and VRAM eviction
+  indistinguishable. The run could not have answered its question no matter what it printed.
+- **Fix applied:** v2 sends `{"num_ctx": 512, "num_gpu": 0}` and adds a gate immediately after
+  step 1 that aborts with an explicit explanation if `size_vram != 0`, instead of continuing to an
+  uninterpretable verdict.
+- **Second defect, same run:** the `WHY THIS EXISTS` block claimed `num_ctx=4096` lets both role
+  models fit. Measured 20,364 + 25,578 = 45,942 MiB vs 32,607 MiB. Comment corrected in place and
+  the false claim retained as a labelled retraction so the reasoning error stays visible.
+- **Lesson for future probes:** when a probe's validity depends on a placement or option, assert
+  that option in the probe itself. Both defects here were claims in comments that no line of code
+  enforced.
+- Files: `bench/oneoff/max_loaded_lru_probe.sh`.

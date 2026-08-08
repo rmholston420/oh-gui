@@ -36,10 +36,16 @@ MUST call `ollama stop` on the outgoing role model (`OLLAMA_KEEP_ALIVE=-1`, noth
 
     cd ~/dev/oh-gui && git pull && bash bench/oneoff/max_loaded_lru_probe.sh
 
-Answers the one open question about `OLLAMA_MAX_LOADED_MODELS=2`: when the limit is exceeded, does
-the scheduler evict the planner (so `=2` is a correct backstop) or the embedder (so both role
-models go co-resident and only the router's explicit `ollama stop` protects the card)? Changes no
-configuration, restarts nothing.
+**Probe v2.** v1 (run `20260808_0850`) was invalid: it omitted `num_gpu:0`, so the embedder loaded
+onto the GPU at 2,754 MiB instead of CPU-resident at 0, which makes slot eviction and VRAM eviction
+indistinguishable. v2 forces CPU placement and hard-fails if step 1 does not report
+`size_vram: 0`.
+
+The question is now narrower, because v1 settled the larger one: **co-residency is physically
+impossible** (planner 20,364 + coder 25,578 = 45,942 MiB vs a 32,607 MiB card, weights dominating
+at every context), so `MAX_LOADED_MODELS` was never the protection — the VRAM ceiling is. What
+remains is whether `=2` reserves a slot for the CPU embedder, i.e. **reload churn**, not OOM.
+Changes no configuration, restarts nothing.
 
 **`OLLAMA_MAX_LOADED_MODELS` stays 2.** The 2 -> 1 change was RETRACTED, not applied — ADR-005
 Amendment #4. A CPU-placed model occupies a model slot (measured, BUILD_LOG 05:50 EDT), so `=1`
