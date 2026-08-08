@@ -132,3 +132,29 @@ _No entries yet. First debugging action in this repo appends below._
 - **Residual, benign:** `could not reset the clocks table` and `could not get current
   performance level` both come from the AMD controller for the Raphael iGPU, not the 5090.
 
+## 2026-08-08 07:45 EDT - gpu.sh thermal summary crashed before printing its verdict
+
+- **Symptom:** `NameError: name 'over_warn' is not defined` in the embedded Python of
+  `gpu_watch_stop`. The summary printed samples/temp/power/sm-clock and then died, so the
+  `time >= WARN` line, the VERDICT line, and the thermal-throttle warning never appeared.
+- **Affected:** `bench/lib/gpu.sh`, therefore every bench script that sources it.
+- **Root cause:** self-inflicted, introduced in the throttle-parser split commit
+  (`0851974`..). The rewrite replaced a single `throttled` list with separate `pcap` and
+  `thermal` lists and recomputed those, but `over_warn`/`over_max` were left as bare
+  references with their assignments dropped.
+- **Fix:** compute both from the sample list; at 1 Hz a sample count is a second count.
+  ```python
+  over_warn=sum(1 for x in t if x>=WARN)
+  over_max =sum(1 for x in t if x>=MAX)
+  ```
+- **Verified:** extracted the heredoc body and byte-compiled it with `py_compile`, then
+  asserted both assignment strings are present in the committed file.
+- **Repeat of a known process failure.** DEBUG_LOG 06:55 already recorded: `bash -n` proves
+  shell syntax and says nothing about an embedded interpreter's source. That lesson was
+  recorded and then not applied to the very next edit of the same file. Standing rule for
+  `bench/lib/gpu.sh`: every change must (1) `bash -n`, (2) byte-compile the embedded
+  Python, (3) assert on file content.
+- **Consequence:** the "VERDICT: thermally fine" lines quoted in earlier BUILD_LOG entries
+  for runs after `0851974` were never actually emitted. The underlying CSVs are unaffected -
+  sampling and the cutout both worked; only the summary renderer failed.
+

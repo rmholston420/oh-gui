@@ -126,6 +126,9 @@ if not rows: print(" no samples"); sys.exit(0)
 t=[float(r["temp_c"]) for r in rows]; p=[float(r["power_w"]) for r in rows]
 s=[float(r["sm_mhz"]) for r in rows]; u=[float(r["util_pct"]) for r in rows]
 busy=[x for x,v in zip(t,u) if v>50]
+# 1 Hz sampler, so a sample count is a second count.
+over_warn=sum(1 for x in t if x>=WARN)
+over_max =sum(1 for x in t if x>=MAX)
 # field is a 2-char flag: [SW power cap][thermal slowdown]
 def flag(r, i):
     v = (r.get("pcap_thermal") or "00")
