@@ -381,3 +381,31 @@ Entry format:
   plus tok/s in the quality bench will show it.
 - **Stop condition:** Phase 0 exit still NOT met.
 
+## 2026-08-08 04:40 EDT - Second coder candidate: Devstral
+
+- **Stage:** Phase 0 (baseline metrics)
+- **Surveyed local coding models against the 32,607 MiB envelope:**
+
+  | Model | Size (q4_K_M) | Params | Verdict |
+  |---|---:|---|---|
+  | `qwen3-coder:30b` | 19 GB | 30B A3B MoE | incumbent |
+  | **`devstral:24b`** | **14 GB** | **24B dense, 128K** | **CANDIDATE** |
+  | `qwen3-coder-next` | **52 GB** | 80B A3B, 256K | REJECTED - exceeds VRAM by 20 GB |
+  | `qwen2.5-coder:32b` | 20 GB | 32B dense | REJECTED earlier (32K native, ~256 KB/tok KV) |
+
+- **Rationale for Devstral:** built jointly by Mistral AI and All Hands AI explicitly for
+  coding agents (https://www.openhands.dev/blog/devstral-a-new-state-of-the-art-open-model-for-coding-agents).
+  Apache 2.0. Since OH-GUI wraps OpenHands (ADR-001), this is the most decision-relevant
+  comparison available: it is the only candidate tuned for the exact scaffold we ship.
+- **Version caveat - UNRESOLVED, operator input needed.** The official Ollama library
+  carries only `devstral:24b` = Devstral Small **1.0** (2505), scoring 46.8% SWE-Bench
+  Verified with OpenHands. Devstral Small **1.1** (2507) scores **53.6%**
+  (https://huggingface.co/mistralai/Devstral-Small-2507), +6.8 points, but is NOT in the
+  official Ollama namespace - only community re-uploads
+  (`seamon67/Devstral1.1-2507:24b-q4_K_M`, `SimonPu/Devstral-Small:2507-Q4_K_XL`, 15 GB).
+  Verified-provenance 1.0 vs better-but-unverified 1.1 is a genuine tradeoff; not decided
+  unilaterally. `devstral:24b` (official) added to the sweep as the safe default.
+- **VRAM expectation deliberately NOT predicted.** The last KV prediction (35b) was wrong;
+  24B dense with GQA will be measured, not estimated.
+- **Stop condition:** Phase 0 exit still NOT met.
+
