@@ -230,3 +230,22 @@ Entry format:
   grounds, not just VRAM - CPU placement removes the eviction race entirely.
 - **Stop condition:** Phase 0 exit still NOT met. Next: `bench/embed_cpu_vs_gpu.sh`.
 
+## 2026-08-08 04:00 EDT - Embedder candidate matrix added (nomic + embeddinggemma)
+
+- **Stage:** Phase 0 (baseline metrics)
+- **Built/changed:** `bench/embed_matrix.sh` supersedes `bench/embed_cpu_vs_gpu.sh`.
+  Matrix of {qwen3-embedding:0.6b, nomic-embed-text, embeddinggemma:300m} x {gpu, cpu},
+  measuring median single-chunk latency, 64-chunk batch throughput, real output
+  dimensionality, VRAM cost, and Ollama processor split. Skips models not pulled.
+- **Motivation:** operator proposed nomic-embed-text as a smaller alternative.
+- **Verified quality data:** Qwen3-Embedding-0.6B ~70.7 MTEB-eng-v2
+  (https://d-central.tech/local-embedding-models/); nomic-embed-text ~62-64
+  (https://www.premai.io/blog/best-embedding-models-for-rag-2026-ranked-by-mteb-score-cost-and-self-hosting/).
+  Dims differ: 1024 vs 768 - a vector-store schema change, not a drop-in swap.
+- **Position:** on CPU the weight-size advantage of nomic is nearly irrelevant (128 GB
+  RAM). Only measured CPU latency justifies trading ~7 MTEB points. Decision deferred to
+  the matrix results.
+- **Lock-in note:** the embedder must be chosen BEFORE the first index build; changing it
+  later requires re-embedding the entire corpus.
+- **Stop condition:** Phase 0 exit still NOT met.
+

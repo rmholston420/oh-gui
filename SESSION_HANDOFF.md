@@ -35,7 +35,8 @@ Server env: `OLLAMA_FLASH_ATTENTION=1`, `OLLAMA_KV_CACHE_TYPE=f16`,
 ```bash
 cd ~/dev/oh-gui && git pull
 bash bench/ollama_env.sh f16
-bash bench/embed_cpu_vs_gpu.sh   # decides embedder placement first
+ollama pull nomic-embed-text; ollama pull embeddinggemma:300m
+bash bench/embed_matrix.sh       # decides embedder model AND placement first
 bash bench/validate_config.sh    # then validates the resulting config
 ```
 
