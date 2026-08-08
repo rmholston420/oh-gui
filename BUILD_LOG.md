@@ -2784,3 +2784,24 @@ split.
   left to the operator: the live snap daemon still reports ~30 GB reclaimable images and ~4.9 GB of
   stopped containers. Its 122 GB of local volumes is **not** to be pruned — that is where Kosmos and
   other persistent state lives.
+
+## 2026-08-08 19:45 EDT — Volumes ruled off-limits; handoff rewritten
+
+- **Stage / plugin / port:** Phase 0 · host maintenance · no port touched
+- **What changed:** Operator instruction "Leave the local volumes untouched" recorded as a standing
+  constraint. No `docker volume` subcommand was run at any point during the reclaim; the only
+  deletions were `rm -rf /var/lib/docker` and `rm -rf /var/lib/containerd`, both outside the snap
+  data-root, so the 69 local volumes (~122 GB) were never at risk.
+  Rewrote `SESSION_HANDOFF.md` per its overwrite discipline. Two structural changes:
+  1. Added a **"Standing operator constraints — CARRY FORWARD VERBATIM"** section at the top. The
+     handoff is overwritten every session, so a durable prohibition recorded only in the body would
+     be destroyed at the next session end. The no-volume-prune rule is constraint 1.
+  2. Added a **"Known host state (Colossus)"** section so the post-reclaim daemon topology, the
+     mask-not-purge rationale, and the loss of `forge-oh-bff:latest` survive into the next session.
+- **Also corrected:** the previous handoff header was stamped `19:55 EDT`, a timestamp 15 minutes in
+  the future relative to when it was written. Now `19:45 EDT`.
+- **Files touched:** `SESSION_HANDOFF.md`, `BUILD_LOG.md`
+- **Ports / adapters affected:** none
+- **PORTING_LEDGER / ADR updated:** none
+- **Stop-condition status:** met. Disk reclaim closed at 247 GB with volumes intact. No operator
+  question outstanding. Next action unchanged: the ADR-013-compliant task set.
