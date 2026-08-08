@@ -53,6 +53,7 @@ try {
   await shot("40-landed");
 
   if (!(await has(page, "conversation-panel-new-thread-picker"))) throw new Error("no new-thread picker");
+  say(`\nfixture on disk: ${FIXTURE}`);
   await page.locator('[data-testid="conversation-panel-new-thread-picker"]').first().click();
   await page.waitForTimeout(2500);
   await dump("new-thread popover");
@@ -61,18 +62,53 @@ try {
   if (await has(page, "add-workspaces-button")) {
     await page.locator('[data-testid="add-workspaces-button"]').first().click();
     await page.waitForTimeout(3000);
-    await dump("add-workspaces flow");
-    await shot("42-add-workspaces");
-    // Does it take a typed path? Probe without committing.
-    const typed = page.locator('input[type="text"]:visible, input:not([type]):visible').first();
-    if (await typed.count()) {
-      await typed.fill(FIXTURE).catch(() => {});
-      await page.waitForTimeout(2000);
-      say(`\n   typed fixture path into the first visible text input — did anything resolve?`);
-      await dump("after typing fixture path");
-      await shot("43-path-typed");
-    } else { say(`\n   no visible text input in the add-workspaces flow`); }
-    say(`\n   STOPPING before commit — not creating a workspace until we choose to.`);
+    await shot("42-folder-browser");
+
+    // Enumerate the folder browser itself, not the whole page. probe4 v1 typed into "the first
+    // visible text input", which turned out to be the BACKEND SELECTOR combobox reading "Local",
+    // outside the dialog entirely. It cleared it and surfaced Add Backend / Manage Backends.
+    // Nothing was committed, but a blind global heuristic can reach controls that change app
+    // state unrelated to what is being probed. Scope to the component under test.
+    const fb = (await ids(page)).filter((x) => /folder|workspace|browser|dir|path|repo/i.test(x));
+    say(`\n-- every folder/workspace test id (${fb.length}) --`);
+    fb.forEach((x) => say(`   ${x}`));
+
+    const sidebar = fb.filter((x) => x.startsWith("folder-browser-sidebar-"))
+      .map((x) => x.replace("folder-browser-sidebar-", ""));
+    say(`\n-- sidebar shortcuts (${sidebar.length}) --`);
+    say(`   ${sidebar.join(", ")}`);
+
+    // THE question: can it see hidden directories? The fixture is under ~/.oh-gui, and if
+    // dotfiles are not listed the fixture must move before the baseline can use a workspace.
+    const dotted = sidebar.filter((x) => x.startsWith("."));
+    say(`\n-- hidden directories --`);
+    say(`   dot-entries in sidebar: ${dotted.length ? dotted.join(", ") : "NONE"}`);
+    const bodyTxt = (await page.locator("body").innerText().catch(() => "")).replace(/\s+/g, " ");
+    say(`   ".oh-gui" appears anywhere on screen: ${bodyTxt.includes(".oh-gui") ? "YES" : "no"}`);
+    say(`   -> if NONE/no, the fixture at ~/.oh-gui/baseline/fixture is unreachable by this`);
+    say(`      browser and must move to a visible path before a workspace can point at it.`);
+
+    // Is there a path input INSIDE the dialog?
+    const dlg = page.locator('[role="dialog"], [data-testid*="folder-browser"]').first();
+    if (await dlg.count()) {
+      const dlgFields = await dlg.locator("input,textarea").evaluateAll((es) => es.map((e) => ({
+        type: e.getAttribute("type"), tid: e.getAttribute("data-testid"),
+        ph: e.getAttribute("placeholder"), aria: e.getAttribute("aria-label"), val: e.value })));
+      say(`\n-- inputs INSIDE the dialog (${dlgFields.length}) --`);
+      dlgFields.forEach((f) => say(
+        `   input[${f.type}] tid=${f.tid} ph="${f.ph || ""}" aria="${f.aria || ""}" val="${f.val || ""}"`));
+      const dlgBtns = await dlg.locator("button").evaluateAll((es) => es.map((e) => ({
+        t: (e.innerText || e.getAttribute("aria-label") || "").trim().slice(0, 40),
+        tid: e.getAttribute("data-testid") })).filter((b) => b.t || b.tid));
+      say(`-- buttons INSIDE the dialog (${dlgBtns.length}) --`);
+      dlgBtns.slice(0, 60).forEach((b) => say(`   "${b.t}"  [${b.tid}]`));
+      say(`-- dialog text --`);
+      say(`   ${(await dlg.innerText().catch(() => "")).replace(/\s+/g, " ").slice(0, 700)}`);
+    } else {
+      say(`\n   no [role=dialog] found — the folder browser is not a modal;`);
+      say(`   scoping will need a different container selector.`);
+    }
+    say(`\n   STOPPING before commit — no workspace created.`);
   } else {
     say(`\n   MISSING add-workspaces-button on ${page.url()}`);
   }
