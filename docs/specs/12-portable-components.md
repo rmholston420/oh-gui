@@ -24,6 +24,15 @@
 
 ## v4.2 addition - Agent Canvas as donor source
 
+> **CORRECTED 2026-08-08 (ADR-001 Amendment #2).** The rows below name
+> `OpenHands/agent-canvas` and call it "MIT, archived Jul 27 2026 (frozen = stable donor)".
+> That is wrong on every count. `OpenHands/agent-canvas` is a **README-only stub with no LICENSE
+> file** - never vendor from it. The real donor is **`OpenHands/OpenHands`** @ tag `v1.12.0` =
+> commit `4d0fe4983b6b8e52c104c7ffa4b7be8c7ab5a364`, which is MIT (`LICENSE` at root), whose root
+> `package.json` is named `@openhands/agent-canvas`, and which is **not archived** - so the
+> "frozen, no upgrade treadmill" premise is also false, which is exactly why it is pinned.
+> Read-only checkout: `~/dev/oh-gui-ref/agent-canvas/v1.12.0/`. See `PORTING_LEDGER.md`.
+
 | Sub-problem | Component | Integration note |
 |---|---|---|
 | Conversation UI, terminal, files, settings, browser panes | OpenHands/agent-canvas `src/components/*` | MIT, archived Jul 27 2026 (frozen = stable donor). Vendor with attribution; log each port. |

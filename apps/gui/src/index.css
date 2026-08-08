@@ -1,0 +1,17 @@
+@import 'tailwindcss';
+
+/* docs/specs/07-visual-design.md 7.1 - deep lapis / monastery-night base.
+   Saffron/amber is RESERVED for "agent active" states; do not reuse it. */
+@theme {
+  --color-night-950: #040814;
+  --color-night-900: #070d1f;
+  --color-night-800: #0b132b;
+  --color-agent-active: #f59e0b;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-night-950);
+  color: #e6edf7;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}

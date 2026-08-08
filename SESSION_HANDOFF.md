@@ -34,23 +34,23 @@ MUST call `ollama stop` on the outgoing role model (`OLLAMA_KEEP_ALIVE=-1`, noth
 
 ## Exact next action
 
-**Blocked on an operator decision.** Two Phase 0 conflicts must be settled before item 3 starts —
-see BUILD_LOG 2026-08-08 09:14 EDT:
-
-1. Baseline model set: spec says `qwen3.6:27b` + `qwen3-coder:30b`; ADR-005 selected
-   `qwen3.6:35b-a3b-mtp-q4_K_M` as coder. Which pair does the Phase 0 metrics report measure?
-2. `11-dev-plan.md` demands a **dense** 27B-35B model; the ADR-005 coder is MoE. Dense planner only,
-   or drop "dense"?
-3. First-run wizard (§3.4) needs a frontend that does not exist yet, and states a trust-dial default
-   whose implementation is Phase 1. Confirm Phase 0 ships copy + shell only.
-
-Also fold in, one command, confirms the reference-checkout lock held:
+Pull and confirm the scaffold gate is green on Colossus (also confirms the reference-checkout lock):
 
 ```bash
-bash ~/dev/oh-gui/scripts/provision-reference-checkout.sh
+cd ~/dev/oh-gui && git pull \
+  && bash scripts/provision-reference-checkout.sh \
+  && cd apps/gui && node --version && npm ci && npm run gate
 ```
 
-Expect `ok tree is read-only` on this second (verify-only) run.
+Expect `ok tree is read-only` from the first, then lint clean, **4 tests passed**, `tsc -b` clean,
+and a `vite build` summary. **If `node --version` is < 22.14**, say so before we write component
+tests - jsdom 30 crashes on Node 20 (`webidl.util.markAsUncloneable`). The current suite avoids
+jsdom deliberately, so the gate itself passes on Node 20.
+
+Then the next slice is the **first-run wizard** (`docs/specs/03-layout.md` §3.4): seven steps,
+must state and justify the default trust-dial stop `ConfirmRisky()` in its own UI copy, seed the
+"lines accepted without inspection" counter at zero, and show a clearly-labelled example plan tree.
+Phase 0 ships copy + shell; the working dial is Phase 1's authorization slice.
 
 ## Ollama configuration — SETTLED, do not revisit
 
@@ -72,9 +72,25 @@ stopped calling `ollama stop`.
 1. ~~Upstream artifact pins~~ — **DONE 2026-08-08**, `docs/UPSTREAM_PINS.md`.
 2. ~~Read-only stock Agent Canvas reference checkout~~ — **DONE 2026-08-08 09:14**, provisioned on
    Colossus at `~/dev/oh-gui-ref/agent-canvas/v1.12.0` (21M, MIT, commit `4d0fe498`).
-3. **Baseline metrics report** — model set disputed, see "Exact next action".
-4. First-run wizard stating the default trust-dial stop `ConfirmRisky()` in-UI (§3.4) — needs a
-   frontend that does not exist yet.
+3. **Baseline metrics report** — model set SETTLED (ADR-005 Amdt #6): planner `qwen3.6:27b` +
+   coder `qwen3.6:35b-a3b-mtp-q4_K_M`; "dense" retired. Per `02-repo-setup.md` items 5-7: 5-10
+   representative tasks, time-to-first-review, turns-to-acceptance, lines-accepted-without-
+   inspection, "lost track" incidents, GPU temp/power, plus the mental-model-formation baseline.
+   Runs against the stock app — use the disposable copy
+   (`bash scripts/provision-reference-checkout.sh --run-copy`), never the pristine tree.
+4. First-run wizard (§3.4) — **frontend now scaffolded**, see below.
+
+## Frontend — scaffolded 2026-08-08, gate green
+
+`apps/gui`, Vite 8 + React 19 + Tailwind 4 + Vitest 4 + Playwright. `npm run gate` = lint + test +
+`tsc -b` + build.
+
+- **TypeScript is pinned to 6.0.3 on purpose. Do not "upgrade" to 7.x** — `typescript-eslint@8.66`
+  peers `typescript >=4.8.4 <6.1.0`, so TS 7 silently breaks linting.
+- **jsdom is not on the critical path.** Default Vitest env is `node`; jsdom 30 needs Node >=22.14.
+  Component tests opt in per-file with `// @vitest-environment jsdom`. Unverified on Colossus.
+- **`@openhands/typescript-client` is a types-only devDependency** (ADR-001 Amdt #3). Never import
+  it at runtime. Two gates enforce this, both proven to fail on a real violation.
 
 ## Agent Canvas donor — corrected 2026-08-08, read before vendoring
 

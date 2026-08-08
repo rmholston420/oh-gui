@@ -609,3 +609,28 @@ router bug that should be fixed instead.
 **Consequence for implementation:** the role-switch path needs a test asserting the embedder is
 still resident after a switch. That is the observable that distinguishes a correct router from one
 that has silently stopped calling `ollama stop`.
+
+---
+
+## Amendment #6 — 2026-08-08 — the Phase 0 baseline measures the ADR-005 pair; "dense" retired
+
+**Status: Ratified (operator decision).**
+
+`docs/specs/11-dev-plan.md` and `docs/specs/README.md` still fixed the Phase 0 baseline set as
+`qwen3.6:27b` + **`qwen3-coder:30b`**, and required the report to run "against a **dense** Qwen3
+27B-35B model". Both predate this ADR and conflict with it: `qwen3-coder:30b` was benched and
+**not selected**, and the selected coder `qwen3.6:35b-a3b-mtp-q4_K_M` is **MoE** (~3B active), so
+it can never satisfy "dense".
+
+**Decision.** The Phase 0 baseline metrics report is measured against the ADR-005 selection —
+planner `qwen3.6:27b` (dense), coder `qwen3.6:35b-a3b-mtp-q4_K_M` (MoE). The "dense" qualifier is
+retired from the spec.
+
+**Rationale.** A baseline exists to be compared against later builds of the system that ships.
+Baselining `qwen3-coder:30b` would measure a configuration this project has already rejected.
+Comparability with the earlier bench runs is preserved separately: those runs are recorded per-cell
+under `~/.oh-gui/bench_path_e/` and in `SCORING-20260808_0705.md`, and are not disturbed by this.
+
+**Consequences.** `11-dev-plan.md` and `docs/specs/README.md` amended. The report must record
+variant and quantization per `02-repo-setup.md` item 7, which the MoE coder makes more important,
+not less.

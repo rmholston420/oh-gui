@@ -297,3 +297,43 @@ stub fails closed rather than silently producing an unlicensed reference.
 - Attribution requirement is now concrete: SPDX header naming `OpenHands/OpenHands`, the file path,
   and commit `4d0fe4983b6b8e52c104c7ffa4b7be8c7ab5a364`.
 - Phase 0 exit item 2 is **not** met until the script has been run on Colossus and logged.
+
+---
+
+## Amendment #3 — 2026-08-08 — `@openhands/typescript-client` is a TYPES-ONLY devDependency; the item 4 gate now exists
+
+**Status: Ratified. Closes the KNOWN_ISSUES entry opened by Amendment #1.**
+
+### The tension
+
+`docs/specs/02-repo-setup.md` item 1 and `13-hard-constraints.md` both require
+`@openhands/typescript-client` to be "pinned in the frontend lockfile". But item 4 of this ADR says
+the frontend talks **only** to the middleware, never to the Agent Server — and Amendment #1 found
+the package ships a working `LocalConversation` plus `llm/` and `security/` modules. Taken together
+the spec appeared to mandate shipping a bypass into the browser.
+
+### Resolution
+
+The package is a **`devDependency`, imported for types only**. Its generated
+`agent-server-schema.d.ts` (20,863 lines) is genuinely useful for typing the DTOs the middleware
+relays, and `import type` is erased at build time, so **nothing reaches the bundle** — no `ws`, no
+`@openrouter/sdk`, no `LocalConversation`. The spec's lockfile requirement is satisfied
+(`apps/gui/package-lock.json`); item 4 is preserved.
+
+### Enforcement — two independent gates, both demonstrated failing
+
+1. **ESLint** `@typescript-eslint/no-restricted-imports` with `allowTypeImports: true`, blocking the
+   client, its `llm`/`security`/`conversation/local-conversation`/`workspace` subpaths,
+   `@openrouter/sdk`, and `framer-motion`.
+2. **A Vitest source scan** (`src/__tests__/import-boundary.test.ts`) that greps for runtime
+   `import` / `export … from` / `require()` / dynamic `import()` of the same specifiers, ignoring
+   `import type`.
+
+The second exists because **a lint rule can be switched off with an inline disable comment by the
+very code being gated** — the same objection Principle 8 raises against display-as-enforcement. Both
+were verified against a deliberate violation: ESLint failed it; with the rule silenced, the test
+still failed it; a type-only import passed both. The test also carries three self-tests so the
+detector cannot silently rot into a no-op.
+
+**Residual gap, stated plainly:** these gates cover this repo's source. They do not stop a future
+dependency from importing the client transitively. Bundle-level assertion is deferred.

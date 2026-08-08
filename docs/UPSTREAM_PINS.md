@@ -14,6 +14,11 @@ Required by `docs/specs/02-repo-setup.md` item 1 (as replaced by
 > the Phase 0 exit criterion; generating lockfiles is Phase 1 scaffolding work. This file is the
 > source those lockfiles MUST be generated from verbatim. When they exist, this file stays as the
 > human-readable record and the lockfiles become the enforcement.
+>
+> **UPDATE 2026-08-08:** the frontend is now scaffolded, so
+> **`apps/gui/package-lock.json` exists and pins `@openhands/typescript-client@1.37.0`** — as a
+> **`devDependency`, imported for types only** (ADR-001 Amendment #3). The middleware Python
+> project is still unscaffolded, so the four `openhands-*` pins remain recorded here only.
 
 ---
 

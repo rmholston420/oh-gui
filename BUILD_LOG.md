@@ -1809,3 +1809,54 @@ any build starts. Recorded here; no spec or ADR edited yet.
    the trust-dial default `ConfirmRisky()`, whose implementation is Phase 1's authorization slice.
    Phase 0 can only deliver the wizard's copy and shell, not a functioning dial. Boundary needs
    stating explicitly before building.
+
+## 2026-08-08 09:26 EDT — frontend scaffolded at `apps/gui`; item 4 gate implemented; two operator decisions applied
+
+- Stage: Phase 0 exit items 3-4 prerequisite. Operator chose **ADR-005 selection** for the baseline
+  and **scaffold frontend now**.
+- **Stack, every version resolved from the npm registry rather than recalled.** Vite 8.2.1,
+  React 19.2.8, Vitest 4.1.10, Playwright 1.62.1, Tailwind 4.3.3 (`@tailwindcss/vite`, CSS-first,
+  no config file), motion 13.0.0, ESLint 10.8.1, typescript-eslint 8.66.0.
+- **TypeScript pinned to 6.0.3, NOT the `latest` 7.0.2.** `typescript-eslint@8.66.0` declares
+  `peerDependencies.typescript ">=4.8.4 <6.1.0"`. Installing `latest` would have silently broken
+  linting - the exact gate this scaffold exists to provide. Caught by reading peer ranges before
+  installing.
+- **`@types/react` do not track React's version.** First install failed `ETARGET` on
+  `@types/react-dom@19.2.8`; actual are 19.2.18 / 19.2.4.
+- **jsdom 30 is broken on Node 20** - `webidl.util.markAsUncloneable is not a function` via undici.
+  The `EBADENGINE` warning was fatal, not cosmetic. Default Vitest environment set to `node`; the
+  import-boundary gate needs no DOM and must not depend on jsdom. Component tests opt in per-file
+  with `// @vitest-environment jsdom` and require **Node >=22.14**. Sandbox Node is 20.20.1, so the
+  jsdom path is **unverified** - do not assume it works until run on Colossus.
+- Also fixed by running rather than assuming: `TS5097` (`./App.tsx` extension) and `TS2882`
+  (CSS side-effect import needs `vite/client` in `types`). `vite build` succeeds even when `tsc`
+  fails, so the `gate` script runs `tsc -b && vite build` - a green `vite build` alone proves
+  nothing.
+- **ADR-001 Amendment #3 - the item 4 gate now exists.** `@openhands/typescript-client` is a
+  **types-only `devDependency`**, resolving the apparent conflict between spec item 1 ("pinned in
+  the frontend lockfile") and ADR-001 item 4 ("frontend talks only to the middleware"). `import
+  type` is erased at build, so no `ws`, no `@openrouter/sdk`, no `LocalConversation` reaches the
+  bundle. Two independent gates:
+  1. ESLint `@typescript-eslint/no-restricted-imports` with `allowTypeImports: true`.
+  2. A Vitest source scan, because **a lint rule can be disabled by the code it gates** - the same
+     objection Principle 8 raises against display-as-enforcement.
+  **Both demonstrated failing**, not merely written: a deliberate `LocalConversation` import was
+  rejected by ESLint; with the rule silenced by an inline disable, the Vitest scan still caught it;
+  a type-only import passed both. The scan carries three self-tests so it cannot rot into a no-op.
+  KNOWN_ISSUES entry CLOSED. Residual gap recorded: the gates cover this repo's source, not a
+  transitive dependency importing the client.
+- **ADR-005 Amendment #6** - Phase 0 baseline measures the ADR-005 pair (`qwen3.6:27b` +
+  `qwen3.6:35b-a3b-mtp-q4_K_M`); the "dense" qualifier is retired because the selected coder is MoE
+  and `qwen3-coder:30b` was benched and rejected. `11-dev-plan.md` and `docs/specs/README.md`
+  amended.
+- **`docs/specs/12-portable-components.md` carried the same donor defect as PORTING_LEDGER.md**
+  ("OpenHands/agent-canvas … MIT, archived Jul 27 2026 (frozen = stable donor)") and is corrected
+  the same way. That wrong attribution had propagated to three separate files.
+- Gate verified green end to end: `npm run gate` (lint + 4 tests + `tsc -b` + `vite build`) exit 0.
+- Files: `apps/gui/{package.json,package-lock.json,tsconfig.json,vite.config.ts,eslint.config.js,
+  index.html,playwright.config.ts,.gitignore}`, `apps/gui/src/{main.tsx,App.tsx,index.css}`,
+  `apps/gui/src/__tests__/{import-boundary.test.ts,setup.ts}`, `apps/gui/e2e/smoke.spec.ts`,
+  ADR-001 (Amdt #3), ADR-005 (Amdt #6), KNOWN_ISSUES, PORTING_LEDGER, 11-dev-plan, 12-portable-
+  components, specs/README, UPSTREAM_PINS, BUILD_LOG, SESSION_HANDOFF.
+- **Stop condition: scaffold complete and gated. Phase 0 items 3 and 4 still OPEN** (baseline
+  metrics report; first-run wizard). No wizard code written - that is the next slice.

@@ -2,13 +2,23 @@
 
 ## Phase 0 - Baseline audit and instrumentation
 Files: 00-ground-truth.md, 02-repo-setup.md
-Architecture decision + baseline metrics report against a dense Qwen3 27B-35B model, including GPU temp/power and mental-model-formation baselines, plus the stock-Agent-Canvas regression baseline.
+Architecture decision + baseline metrics report against the ADR-005 role pair, including GPU temp/power and mental-model-formation baselines, plus the stock-Agent-Canvas regression baseline.
+
+> **AMENDED 2026-08-08 (operator decision; ADR-005 Amendment #6).** Previously read "against a
+> **dense** Qwen3 27B-35B model", and the v4.3 status block below fixed the baseline set as
+> `qwen3.6:27b` + `qwen3-coder:30b`. Both are superseded. The baseline is measured against the
+> **ADR-005 selection**: planner `qwen3.6:27b` (dense) + coder `qwen3.6:35b-a3b-mtp-q4_K_M`.
+> The word "dense" is **retired**: the selected coder is MoE (~3B active) and could never satisfy
+> it, and `qwen3-coder:30b` was benched and rejected. Baselining a model that will never ship would
+> measure the wrong system.
 Exit criterion (v4.3): architecture decision record + baseline metrics report + upstream artifact pins recorded + first-run wizard shipped with default trust-dial stop stated in-UI.
 
 > **v4.3 status:** ADR-001 (integration boundary) and ADR-003 (single-operator; supersedes
-> ADR-002) are filed and ratified. Baseline model set fixed: `qwen3.6:27b` (planner) and
-> `qwen3-coder:30b` (coder). Outstanding for Phase 0 exit: baseline metrics report,
-> upstream artifact pins, read-only stock Agent Canvas reference checkout, first-run wizard.
+> ADR-002) are filed and ratified. ~~Baseline model set fixed: `qwen3.6:27b` (planner) and
+> `qwen3-coder:30b` (coder).~~ **Superseded 2026-08-08 by ADR-005 Amdt #6:** planner
+> `qwen3.6:27b` + coder `qwen3.6:35b-a3b-mtp-q4_K_M`.
+> Outstanding for Phase 0 exit: baseline metrics report, ~~upstream artifact pins~~ (done),
+> ~~read-only stock Agent Canvas reference checkout~~ (done), first-run wizard.
 
 ## Phase 1 - Authorization slice
 Files: 04-authorization.md, 04a-prompt-injection.md, 08-telemetry.md (8.0-8.1, 8.5, 8.6), 06-change-review.md (6.4.1-6.4.2 only). *(15-household-profiles.md removed by ADR-003.)*

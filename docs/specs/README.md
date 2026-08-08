@@ -80,4 +80,6 @@ over, and execute against one phase at a time without exceeding practical contex
   quarantine, and audit log all remain Phase 1's highest priority.
 - Principle 11 rewritten: two lenses for one operator at different times, not for different
   people. The both-lenses exit requirement survives.
-- Phase 0 baseline model set fixed: `qwen3.6:27b` (planner) + `qwen3-coder:30b` (coder).
+- ~~Phase 0 baseline model set fixed: `qwen3.6:27b` (planner) + `qwen3-coder:30b` (coder).~~
+  **Superseded 2026-08-08 (ADR-005 Amendment #6):** planner `qwen3.6:27b` + coder
+  `qwen3.6:35b-a3b-mtp-q4_K_M`. The "dense" qualifier is retired - the selected coder is MoE.

@@ -134,7 +134,10 @@ Amendment #4 retracts that change.
 
 ## 2026-08-08 09:02 EDT — frontend can bypass the policy plane via `LocalConversation`
 
-**Status: OPEN. Binding requirement with no enforcement yet. Phase 1 authorization prerequisite.**
+**Status: CLOSED 2026-08-08 by ADR-001 Amendment #3.** The client is now a types-only
+`devDependency` behind two independent gates (ESLint + a Vitest source scan), both demonstrated
+failing on a deliberate violation and passing a type-only import. Residual gap: the gates cover this
+repo's source, not a transitive dependency importing the client. Original entry follows.
 
 `@openhands/typescript-client` 1.37.0 exports a **functional** `LocalConversation` from its
 top-level barrel — local agent loop, bash tool definition, caller-supplied `toolExecutor`, plus its
