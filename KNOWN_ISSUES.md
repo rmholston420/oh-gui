@@ -82,3 +82,24 @@ fixed overhead; per-token work is invisible below 256 tokens.
   script. Re-run as `NUM_CTX=2048 bash bench/oneoff/embed_query_latency.sh` on one line if the
   long-input tail matters; it does not affect the query-band verdict.
 - Thermally irrelevant: peak 39 C, 34 W, 0 samples under load.
+
+## 2026-08-08 08:52 EDT — `MAX_LOADED_MODELS=2` eviction order is unmeasured
+
+**Status: OPEN, probe written and unrun.**
+
+`OLLAMA_MAX_LOADED_MODELS=2` is intended to mean "one GPU role model plus the CPU-resident
+embedder", enforcing ADR-004's never-co-resident invariant at the server. **Which model the
+scheduler evicts when the limit is exceeded has never been measured.**
+
+With `{qwen3-embedding:4b, qwen3.6:27b}` resident and the coder then loaded:
+
+- If it evicts the **planner** → `=2` is a correct backstop.
+- If it evicts the **embedder** → both role models go resident. At 131,072 that is
+  26,140 + 26,390 = **52,530 MiB against a 32,607 MiB card**, and `=2` provides no protection at
+  all; only the router's explicit `ollama stop` does.
+
+Run `bash bench/oneoff/max_loaded_lru_probe.sh`. It changes no configuration and restarts nothing.
+
+**Related and settled:** `=1` is NOT the fix. A CPU-placed model occupies a model slot (measured,
+BUILD_LOG 2026-08-08 05:50 EDT), so `=1` would thrash the embedder on every role switch. ADR-005
+Amendment #4 retracts that change.

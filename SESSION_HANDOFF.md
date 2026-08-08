@@ -31,20 +31,25 @@ Roles do NOT collapse. `OLLAMA_MAX_LOADED_MODELS=1` required (26,140 + 26,390 = 
   ~3,500 MiB desktop premise in `bench/gold/arch.md`; incorrect cold-gate "wrong side of warmup"
   claim; and an ADR follow-up pre-registered without a command that could execute it.
 
-## Exact next action — the last ADR-005 consequence
+## Exact next action
 
-Apply `OLLAMA_MAX_LOADED_MODELS` 2 -> 1. **`bench/lib/ollama_env.sh` and `ollama_guard`'s
-expected value must change in the SAME commit, or every preflight fails.** The live systemd user
-unit must change too, or the guard will correctly reject the running server. Not yet started —
-inspect both files before editing.
+    cd ~/dev/oh-gui && git pull && bash bench/oneoff/max_loaded_lru_probe.sh
+
+Answers the one open question about `OLLAMA_MAX_LOADED_MODELS=2`: when the limit is exceeded, does
+the scheduler evict the planner (so `=2` is a correct backstop) or the embedder (so both role
+models go co-resident and only the router's explicit `ollama stop` protects the card)? Changes no
+configuration, restarts nothing.
+
+**`OLLAMA_MAX_LOADED_MODELS` stays 2.** The 2 -> 1 change was RETRACTED, not applied — ADR-005
+Amendment #4. A CPU-placed model occupies a model slot (measured, BUILD_LOG 05:50 EDT), so `=1`
+would thrash the embedder on every role switch. ADR-005 now has **no open actions.**
 
 ## Remaining before Phase 0 Definition of Done
 
-1. `OLLAMA_MAX_LOADED_MODELS` 2 -> 1 (above).
-2. Upstream artifact pins — agent-server digest, pip/npm versions (ADR-001,
+1. Upstream artifact pins — agent-server digest, pip/npm versions (ADR-001,
    `docs/specs/02-repo-setup.md` item 1).
-3. Read-only stock Agent Canvas reference checkout (`docs/specs/03-layout.md` §3.0.1).
-4. First-run wizard stating the default trust-dial stop `ConfirmRisky()` in-UI (§3.4).
+2. Read-only stock Agent Canvas reference checkout (`docs/specs/03-layout.md` §3.0.1).
+3. First-run wizard stating the default trust-dial stop `ConfirmRisky()` in-UI (§3.4).
 
 ## Open
 

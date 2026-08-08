@@ -1592,3 +1592,34 @@ trust-dial stop). No further Path E runs are required for Phase 0.
   BUILD_LOG.md, SESSION_HANDOFF.md.
 - Stop condition: ADR-005 Ratified and now CLOSED on both roles. Remaining ADR-005 consequence:
   `OLLAMA_MAX_LOADED_MODELS` 2 -> 1, still unapplied.
+
+## 2026-08-08 08:52 EDT — MAX_LOADED_MODELS 2 -> 1 RETRACTED before application; LRU probe written
+
+- Stage: Phase 0 baseline. ADR-005 Amendment #4.
+- **Change NOT applied, and it was wrong.** ADR-005's `=1` consequence rested on "the embedder no
+  longer competes for a slot, it is on CPU." BUILD_LOG 2026-08-08 05:50 EDT had already MEASURED
+  the opposite via `/api/ps`: a CPU-placed model (`size_vram: 0`) occupies a model slot. Being on
+  CPU removes a model from the VRAM budget, not the slot budget - I conflated the two.
+  `bench/ollama_env.sh:60-66` names `1` as wrong for exactly this reason.
+- Applying `=1` would have evicted and reloaded the embedder on every planner<->coder switch, and
+  because the plan updated `ollama_guard`'s expected value in the same commit, **the preflight
+  guard would have certified the regression as correct.** Inspecting before editing is what caught
+  it; the handoff I wrote also named a file that does not exist (`bench/lib/ollama_env.sh` - the
+  real paths are `bench/lib/ollama.sh` for the guard and `bench/ollama_env.sh` for the unit
+  writer), and there are FIVE sites referencing the value, not three.
+- **Live value stays 2.** No env change, no unit edit, no restart.
+- **New open question, the inverse risk.** Whether `=2` actually prevents role co-residency is
+  unmeasured. With {embedder, planner} at the limit, loading the coder must evict something; if it
+  evicts the embedder, both role models go resident (52,530 MiB at 131,072 vs a 32,607 MiB card).
+  Filed in KNOWN_ISSUES.md.
+- **`bench/oneoff/max_loaded_lru_probe.sh` added.** Clears all models, loads embedder -> planner ->
+  coder, snapshots `/api/ps` at each step, prints a verdict. Uses `num_ctx=4096` deliberately: at
+  131,072 the role models cannot both fit under any slot policy, so a VRAM failure would mask the
+  scheduling answer. Changes no configuration and restarts nothing. Thermal instrumentation via
+  `gpu_guard` + `gpu_watch_start` (initial draft called a non-existent `gpu_guard_or_die` behind
+  `|| true`, which would have silently swallowed the check - corrected against the real function
+  list in `bench/lib/gpu.sh`).
+- Files: `bench/oneoff/max_loaded_lru_probe.sh` (new), `adrs/ADR-005-...md` (Amendment #4),
+  KNOWN_ISSUES.md, BUILD_LOG.md, SESSION_HANDOFF.md.
+- Stop condition: ADR-005 Ratified. Its last pending consequence is now retracted rather than
+  applied, so **ADR-005 has no open actions.**

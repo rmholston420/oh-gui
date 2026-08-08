@@ -505,3 +505,50 @@ drafts of the `SecurityAnalyzer` port. When the security-analyzer ADR is written
 `0824` rep 3's frozen dataclasses and `ActionType`/`TaintTag` model, and take `0836` rep 1's
 separation of `ActionDisposition` from risk level plus its `analyze_action`/`analyze_text` split.
 Neither is ratified; `bench/gold/arch.md` remains a scoring rubric, not a decision.
+
+---
+
+## Amendment #4 — 2026-08-08 — `OLLAMA_MAX_LOADED_MODELS` 2 → 1 RETRACTED, not applied
+
+**The `=1` consequence in the Decision section is WITHDRAWN. The live value stays `2`.**
+
+### The premise was already falsified when I wrote it
+
+This ADR justified `=1` with: *"The embedder no longer competes for a slot — ADR-004 A#2 placed
+it on CPU, confirmed by A#7."* That is wrong, and the measurement refuting it is in this repo,
+recorded roughly four hours before ADR-005 was drafted:
+
+> **BUILD_LOG 2026-08-08 05:50 EDT** — `/api/ps` after loading both: `qwen3-embedding:4b` with
+> `size_vram: 0` (CPU) and `qwen3.6:35b-a3b-mtp-q4_K_M` with `size_vram: 22,236,427,713` (GPU).
+> Two entries under a limit of 2 confirms the open assumption from 05:35: **a CPU-placed model
+> does occupy a model slot.** So 1 would have thrashed the embedder and 2 is the correct value.
+> Assumption closed by measurement.
+
+`bench/ollama_env.sh:60-66` carries the same rationale and names `1` explicitly as wrong.
+
+Being on CPU removes a model from the **VRAM** budget. It does not remove it from the **slot**
+budget. I conflated the two. Applying `=1` would have evicted and reloaded the embedder on every
+planner↔coder switch — a regression that the preflight guard, whose expected value I would have
+updated in the same commit, would then have certified as correct.
+
+### What `=2` does and does not buy
+
+`=2` was chosen to mean *one GPU role model + the CPU embedder*, enforcing ADR-004's
+never-co-resident invariant at the server rather than trusting the router. Whether it actually
+delivers that is **unmeasured**, and it is the inverse risk of the one I was worried about: with
+`{embedder, planner}` resident at the limit, loading the coder must evict something. If the
+scheduler evicts the **embedder**, both role models become co-resident — 26,140 + 26,390 =
+52,530 MiB at 131,072 against a 32,607 MiB card.
+
+`bench/oneoff/max_loaded_lru_probe.sh` settles it by measurement. It uses `num_ctx=4096` on
+purpose: at 131,072 the two role models cannot both fit whatever the slot policy is, so a VRAM
+failure would mask the scheduling answer. Shrinking the context isolates LRU policy.
+
+### Standing requirement, unchanged either way
+
+`OLLAMA_KEEP_ALIVE=-1` means nothing auto-unloads, so **the router must call `ollama stop` on the
+outgoing role model explicitly.** That was already in the Decision section and it remains the
+actual enforcement mechanism. `MAX_LOADED_MODELS` is a backstop, and after the probe runs we will
+know whether it is even that.
+
+No other part of ADR-005 changes. Model selection, contexts, presets and `num_predict` all stand.
