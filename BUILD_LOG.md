@@ -1860,3 +1860,19 @@ any build starts. Recorded here; no spec or ADR edited yet.
   components, specs/README, UPSTREAM_PINS, BUILD_LOG, SESSION_HANDOFF.
 - **Stop condition: scaffold complete and gated. Phase 0 items 3 and 4 still OPEN** (baseline
   metrics report; first-run wizard). No wizard code written - that is the next slice.
+
+## 2026-08-08 09:29 EDT — scaffold verified on Colossus; undeclared `@types/node` fixed by splitting the TS project
+
+- Colossus run of `provision-reference-checkout.sh` returned **`ok tree is read-only`** on the
+  existing-checkout path. That was the verification still owed from 09:14 — the fresh-clone path
+  chmods without re-reading, so the lock had never actually been *observed*. It is now.
+- Colossus Node is **v24.16.0**, so the jsdom >=22.14 constraint is moot there. Component tests can
+  opt into jsdom whenever we need them; the suite still defaults to `node`.
+- Lint and all 4 boundary tests passed on Colossus. **`tsc -b` failed** (TS2591, `node:fs`) — an
+  undeclared `@types/node` that the sandbox had been resolving through a hoisted copy. Diagnosed
+  and fixed in DEBUG_LOG 09:28. Fixed by declaring `@types/node@24.13.3` and splitting into
+  `tsconfig.app.json` (browser, no Node types) and `tsconfig.node.json` (tooling/tests), so the fix
+  does not let `fs` and `process` typecheck in browser code.
+- Both directions proven by probe: `node:fs` in browser source now fails `tsc -b`; the same import
+  in a test passes. Full gate green after `rm -rf node_modules && npm ci`.
+- Stop condition unchanged: **Phase 0 items 3 and 4 still OPEN.**

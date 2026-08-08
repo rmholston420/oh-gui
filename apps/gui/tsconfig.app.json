@@ -1,0 +1,13 @@
+{
+  // Browser code ONLY. Node types are deliberately absent: `process`, `fs` and friends
+  // must not typecheck in code that ships to a browser.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "types": ["vite/client"],
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo"
+  },
+  "include": ["src"],
+  "exclude": ["src/__tests__"]
+}

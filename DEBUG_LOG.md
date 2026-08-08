@@ -521,3 +521,33 @@ observable outcome — a requested parameter silently not applied — is identic
   that option in the probe itself. Both defects here were claims in comments that no line of code
   enforced.
 - Files: `bench/oneoff/max_loaded_lru_probe.sh`.
+
+## 2026-08-08 09:28 EDT — `tsc -b` fails on Colossus with TS2591 for `node:fs` / `node:path`
+
+- **Symptom.** `npm run gate` passed lint and all 4 tests, then:
+  `src/__tests__/import-boundary.test.ts:1:53 - error TS2591: Cannot find name 'node:fs'. Do you
+  need to install type definitions for node?` and the same for `node:path`. Found 2 errors.
+  Colossus Node v24.16.0, after `npm ci`.
+- **Stage/port.** Phase 0, `apps/gui` scaffold. No port affected.
+- **Root cause.** `@types/node` was **never declared** in `apps/gui/package.json`, but the same gate
+  passed in the authoring sandbox. It passed there because an earlier `npm install` had left a
+  transitively-hoisted `@types/node` in `node_modules`, which TypeScript picked up automatically
+  (no `types` field pins existed to stop it). `npm ci` on Colossus built the tree strictly from the
+  lockfile, the hoisted copy was absent, and the undeclared dependency surfaced. Classic
+  works-on-my-machine: **the sandbox was passing on a package it had no right to see.**
+- **Fix.** Declared `@types/node@24.13.3`, and — rather than adding `"node"` to a single global
+  `types` array — **split the TypeScript project in two**, because letting browser code typecheck
+  against `fs` and `process` would trade one defect for a worse one:
+  - `tsconfig.app.json` — `src` minus tests, `types: ["vite/client"]`, **no Node types**.
+  - `tsconfig.node.json` — `vite.config.ts`, `playwright.config.ts`, `src/__tests__`, `e2e`,
+    `types: ["node", "vitest/globals"]`.
+  - `tsconfig.json` is now a solution file referencing both; `tsconfig.base.json` holds shared
+    options with `composite: true`.
+- **Verified by execution, not assumption.** A `node:fs` import placed in browser source fails
+  `tsc -b` with TS2591; the identical import in a test file passes; and the whole gate passes after
+  `rm -rf node_modules && npm ci`, which reproduces the strict Colossus tree rather than the
+  sandbox's lucky one.
+- **Rule adopted.** Re-verify any Node-based gate with a clean `npm ci`, never with an incrementally
+  grown `node_modules`. Hoisting hides missing dependencies.
+- Files: `apps/gui/{package.json,package-lock.json,tsconfig.json,tsconfig.base.json,
+  tsconfig.app.json,tsconfig.node.json}`.
