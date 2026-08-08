@@ -2544,3 +2544,49 @@ prohibition on quoting the six-block acceptance rates as a model ranking.
 
 - **Files touched:** `KNOWN_ISSUES.md`, `SESSION_HANDOFF.md`
 - **Stop condition:** unchanged — Phase 0 closed; this is a Phase 1 input.
+
+## 2026-08-08 18:35 EDT — resolved a dual-Docker-daemon fault on the dev host
+
+- **Stage:** environment (Phase 0 closed; pre-Phase 1 housekeeping)
+- **Ports/adapters:** none
+
+Diagnosed and fixed two competing Docker daemons on Colossus. The apt daemon was masked, ten stale
+containers from inactive projects were stopped, and a 16-hour 200%-CPU restart loop was eliminated.
+Full diagnosis, including three incorrect predictions made along the way, in `DEBUG_LOG.md`.
+
+Carries one consequence for this repo: Forge-OH's built images are stranded under the masked
+daemon, so a live Forge-OH reference run is unavailable until they are rebuilt.
+
+- **Files touched:** `DEBUG_LOG.md`
+- **Stop-condition status:** unchanged — Phase 0 remains closed.
+
+## 2026-08-08 18:37 EDT — surveyed Forge-OH as a donor and registered it in the ledger
+
+- **Stage:** Phase 1 input (donor inspection, per the vendor-before-hand-build rule)
+- **Ports/adapters:** none yet — survey only, nothing ported
+
+Surveyed `rmholston420/Forge-OH` at pin `df73ebed` (MIT, public, 976 blobs) against the OH-GUI
+phase plan. Wrote `docs/forge-oh-port-survey.md` with a three-tier assessment and registered
+Forge-OH as a secondary donor in `PORTING_LEDGER.md`.
+
+Findings that shape Phase 1:
+
+- Five Tier 1 candidates, all Python, all mapping to existing spec requirements: `gpu_monitor.py`
+  and the GPU PRE-tool hook (spec 08 telemetry strip, and the tool-interception seam the spec 04
+  authorization plane needs), `loop_guard.py` (the spec 04 stuck-loop intervention card),
+  `inference_backends/` (already `Protocol`-shaped), and `event_normalize.py`.
+- The frontend does not port. Forge-OH is Next.js App Router with 476 files under `src/`; OH-GUI is
+  Vite/React. Component ideas transfer, code does not.
+- `.github/` workflows must not be ported — project constraints forbid GitHub-native CI.
+- The memory subsystem (~100K, DozerDB/Qdrant) belongs to Kosmos, not here, and DozerDB is GPLv3.
+- Recommended first port is `loop_guard.py`: 1.6K, no dependencies, satisfies a Phase 1 exit
+  criterion, and exercises the full port workflow at near-zero risk.
+
+The survey is explicit that it is docstring-level, not a line-by-line read: eight modules were read
+directly, the rest are judged from the pinned tree. Nothing may be vendored on the strength of this
+document alone.
+
+- **Files touched:** `docs/forge-oh-port-survey.md` (new), `PORTING_LEDGER.md`, `BUILD_LOG.md`
+- **PORTING_LEDGER / ADR updated:** `PORTING_LEDGER.md` — Forge-OH donor registration
+- **Stop-condition status:** survey complete; no port started. Awaiting operator go-ahead on the
+  first port.

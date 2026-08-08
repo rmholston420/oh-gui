@@ -108,3 +108,36 @@ and run in the OH-GUI middleware, never in the browser** (ADR-001).
 - Compare-mode merge logic
 - The multi-backend GPU/accelerator telemetry adapter
   (`nvidia-smi` / `rocm-smi` / `powermetrics` / `/sys/class/thermal`)
+
+
+## Secondary donor - Forge-OH (own prior work)
+
+Forge-OH is the operator's own earlier agent-operations console, solving the same problem one
+architecture generation earlier. It is a donor source on the same terms as ADR-001 applies to
+OpenHands: vendor selectively, attribute, log here. Being our own repo does not exempt a port from
+the ledger.
+
+| Field | Value |
+|---|---|
+| Donor repo | `https://github.com/rmholston420/Forge-OH` |
+| Pin | commit `df73ebed` (pushed 2026-08-06, verified 2026-08-08) |
+| SPDX | `MIT` (verified: `LICENSE` at root, GitHub license API reports `mit`) |
+| Local checkout | `~/dev/forge-oh` (working tree, not pinned - pin before vendoring) |
+| Survey | `docs/forge-oh-port-survey.md` (2026-08-08) |
+
+| Surface | Donor path | Status |
+|---|---|---|
+| GPU thermal monitor | `bff/services/gpu_monitor.py` | Not ported - Tier 1 candidate |
+| GPU PRE-tool hook | `openhands_tools_ext/gpu/hook.py` | Not ported - Tier 1 candidate |
+| Loop / repetition detector | `bff/services/loop_guard.py` | Not ported - Tier 1, recommended first port |
+| Inference backend protocol + adapters | `bff/services/inference_backends/` | Not ported - Tier 1 candidate |
+| Event normalization | `bff/services/event_normalize.py` | Not ported - Tier 1, needs SDK 1.41 re-verification |
+| Role-based model router | `bff/services/model_router.py` | Not ported - Tier 2 |
+| Idempotency ledger | `bff/services/idempotency_ledger.py` | Not ported - Tier 2 |
+| Per-run git worktree isolation | `bff/services/worktree.py` | Not ported - Tier 2 |
+| Memory subsystem (DozerDB/Qdrant) | `openhands_tools_ext/memory/` | **Excluded** - Kosmos domain; DozerDB is GPLv3 |
+| Next.js frontend | `src/` | **Excluded** - App Router does not port to the Vite shell |
+| GitHub Actions workflows | `.github/` | **Excluded** - project constraints forbid GitHub-native CI |
+
+Every adoption above still requires its own entry in the standard format, an adapter behind a
+formal port, and a contract test. Listing a surface here is not a port.

@@ -1192,3 +1192,74 @@ not a count of zero.
 
 **Rule.** A unit test that hands the code the value it failed to find is not a test of the wiring.
 Any accessor reading a nested field must be exercised against a realistically shaped record.
+
+
+## 2026-08-08 18:35 EDT — Two Docker daemons on Colossus: unstoppable containers, a hidden 16-hour restart loop, and a false axiom-worker health failure
+
+**Symptom.** Three distinct behaviours, all on the OH-GUI dev host, initially treated as unrelated:
+
+1. `docker stop <name>` returned `Error response from daemon: cannot stop container: <name>: permission denied`
+   for ten containers, even under `sudo`. Kernel log: `apparmor="DENIED" operation="signal"
+   profile="docker-default" comm="dockerd" requested_mask="receive" peer="snap.docker.dockerd"`.
+2. A uvicorn process bound to `--port 5055` respawned every ~2 s for 16 hours at ~200% CPU. Its
+   cgroup mapped to `~/open-notebook-local`. Killing its supervisord parent (PID 6324) changed
+   nothing; the process kept reappearing with a new parent.
+3. `axiom-worker` reported `(unhealthy)`; its Redis check timed out container-to-container while
+   `axiom-redis` answered PONG from the host and all three containers shared `axiom_default` with
+   working DNS.
+
+**Affected.** Colossus host environment (OH-GUI dev machine). No OH-GUI source involved.
+
+**Root cause.** Two Docker daemons were running:
+
+- PID 3529 — snap dockerd, `--data-root=/var/snap/docker/common/var-lib-docker`, `--exec-root=/run/snap.docker`
+- PID 4715 — apt dockerd, `-H fd://`, `--containerd=/run/containerd/containerd.sock`, default data-root `/var/lib/docker`
+
+`/var/run` is a symlink to `/run`, so both daemons bound the same socket path. The snap daemon's
+bind **replaced the apt daemon's socket file**. The apt daemon kept its original inode open and
+kept serving its ten containers, but no CLI could dial it — every `docker -H unix://...` variant
+resolved to the snap daemon (`docker info` reported the snap data-root for all three candidate
+paths). `ctr -a /run/containerd/containerd.sock -n moby containers ls` listed the ten hidden
+containers and confirmed the split.
+
+That single fault produced all three symptoms:
+
+1. Containers created under one daemon's AppArmor context, signalled by the other → cross-profile
+   denial.
+2. The 5055 loop was **dockerd 4715 honouring a restart policy** on the open-notebook container.
+   Supervisord was never the restarter; killing it was irrelevant. `docker ps` could not show the
+   container because it belonged to the invisible daemon.
+3. Two daemons managing iptables/bridge rules on the same host corrupted container-to-container
+   routing on `axiom_default`.
+
+**Fix applied.**
+
+- `sudo systemctl disable --now docker.service docker.socket`, then `sudo systemctl mask
+  docker.service docker.socket` so socket activation cannot resurrect it at boot. Snap daemon
+  (3529) is now the only daemon.
+- The 5055 loop stopped immediately. `axiom-worker` went `unhealthy` → `healthy` the moment the
+  second daemon stopped, confirming cause 3.
+- The AppArmor denial **survived** the fix — the `docker-default` profile is shipped by the apt
+  docker package and outlives its daemon. Worked around without signalling through Docker:
+  `docker update --restart=no <containers>` (metadata only, not blocked), then `sudo kill -TERM`
+  against each container's `State.Pid` from unconfined root. All ten stopped.
+- Result: load average 3.29 → 0.83; two Kosmos containers left running.
+
+**Three predictions I made that were wrong, recorded because each was stated with more confidence
+than the evidence supported:**
+
+1. Called the `axiom-worker` health failure "likely a false alarm." It was a real failure with a
+   real cause.
+2. Predicted disabling the apt daemon would clear the AppArmor denial. It did not; the profile is
+   package-shipped, not daemon-scoped.
+3. Predicted it would fix `kosmos-dozerdb`. It did not — that container exits 3 on startup for
+   unrelated reasons and is now a separate open issue.
+
+**Consequence for the Forge-OH port.** `forge-oh-bff:latest` and Forge-OH's SearXNG image live in
+`/var/lib/docker`, under the masked daemon. Reading donor source is unaffected; **running** the
+Forge-OH stack for behavioural comparison now requires unmasking the apt daemon or rebuilding under
+the snap daemon. Recorded in `docs/forge-oh-port-survey.md`.
+
+**Files changed.** None in this repo — host configuration only.
+
+**Related BUILD_LOG entry:** 2026-08-08 18:35 EDT
