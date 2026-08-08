@@ -215,3 +215,57 @@ operator something false.
 Contained for now by `trust-dial.test.ts`, which pins all 14 behaviors to the spec table. **Phase 1
 must drive this from the middleware** — the generated Agent Server OpenAPI document (ADR-001
 Amendment #1, finding 2) makes that feasible — and delete the hand-maintained mirror.
+
+---
+
+## 2026-08-08 — the model benchmark cannot tell the candidates apart
+
+**Status: OPEN. Model choice routed around it via ADR-012.**
+
+The Phase 0 baseline ran 48 cells: six blocks, three model builds, two sampling presets. **Every
+block scored 7/8, and every block failed a different task.**
+
+| Preset | qwen3.6:27b | 27b-mtp | 35b-a3b-mtp |
+|---|---|---|---|
+| General (Ollama default) | t01 | t02 | t08 |
+| Coding (ADR-011) | t08 | t04 | t07 |
+
+Acceptance never moved. Only the identity of the failing cell moved. **At one repetition per cell
+this harness measures variance, not model quality**, and no ranking may be drawn from
+`docs/BASELINE-COMPARE-six-blocks.md` — the table is a record of what happened, not a comparison.
+
+**Why it cannot discriminate.** Two causes, both fixable:
+
+1. **n=1.** With a single run per cell there is no way to distinguish a model that fails t04 from a
+   model that failed t04 *this time*. The six blocks are consistent with all three builds having
+   the same per-cell failure probability of roughly one in eight.
+2. **The tasks are too easy and too few.** Eight tasks against a small FastAPI fixture, seven of
+   which every build cleared. There is no headroom: a better model has nothing left to be better
+   at. Two of the six misses were not quality failures at all — one changed no files, one was
+   killed by malformed tool-call JSON.
+
+**What a proper harness needs.**
+
+- **Repetitions per cell** — at least 3, ideally 5, so per-cell variance is visible and a
+  difference can be tested rather than eyeballed. Cost scales directly: one block is ~12 min, so
+  3 models x 3 reps is roughly 1.5–2 h of GPU.
+- **Harder tasks with headroom.** Multi-file changes with real coupling, tasks with a wrong-but-
+  plausible solution the gate rejects, and at least two nobody is expected to pass first time.
+  Ceiling effects are the main defect of the current set.
+- **A discriminating metric besides pass/fail.** Acceptance is one bit per cell and saturated.
+  Turns-to-acceptance and diff minimality carry more signal — but turns are contaminated by
+  tool-call retries, so that defect must be fixed or measured out first.
+- **Report variance, not just totals.** Per-cell spread across repetitions, so a reader can see
+  whether a difference exceeds the noise. The current report has no place to put that.
+
+**Related open defect.** Malformed tool-call JSON, ~2 per cell on every build regardless of preset
+or model, which destroyed a whole cell once (t02 on `27b-mtp-q4_K_M`: three identical rejected
+`file_editor` calls, run never started). It inflates turns and so contaminates the most promising
+alternative metric. Wants its own ADR.
+
+**Owed:** build the above before any model-selection claim is made from local benchmarks. ADR-012
+chose the default coder model on OpenHands' upstream recommendation precisely because this harness
+could not, and carries a falsifiable revisit trigger that depends on this work existing.
+
+**Do not** quote acceptance rates from the six Phase 0 blocks as evidence that one local model is
+better than another. They are a baseline of record for the app, not a model ranking.

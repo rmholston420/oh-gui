@@ -49,7 +49,9 @@ cell. **No model has been selected, and none should be selected from these numbe
    blocks could not separate the candidates, the default coder model is
    `qwen3.6:35b-a3b-mtp-coder`, on OpenHands' own documented recommendation for local use. A
    discriminating harness — repetitions per cell, harder tasks — is still needed, and ADR-012 has
-   a concrete revisit trigger tied to it.
+   a concrete revisit trigger tied to it. **Written up in full in `KNOWN_ISSUES.md`** (2026-08-08,
+   "the model benchmark cannot tell the candidates apart") with why it fails and what a working
+   harness requires. Revisit when there is a proper test.
 2. **Malformed tool-call JSON, ~2 per cell**, on every build regardless of preset. It cost an entire
    cell once (t02 on `27b-mtp-q4_K_M`: three identical rejected `file_editor` calls, run never
    started). Open defect, wants its own ADR. Whether the coding preset helps is unproven — 17→11,

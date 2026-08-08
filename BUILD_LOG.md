@@ -2530,3 +2530,17 @@ trigger written into the ADR.
 - **Files touched:** `adrs/ADR-012-default-coder-model.md` (new), `adrs/README.md`,
   `SESSION_HANDOFF.md`
 - **Stop condition:** Phase 0 closed. Phase 1 router has its default model.
+
+## 2026-08-08 17:52 EDT — logged the benchmark gap for revisiting
+
+- **Stage:** Phase 0 close / Phase 1 input
+- **Ports/adapters:** none (documentation)
+
+Recorded in `KNOWN_ISSUES.md` that the Phase 0 harness cannot discriminate between model
+candidates, with the two causes (n=1, and ceiling effects from tasks that all builds clear) and
+what a working harness needs: repetitions per cell, tasks with headroom, a metric with more signal
+than a saturated pass/fail bit, and variance reported alongside totals. Includes an explicit
+prohibition on quoting the six-block acceptance rates as a model ranking.
+
+- **Files touched:** `KNOWN_ISSUES.md`, `SESSION_HANDOFF.md`
+- **Stop condition:** unchanged — Phase 0 closed; this is a Phase 1 input.
