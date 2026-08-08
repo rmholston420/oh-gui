@@ -13,10 +13,20 @@
 |---|---|---|
 | Ask always | AlwaysConfirm() | Every action pauses for approval |
 | Ask on risky | ConfirmRisky(threshold=HIGH, confirm_unknown=True) | Only HIGH-risk (and by default UNKNOWN) actions pause |
-| Ask on writes outside worktree | Custom SecurityAnalyzerBase subclass composed into EnsembleSecurityAnalyzer, feeding ConfirmRisky() | Read-only and in-scope writes proceed; out-of-scope pauses |
+| Ask on writes outside worktree | Custom SecurityAnalyzerBase subclass composed into EnsembleSecurityAnalyzer, elevating out-of-worktree writes to **HIGH**, feeding standard ConfirmRisky(threshold=HIGH) | Read-only and in-scope writes proceed; out-of-scope pauses |
 | Never | NeverConfirm() | Full autonomy - explicit opt-in only |
 
 (v4.0 correction) The threshold and confirm_unknown parameters that actually exist on ConfirmRisky() must be surfaced in the trust-dial settings UI, not left as invisible defaults - a user should be able to see and adjust whether UNKNOWN-risk actions pause or proceed.
+
+> **CORRECTION 2026-08-08 (OPEN - awaiting operator ratification; see KNOWN_ISSUES.md).**
+> The row above previously said the analyzer elevates out-of-worktree writes "to at least MEDIUM"
+> paired with "standard ConfirmRisky()". Implementing it as an executable predicate showed that
+> combination **cannot produce this row's own stated behavior**: standard ConfirmRisky is
+> threshold=HIGH, so a MEDIUM elevation is below the threshold and the stop becomes **inert** -
+> it would ship looking correct while pausing on nothing new. Lowering the threshold to MEDIUM
+> instead makes ordinary in-scope MEDIUM edits pause, contradicting "in-scope writes proceed".
+> Elevating to **HIGH** against the standard HIGH threshold is the only combination that matches.
+> This does not re-litigate the hard correction below - the analyzer still does the path-scoping.
 
 Hard correction (final, do not re-litigate): ConfirmationPolicyBase.should_confirm() receives only a SecurityRisk enum value - path-scoping logic is architecturally impossible at the policy layer. The correct implementation is a custom SecurityAnalyzerBase subclass (whose security_risk(action) DOES receive the full action) that elevates any out-of-worktree write to at least MEDIUM, composed into EnsembleSecurityAnalyzer, paired with standard ConfirmRisky(). Do not subclass ConfirmationPolicyBase for this stop.
 

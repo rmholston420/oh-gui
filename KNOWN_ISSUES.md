@@ -168,3 +168,49 @@ endpoints it actually calls against the pinned server rather than trusting versi
 
 Upside recorded in ADR-001 Amendment #1 C#2: a formal, contract-tested OpenAPI schema **does** exist
 upstream, so the anti-corruption layer can be generated and diffed rather than hand-written.
+
+## 2026-08-08 — the "Ask on writes outside worktree" stop, as specified, cannot work
+
+**Status: OPEN — needs operator ratification. Implemented as HIGH elevation in the Phase 0 display
+mirror; the Phase 1 middleware must match whatever is ratified.**
+
+`docs/specs/04-authorization.md` §4.1 specifies this stop as a `SecurityAnalyzerBase` subclass that
+elevates any out-of-worktree write **"to at least MEDIUM"**, composed into
+`EnsembleSecurityAnalyzer` and **"paired with standard `ConfirmRisky()`"**. Its behavior column
+reads: *"Read-only and in-scope writes proceed; out-of-scope pauses."*
+
+Writing the predicate as an executable function and testing it showed no reading of that text
+produces that behavior:
+
+| Elevation | Threshold | Result |
+|---|---|---|
+| MEDIUM | HIGH (the "standard" `ConfirmRisky()`) | MEDIUM is below the threshold, so the elevation changes nothing. **The stop is inert** — it would ship looking correct and pause on nothing it did not already pause on. |
+| MEDIUM | MEDIUM | An ordinary in-scope MEDIUM edit now pauses, **contradicting "in-scope writes proceed"**. |
+| **HIGH** | **HIGH (standard)** | In-scope reads and edits proceed; any out-of-worktree write pauses. **Matches the behavior column exactly.** |
+
+**Implemented:** elevate to HIGH, keep `ConfirmRisky()` standard. This honors §4.1's hard correction
+(the analyzer, not a `ConfirmationPolicyBase` subclass, does the path-scoping) and changes only the
+elevation target.
+
+**How it surfaced.** Not by reading the spec. A test asserting the four stops are ordered strictest
+to loosest failed, because under the MEDIUM/MEDIUM reading the third stop was *stricter* than the
+second. The inert MEDIUM/HIGH variant is the dangerous one: an authorization control that silently
+does nothing is worse than one that is absent, because the operator relies on it.
+
+**Owed:** ratify, then amend §4.1 so the Python middleware and this mirror cannot diverge.
+
+---
+
+## 2026-08-08 — trust-dial semantics are duplicated in the frontend
+
+**Status: OPEN. Accepted for Phase 0 only.**
+
+`apps/gui/src/features/first-run/trust-dial.ts` re-implements the stop→decision mapping in
+TypeScript so the wizard can show the operator what each stop decides, computed rather than
+asserted. Enforcement remains in the middleware (ADR-001 item 4), so this is a **display mirror**
+and a divergence risk: the mirror could drift from the Python policy and confidently tell the
+operator something false.
+
+Contained for now by `trust-dial.test.ts`, which pins all 14 behaviors to the spec table. **Phase 1
+must drive this from the middleware** — the generated Agent Server OpenAPI document (ADR-001
+Amendment #1, finding 2) makes that feasible — and delete the hand-maintained mirror.

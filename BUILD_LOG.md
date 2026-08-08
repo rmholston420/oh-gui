@@ -1876,3 +1876,48 @@ any build starts. Recorded here; no spec or ADR edited yet.
 - Both directions proven by probe: `node:fs` in browser source now fails `tsc -b`; the same import
   in a test passes. Full gate green after `rm -rf node_modules && npm ci`.
 - Stop condition unchanged: **Phase 0 items 3 and 4 still OPEN.**
+
+## 2026-08-08 09:44 EDT — Phase 0 exit item 4: first-run wizard shipped
+
+- Stage: Phase 0 exit item 4, `docs/specs/03-layout.md` §3.4. Ports touched: none — `apps/gui` only.
+- Five steps (spec items 1, 3, 4, 5, 6; items 2 and 7 were removed by ADR-003).
+- **§3.4 item 3 resolved without shipping a fake.** The spec wants "one live, harmless example
+  action" at each stop; Phase 0 has no agent to produce one. Rather than a canned illustration —
+  which is the display-as-enforcement pattern Principle 8 rejects — step 2 renders a decision
+  matrix **computed by the real predicate** (`shouldConfirm()`), the same function the Phase 1
+  review UI will call. Change the rule and the table changes. The remaining gap (walking a genuinely
+  executing action) is stated in-UI as Phase 1, not implied to work.
+- **Item 4 met in full:** the wizard states `ConfirmRisky(threshold=HIGH, confirm_unknown=True)` as
+  the default, justifies it in both directions (why not stricter, why not looser), and says why
+  `NeverConfirm()` is opt-in only. The expression is sourced from the spec table constant, so the
+  copy cannot drift from the mapping. `threshold` and `confirm_unknown` are shown as live values
+  per §4.1's v4.0 correction rather than left invisible.
+- Item 1 shows an explicit deferral. Detection needs the middleware; querying Ollama from the
+  browser would breach ADR-001 item 4, so it is not faked. Item 5 seeds the counter at zero with a
+  one-line explanation; per-session persistence (13-hard-constraints.md:16) is logged as owed.
+  Item 6 labels the plan tree "Example" and states nothing will run.
+- **Found a real defect in `04-authorization.md` §4.1 while writing the predicate.** The
+  "Ask on writes outside worktree" stop, as specified (elevate to "at least MEDIUM" + "standard
+  ConfirmRisky()"), is **inert** — MEDIUM sits below the standard HIGH threshold, so the elevation
+  changes nothing and the stop would ship pausing on nothing new. The MEDIUM/MEDIUM alternative
+  contradicts the same row's "in-scope writes proceed". Elevating to HIGH is the only reading that
+  works; implemented, spec annotated, **OPEN pending operator ratification** (KNOWN_ISSUES).
+  Surfaced by a failing ordering test, not by reading — an authorization control that silently does
+  nothing is worse than an absent one, because the operator relies on it.
+- 25 tests pass (14 trust-dial, 7 wizard, 4 import boundary). Component tests use jsdom via
+  per-file `// @vitest-environment jsdom`. **Node 24.16.0 was installed in the authoring sandbox
+  specifically so these could actually be run** rather than written and shipped unverified.
+- Rendered and inspected all five steps in a real browser at 2x. Fixed three presentation defects
+  that the tests could not see: outcome cells wrapping "Pauses for you" onto two lines in every
+  row, `text-slate-500` risk chips failing small-text contrast on the `#070d1f` background
+  (moved to `slate-400`), and the policy expression breaking mid-call across lines.
+- `tsconfig.node.json` now includes `src` whole (the tests import app source, TS6307). The app
+  project still checks those files without Node types, so a `node:fs` import in browser code still
+  fails `tsc -b` — re-proven by probe after the change, not assumed.
+- New dep: `@testing-library/user-event`. Files: `apps/gui/src/features/first-run/{trust-dial.ts,
+  FirstRunWizard.tsx}`, `apps/gui/src/App.tsx`, `apps/gui/src/__tests__/{trust-dial.test.ts,
+  first-run-wizard.test.tsx}`, `apps/gui/tsconfig.node.json`, `docs/specs/04-authorization.md`,
+  KNOWN_ISSUES, BUILD_LOG, SESSION_HANDOFF.
+- **Stop condition: Phase 0 exit item 4 MET on its stated criterion** (wizard ships and states the
+  default stop explicitly in its own UI copy). **Item 3 (baseline metrics report) is the only Phase
+  0 exit item still open.** Two OPEN entries added to KNOWN_ISSUES.

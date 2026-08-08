@@ -34,19 +34,19 @@ MUST call `ollama stop` on the outgoing role model (`OLLAMA_KEEP_ALIVE=-1`, noth
 
 ## Exact next action
 
-Pull and confirm the scaffold gate is green on Colossus:
+Pull, run the gate, and look at the wizard:
 
 ```bash
-cd ~/dev/oh-gui && git pull && cd apps/gui && npm ci && npm run gate
+cd ~/dev/oh-gui && git pull && cd apps/gui && npm ci && npm run gate && npm run dev
 ```
 
-Expect lint clean, **4 tests passed**, `tsc -b` clean, `vite build` summary.
+Expect lint clean, **25 tests passed**, `tsc -b` clean, build; then the wizard at the dev URL.
 
-Verified on Colossus 2026-08-08 09:27: the reference checkout re-verified
-**`ok tree is read-only`** (the check still owed from 09:14 — the fresh-clone path chmods without
-re-reading, so the lock had never actually been observed), and Node is **v24.16.0**, so jsdom is
-available whenever we want component tests. The `tsc -b` failure in that run (TS2591, undeclared
-`@types/node`) is fixed — DEBUG_LOG 09:28.
+**Then decide one thing:** the "Ask on writes outside worktree" stop is specified in a way that
+cannot work (KNOWN_ISSUES 2026-08-08). It is implemented as **elevate-to-HIGH + standard
+ConfirmRisky(threshold=HIGH)**, which is the only combination matching the spec's own behavior
+column, and `04-authorization.md` §4.1 is annotated OPEN pending your ratification. Phase 1's
+middleware must implement whatever is ratified.
 
 Then the next slice is the **first-run wizard** (`docs/specs/03-layout.md` §3.4): seven steps,
 must state and justify the default trust-dial stop `ConfirmRisky()` in its own UI copy, seed the
@@ -79,7 +79,10 @@ stopped calling `ollama stop`.
    inspection, "lost track" incidents, GPU temp/power, plus the mental-model-formation baseline.
    Runs against the stock app — use the disposable copy
    (`bash scripts/provision-reference-checkout.sh --run-copy`), never the pristine tree.
-4. First-run wizard (§3.4) — **frontend now scaffolded**, see below.
+4. ~~First-run wizard (§3.4)~~ — **DONE 2026-08-08**. Five steps, gate green, all five screens
+   rendered and inspected. Step 2 computes its table from the real `shouldConfirm()` predicate
+   rather than showing canned copy. Deferred and stated in-UI, not faked: backend detection
+   (needs middleware), a genuinely live example action (needs an agent), counter persistence.
 
 ## Frontend — scaffolded 2026-08-08, gate green
 

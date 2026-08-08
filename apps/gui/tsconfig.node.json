@@ -1,11 +1,13 @@
 {
   // Tooling, tests and e2e. These legitimately run under Node.
+  // `src` is included whole because the tests import app source; the app project still checks the
+  // same files WITHOUT Node types, so a `node:fs` import in browser code still fails `tsc -b`.
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "jsx": "react-jsx",
-    "types": ["node", "vitest/globals"],
+    "types": ["node", "vitest/globals", "vite/client"],
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo"
   },
-  "include": ["vite.config.ts", "playwright.config.ts", "src/__tests__", "e2e"]
+  "include": ["vite.config.ts", "playwright.config.ts", "src", "e2e"]
 }
