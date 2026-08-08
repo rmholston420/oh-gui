@@ -27,7 +27,7 @@ CARD=$(ls "$HERE/tasks/${TASK}"-*.md 2>/dev/null | head -1) \
   || { echo "no task card for '$TASK' in $HERE/tasks" >&2; exit 2; }
 [ -n "$CARD" ] || { echo "no task card for '$TASK' in $HERE/tasks" >&2; exit 2; }
 
-FIXTURE="${OH_GUI_FIXTURE:-$HOME/.oh-gui/baseline/fixture}"
+FIXTURE="${OH_GUI_FIXTURE:-${OH_GUI_BASELINE_FIXTURE:-$HOME/oh-gui-baseline/fixture}}"
 STAMP="${OH_GUI_BASELINE_STAMP:-$(date +%Y%m%d_%H%M)}"
 OUT="$HOME/.oh-gui/baseline/${STAMP}_run"
 mkdir -p "$OUT"

@@ -27,6 +27,7 @@ import { openSession, ids, has, ensureConfigured } from "./session.mjs";
 
 const INGRESS = process.env.OH_GUI_BASELINE_INGRESS || "http://127.0.0.1:8010";
 const GPU_MAX_C = Number(process.env.GPU_MAX_C || 83);
+const FIXTURE = (process.env.OH_GUI_BASELINE_FIXTURE || `${process.env.HOME}/oh-gui-baseline/fixture`);
 
 function gpu() {
   try {
@@ -161,7 +162,7 @@ try {
   const url = page.url();
   const cid = (url.match(/conversations\/([0-9a-f-]{36})/) || [])[1];
   say(`\nconversation: ${cid || "NOT PARSED"}`);
-  if (cid) say(`expected cwd: ${process.env.HOME}/.oh-gui/baseline/fixture/${cid.replace(/-/g, "")}`);
+  if (cid) say(`expected cwd: ${FIXTURE}/${cid.replace(/-/g, "")}`);
   say(`\n-- timings --`);
   say(`   first agent-message: ${firstAgentMsg || "never"}s`);
   say(`   status->working:     ${firstWorking || "never"}s`);

@@ -2,7 +2,7 @@
  * Stage 4 probe: can a workspace be registered at the fixture path?
  *
  * probe3 found the new-thread picker exposes `add-workspaces-button`, `launch-no-workspace`, and an
- * input reading "Local". If a workspace can be pointed at ~/.oh-gui/baseline/fixture, that is the
+ * input reading "Local". If a workspace can be pointed at ~/oh-gui-baseline/fixture, that is the
  * app's own supported way to give a conversation a working directory — strictly better than
  * copying the fixture into the per-conversation subdir the agent happens to get, which works
  * behind the app's back and would make the baseline measure a setup no user would ever have.
@@ -16,7 +16,7 @@
 import { openSession, ids, has, ensureConfigured } from "./session.mjs";
 
 const INGRESS = process.env.OH_GUI_BASELINE_INGRESS || "http://127.0.0.1:8010";
-const FIXTURE = `${process.env.HOME}/.oh-gui/baseline/fixture`;
+const FIXTURE = (process.env.OH_GUI_BASELINE_FIXTURE || `${process.env.HOME}/oh-gui-baseline/fixture`);
 
 const S = await openSession("probe4");
 const { page, say, shot, errs } = S;
@@ -85,7 +85,7 @@ try {
     say(`   dot-entries in sidebar: ${dotted.length ? dotted.join(", ") : "NONE"}`);
     const bodyTxt = (await page.locator("body").innerText().catch(() => "")).replace(/\s+/g, " ");
     say(`   ".oh-gui" appears anywhere on screen: ${bodyTxt.includes(".oh-gui") ? "YES" : "no"}`);
-    say(`   -> if NONE/no, the fixture at ~/.oh-gui/baseline/fixture is unreachable by this`);
+    say(`   -> if NONE/no, the fixture at ~/oh-gui-baseline/fixture is unreachable by this`);
     say(`      browser and must move to a visible path before a workspace can point at it.`);
 
     // Is there a path input INSIDE the dialog?

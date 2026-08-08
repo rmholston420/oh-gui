@@ -832,3 +832,25 @@ image vs. disable MCP — so no change until the traceback or the profile conten
   every run and reuses it on the next. `OH_GUI_FRESH_STATE=1` forces a clean profile.
   `ensureConfigured()` added as the single shared onboarding routine so probes and driver cannot
   drift apart.
+
+## 2026-08-08 13:37 EDT — Fixture unreachable through the app's own workspace picker
+
+- **Symptom:** the Add Workspace folder browser lists 36 sidebar shortcuts and every directory in
+  `/home/rmholston`, but no dot-entries. `.oh-gui` appears nowhere on screen.
+- **Confirmed by inventory, not inference:** the dialog's controls are `folder-browser-sidebar-*`,
+  `folder-browser-entry-*`, `folder-browser-up`, `folder-browser-current-path`,
+  `folder-browser-list`, `folder-browser-cancel`, `folder-browser-add-all-subdirs`,
+  `folder-browser-use`. **Zero inputs inside the dialog** — it is navigation-only, so there is no
+  typed-path escape hatch for a hidden directory.
+- **Root cause:** the fixture was placed at `~/.oh-gui/baseline/fixture`, under the app's hidden
+  state directory. Fine for a `VITE_WORKING_DIR` env var, unreachable for a picker that hides
+  dotfiles.
+- **Fix:** fixture moves to `~/oh-gui-baseline/fixture` — visible in `$HOME`, therefore selectable.
+  The path is now `${OH_GUI_BASELINE_FIXTURE:-$HOME/oh-gui-baseline/fixture}` in shell and
+  `process.env.OH_GUI_BASELINE_FIXTURE || ~/oh-gui-baseline/fixture` in JS, one override point
+  instead of the literal baked into six files. Run artifacts stay under `~/.oh-gui/baseline/`;
+  only the fixture the agent edits moves.
+- **Still unverified, and it is the next thing to test:** whether selecting a workspace makes the
+  conversation work *in* that directory, or still creates a per-conversation subdirectory beneath
+  it as `VITE_WORKING_DIR` did. That difference decides how tasks get re-seeded between runs, so
+  it gets a probe rather than an assumption.

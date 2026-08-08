@@ -171,7 +171,7 @@ try {
   say(`\n-- absolute paths visible in transcript --`);
   paths.length ? paths.forEach((p) => say(`   ${p}`)) : say("   NONE");
   say(`\n-- does the transcript mention the fixture? ${
-    body.includes(".oh-gui/baseline/fixture") ? "YES" : "NO"} --`);
+    body.includes("oh-gui-baseline/fixture") ? "YES" : "NO"} --`);
 
   // Anything that looks like a human-in-the-loop gate is the single most important finding here.
   const gate = [...new Set((body.match(

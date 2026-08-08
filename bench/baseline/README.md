@@ -34,7 +34,7 @@ The stock app defaults to ingress `8000` and vite `3001`. On Colossus both are p
 disposable, so the baseline runs shifted:
 
 ```bash
-VITE_WORKING_DIR=$HOME/.oh-gui/baseline/fixture \
+VITE_WORKING_DIR=${OH_GUI_BASELINE_FIXTURE:-$HOME/oh-gui-baseline/fixture} \
   PORT=8010 OH_CANVAS_SAFE_VITE_PORT=3011 npm run dev
 ```
 

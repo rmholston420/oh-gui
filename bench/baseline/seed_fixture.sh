@@ -9,7 +9,7 @@
 #
 # Destroy and reseed freely: it is never a build input.
 set -euo pipefail
-FIXTURE="${OH_GUI_FIXTURE:-$HOME/.oh-gui/baseline/fixture}"
+FIXTURE="${OH_GUI_FIXTURE:-${OH_GUI_BASELINE_FIXTURE:-$HOME/oh-gui-baseline/fixture}}"
 
 [ -d "$FIXTURE" ] && { chmod -R u+w "$FIXTURE"; rm -rf "$FIXTURE"; }
 mkdir -p "$FIXTURE"/{notes_api,tests}

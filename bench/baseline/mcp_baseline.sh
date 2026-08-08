@@ -12,7 +12,7 @@
 set -euo pipefail
 S="$HOME/.openhands/settings.json"
 BK="$HOME/.oh-gui/baseline/settings-backups"
-FIXTURE="$HOME/.oh-gui/baseline/fixture"
+FIXTURE="${OH_GUI_BASELINE_FIXTURE:-$HOME/oh-gui-baseline/fixture}"
 mkdir -p "$BK"
 [ -f "$S" ] || { echo "missing $S"; exit 1; }
 
