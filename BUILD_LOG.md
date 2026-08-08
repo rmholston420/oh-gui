@@ -2260,3 +2260,40 @@ the app's own mechanism. Path is now `${OH_GUI_BASELINE_FIXTURE:-...}`, one over
 
 **Stop condition:** Phase 0 item 3 still OPEN. Blocking work is now the driver itself: no unknowns
 remain about how to put the agent in front of the fixture.
+
+## 2026-08-08 13:50 EDT — Automated driver; 27b profile created; matrix runner
+
+**Stage:** Phase 0, item 3 (baseline metrics) — ADR-008.
+**Files:** `bench/baseline/ui/{probe6,drive_task}.mjs` (new), `run_matrix.sh` (new),
+`run_baseline.sh` (--auto/--profile), `~/.openhands/profiles/qwen3.6-27b.json` (outside repo).
+
+**Model selection, measured:** options carry stable ids
+`chat-input-llm-profile-option-<profile-name>`, so selection does not depend on label matching.
+
+**Half the matrix was impossible and nothing said so.** Only two profiles existed: `default`
+(`openai/devstral-small-2:24b`) and the 35b. There was no 27b profile. Had the driver fallen back
+to `default`, it would have benchmarked devstral and labelled the output 27b — a complete,
+plausible, wrong report. Created `qwen3.6-27b.json` by cloning the 35b profile and changing
+exactly one field (`model`), verified: `fields differing from the 35b profile: {'model'}`. The app
+picked it up with no restart. `qwen3.6:27b` is pulled (17 GB).
+
+**Guard added because of that:** the driver selects the profile, then re-reads the label and
+aborts if it did not change. Selecting and assuming is exactly how sixteen cells silently run on
+one model.
+
+**Instrumentation is not duplicated.** `--auto` swaps `mark.py` for `drive_task.mjs` and nothing
+else; the GPU guard, cold wait, 1 Hz thermal CSV, `ollama ps` sampler and `server_info` capture
+still wrap every cell, so automated and hand-driven runs stay comparable.
+
+**Null, never zero.** `time_to_first_review_s`, `turns_to_acceptance`, `lines_accepted`,
+`lines_accepted_without_inspection`, `accepts`, `accepts_without_inspection`,
+`lost_track_incidents`, `turns_before_first_corrective` are emitted as null. They are human
+judgements, and two have no accept gate to attach to at all. `lines_written` is reported instead,
+read from git — a different and weaker claim, labelled as one.
+
+**Objective signals per cell:** fixture restored to seed `99a628b` and asserted clean before each
+task; git numstat plus untracked files after; `pytest` run in the fixture (pass/fail/not-run).
+
+**Stop condition:** unchanged — Phase 0 item 3 OPEN until the matrix runs and
+`docs/BASELINE-METRICS-*.md` exists with ADR-008's verdict filled in. Next action is a single-cell
+smoke test, not the full sixteen.

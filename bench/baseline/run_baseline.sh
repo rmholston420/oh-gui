@@ -19,8 +19,16 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TASK="${1:-}"; shift || true
-DRY=0
-for a in "$@"; do [ "$a" = "--dry-run" ] && DRY=1; done
+DRY=0; AUTO=0; PROFILE=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --dry-run) DRY=1 ;;
+    --auto)    AUTO=1 ;;
+    --profile) PROFILE="$2"; shift ;;
+  esac
+  shift
+done
+[ "$AUTO" -eq 1 ] && [ -z "$PROFILE" ] && { echo "--auto requires --profile <name>" >&2; exit 2; }
 
 [ -n "$TASK" ] || { echo "usage: run_baseline.sh <task-id> [--dry-run]" >&2; exit 2; }
 CARD=$(ls "$HERE/tasks/${TASK}"-*.md 2>/dev/null | head -1) \
@@ -76,13 +84,27 @@ echo "==========================================================================
 echo "  fixture:  $FIXTURE"
 echo "  output:   $OUT"
 echo
+if [ "$AUTO" -eq 1 ]; then
+echo "  DRIVEN AUTOMATICALLY by drive_task.mjs, profile: $PROFILE"
+echo "  Human-only metrics will be null, NOT zero."
+else
 echo "  Give the agent the task text above VERBATIM. Mark events as they happen."
+fi
 echo "=============================================================================="
 echo
 
-ARGS=(--task "$TASK" --outdir "$OUT")
-[ -d "$FIXTURE/.git" ] && ARGS+=(--fixture "$FIXTURE")
-python3 "$HERE/mark.py" "${ARGS[@]}"
+if [ "$AUTO" -eq 1 ]; then
+  # The driver replaces the operator's hands and NOTHING else: the GPU guard, thermal CSV,
+  # Ollama sampler and server_info above still apply, so an automated run is instrumented
+  # identically to a hand-driven one and the two are comparable.
+  ( cd "$HERE/../../apps/gui" && OH_GUI_BASELINE_FIXTURE="$FIXTURE" \
+      node "$HERE/ui/drive_task.mjs" --task "$TASK" --outdir "$OUT" --profile "$PROFILE" ) \
+    || echo "WARNING: $TASK did not complete — see $OUT/${TASK}.summary.json"
+else
+  ARGS=(--task "$TASK" --outdir "$OUT")
+  [ -d "$FIXTURE/.git" ] && ARGS+=(--fixture "$FIXTURE")
+  python3 "$HERE/mark.py" "${ARGS[@]}"
+fi
 
 if [ "$DRY" -eq 0 ]; then
   kill "$OLLAMA_SAMPLER" 2>/dev/null || true
