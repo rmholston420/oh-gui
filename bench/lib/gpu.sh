@@ -11,12 +11,13 @@
 #   83 C  HARD CEILING               - abort the run
 #   78 C  warn                       - report, keep going
 #   80 C  refuse to start a new run
-#   33 C  COLD threshold - not a safety limit. Benching from unequal starting temperatures
+#   34 C  COLD threshold - not a safety limit. Benching from unequal starting temperatures
 #         makes later cells clock down earlier and quietly penalises whatever ran last.
 #         The card reaches 28-29 C at true idle, but with the desktop running it settles
-#         around 33 C, so a 32 C target would burn the full timeout on most cells and buy
-#         nothing (operator, 2026-08-08). 33 C is the lowest temperature actually
-#         reachable between cells under normal working conditions.
+#         around 33-34 C, so a lower target would burn the full timeout on most cells and
+#         buy nothing (operator, 2026-08-08). 34 C is set one degree above the settling
+#         point on purpose: a target sitting exactly on it would be missed whenever the
+#         card idles a fraction warm, and a gate that is routinely missed is just a delay.
 # The card was previously capped at 435 W for heat reasons; it currently sits at 600 W,
 # so these limits are enforced in software rather than assumed from the power cap.
 #
@@ -35,7 +36,7 @@
 GPU_REDLINE_C="${GPU_REDLINE_C:-88}"   # hardware limit, documentation only
 GPU_MAX_C="${GPU_MAX_C:-83}"           # hard ceiling: abort
 GPU_WARN_C="${GPU_WARN_C:-78}"         # warn
-GPU_COLD_C="${GPU_COLD_C:-33}"         # comparability: cold-start target (see header)
+GPU_COLD_C="${GPU_COLD_C:-34}"         # comparability: cold-start target (see header)
 GPU_COOL_TIMEOUT_S="${GPU_COOL_TIMEOUT_S:-300}"  # give up waiting, warn, continue
 GPU_START_C="${GPU_START_C:-80}"       # refuse to begin above this
 

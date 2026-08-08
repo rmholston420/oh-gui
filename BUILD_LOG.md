@@ -965,3 +965,13 @@ Diagnosis pending - see DEBUG_LOG.
   (28-29 + margin) instead of asking what the card reaches between runs in practice. Same
   pattern as the guessed `sleep 20` it replaced.
 
+## 2026-08-08 09:50 EDT - Cold-start target settled at 34 C
+
+- `GPU_COLD_C` default 33 -> 34, per operator. The card settles at 33-34 C between cells
+  with the desktop running; 34 C sits one degree above the settling point so the gate is
+  reliably met rather than routinely timing out.
+- Supersedes the 09:42 (32 C) and 09:47 (33 C) entries. Value is env-overridable:
+  `GPU_COLD_C=32 bash bench/path_e/run_path_e.sh`.
+- Purpose unchanged: equalise starting temperature across the 7 cells so matrix ordering
+  does not become a confound.
+
