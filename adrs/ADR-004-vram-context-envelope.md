@@ -164,6 +164,28 @@ memory that was never freed.
   partially covers this; the planner's 128K config has ~6.4 GB free before the embedding
   model, so the margin is real but not generous.
 
+> **STATUS AMENDMENT #4 (2026-08-08) — envelope CLOSED, all five candidates measured:**
+>
+> | Model | Params | Max 100%-GPU ctx | MiB at max | KV KB/token |
+> |---|---|---:|---:|---:|
+> | `qwen3.6:27b` | 27B dense | 131,072 | 26,140 | 74.6 |
+> | `qwen3.6:35b` | 35B A3B MoE | **262,144** | 29,698 | 21.8 |
+> | **`qwen3.6:35b-a3b-mtp-q4_K_M`** | 35B A3B + MTP | **262,144** | **29,368** | 23.3 |
+> | `qwen3-coder:30b` | 30B A3B MoE | 65,536 | 25,194 | 110 |
+> | Devstral-Small-2507 UD-Q4_K_XL | 24B dense | 65,536 | 26,160 | **152** |
+>
+> Three independent sweep runs (0357, 0410, 0420) agree within ~130 MiB.
+>
+> KV cost per token spans **7×** across these five models and does not track parameter
+> count, MoE topology, or file size. It is set by attention configuration alone. Any future
+> capacity claim must be measured, not inferred — this ADR now contains one falsified
+> prediction (Amendment #3) as a standing reminder.
+>
+> Devstral is the most KV-expensive model tested despite being the smallest (13.6 GB
+> weights + 878 MB vision projector). It spills at 131,072 and is therefore capped at
+> 65,536 — the same ceiling as the incumbent coder, so the coder comparison is
+> context-matched at 65,536 with no handicap to either side.
+
 > **STATUS AMENDMENT #3 (2026-08-08) — planner selection REOPENED:**
 > `qwen3.6:35b` (= `35b-a3b`, digest `07d35212591f`, MoE ~3B active) was predicted in
 > BUILD_LOG to fit only at 32K and to spill at 64K. **That prediction was wrong.**

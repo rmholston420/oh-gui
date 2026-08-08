@@ -500,3 +500,29 @@ Entry format:
   ran at commit `131d4aa`, before the Devstral entry landed.
 - **Stop condition:** Phase 0 exit still NOT met.
 
+## 2026-08-08 05:20 EDT - Devstral 1.1 measured; VRAM envelope CLOSED
+
+- **Stage:** Phase 0 (baseline metrics) - envelope sub-goal COMPLETE
+- **Run:** `/home/rmholston/.oh-gui/vram_sweep/20260808_0420_f16.csv`, idle 652 MiB.
+- **Devstral-Small-2507 UD-Q4_K_XL** (`hf.co/unsloth/Devstral-Small-2507-GGUF:UD-Q4_K_XL`,
+  blobs: 14 GB weights + 878 MB mmproj vision projector):
+
+  | ctx | used | free | verdict |
+  |---:|---:|---:|---|
+  | 32,768 | 21,284 | 11,323 | OK |
+  | 65,536 | 26,160 | 6,447 | OK |
+  | 131,072 | 31,636 | 971 | **SPILLED 84% CPU** |
+
+- **Derived KV: ~152 KB/token** - the most expensive of all five candidates, from the
+  physically smallest weights. 24B dense with wide GQA. Ceiling is **65,536**.
+- **The coder comparison is context-matched at 65,536** - `qwen3-coder:30b` (25,194 MiB)
+  vs Devstral (26,160 MiB). Neither is handicapped.
+- **Envelope closed. Final KV/token spread: 21.8 -> 152 KB, a 7x range** that tracks
+  neither parameter count, nor MoE topology, nor file size. Recorded as ADR-004
+  Amendment #4 together with the full table.
+- **Note:** the 878 MB mmproj blob is Devstral's vision projector. OH-GUI has no vision
+  path in Phase 0; if Devstral is selected, a text-only Modelfile can reclaim it. Not
+  actioned now - it does not affect the measured rows.
+- **Stop condition:** Phase 0 exit still NOT met. Remaining: quality bench vs Perplexity
+  gold, upstream artifact pins, stock Agent Canvas reference checkout, first-run wizard.
+
