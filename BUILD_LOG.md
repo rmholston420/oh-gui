@@ -691,3 +691,32 @@ Entry format:
   under the ceiling. The bench has thermal headroom at this cap.
 - **Stop condition:** Phase 0 exit still NOT met.
 
+## 2026-08-08 07:00 EDT - 600 W measured: 83 C ceiling reached in ~5 seconds of load
+
+- **Stage:** Phase 0 (baseline metrics)
+- Same probe, same model, same 26,120-token prompt, only the power cap differs:
+
+| Cap | Peak temp | Under-load avg | Peak power | Prefill tok/s | Outcome |
+|---|---:|---:|---:|---:|---|
+| 435 W | 69 C | 66.7 C | 453 W | 2929.5 | completed |
+| 600 W | **83 C** | 80.0 C | 605 W | 3139.5 | **cutout at 83 C** |
+
+- **+7.2% prefill for +14 C, and the ceiling was hit in about five seconds of load.**
+  Time above 78 C was 5 s of a 14-sample run; the card reached the ceiling before the
+  first cell finished. This is not a marginal overshoot to be tuned around.
+- **The operator's original 435 W cap was correct.** It was set for thermal reasons before
+  any of this measurement existed, and the measurement now confirms it: 69 C peak with
+  14 C of headroom under the ceiling.
+- **Operator notes BIOS fan curves are currently non-aggressive** and could be raised.
+  That plausibly makes 600 W viable, but it is a separate experiment - see recommendation.
+- **RECOMMENDATION (unchanged): run the quality bench at 435 W.** The prize at 600 W is
+  ~7% on prefill, which does not move a quality-first decision, while the cost is a run
+  that can abort mid-matrix. An A/B is only valid if every cell sees identical conditions.
+- **Three instrumentation defects found and fixed** - see DEBUG_LOG 06:55. Most serious:
+  the thermal cutout announced that it had stopped the run and then let the next cell
+  execute anyway. Fixed; `INT`/`TERM` now exit non-zero and a between-cell guard backs it up.
+- **Decode axis still UNMEASURED.** `eval_count` was 2 in every run to date because the
+  prompt still asked for a one-word answer - my earlier claim to have fixed this was wrong
+  (the edit silently failed to apply). Now genuinely fixed and content-verified.
+- **Stop condition:** Phase 0 exit still NOT met.
+

@@ -36,9 +36,23 @@ gpu_watch_start
 python3 - "$MODEL" "$CTX" "$REQ" "$NPRED" <<'PY'
 import json, sys
 model, ctx, out, npred = sys.argv[1], int(sys.argv[2]), sys.argv[3], int(sys.argv[4])
-para = ("The middleware owns the entire policy plane: authorization, prompt-injection "
-        "screening, action gating, and audit. It never modifies the OpenHands checkout. ")
-prompt = (para * 900).strip() + "\n\nReply with exactly one word: ack"
+# Non-degenerate filler AND a real generation instruction. Two separate defects lived
+# here: 900 verbatim copies of one sentence is a degenerate context, and the instruction
+# literally asked for one word - which is why eval_count was 2 in every run so far.
+subj = ["The middleware", "The policy plane", "The audit sink", "The action gate",
+        "The injection screen", "The trust dial", "The approval queue", "The event bus"]
+verb = ["mediates", "records", "screens", "gates", "serialises", "authorises",
+        "rejects", "replays"]
+obj  = ["every policy-bearing call", "each tool invocation", "the agent's file writes",
+        "outbound network access", "the shell execution request",
+        "each plan-step transition", "the workspace mutation", "the confirmation prompt"]
+prompt = "\n".join(
+    f"Rule {i+1:04d}: {subj[i%8]} {verb[(i*3)%8]} {obj[(i*5)%8]} under trust level {i%7} "
+    f"with a budget of {(i*37)%991} milliseconds."
+    for i in range(900)
+) + ("\n\nThe rules above describe a policy plane. Write roughly 250 words of continuous "
+     "prose explaining how such a system should sequence authorisation, screening, gating "
+     "and audit, and why that order matters. Do not use bullet points or lists.")
 json.dump({"model": model,
            "messages": [{"role": "user", "content": prompt}],
            "stream": False,
@@ -89,6 +103,14 @@ EOF
   used=$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits)
   temp=$peak_t; power=$peak_p; sm=$peak_sm
 
+  python3 - "$OUT/${STAMP}_fa${FA}.json" <<'PYX'
+import json, sys
+d = json.load(open(sys.argv[1]))
+c = (d.get("message", {}) or {}).get("content", "")
+print(f"   done_reason={d.get('done_reason')!r} eval_count={d.get('eval_count')} chars={len(c)}")
+print(f"   preview: {c[:140]!r}")
+if d.get("error"): print(f"   ERROR: {d['error']}")
+PYX
   python3 - "$OUT/${STAMP}_fa${FA}.json" "$FA" "$idle" "$used" "$temp" "$power" "$sm" >> "$CSV" <<'PY'
 import json, sys
 f, fa, idle, used, temp, power, sm = sys.argv[1:8]
@@ -105,6 +127,7 @@ print(f"{fa},{idle},{used},{int(used)-int(idle)},{pt},{pre_s:.2f},{pre_ts:.1f},{
 PY
   tail -1 "$CSV"
   ollama stop "$MODEL" >/dev/null 2>&1 || true
+  gpu_aborted && { echo "thermal cutout tripped - abandoning remaining cells" >&2; break; }
 done
 
 echo

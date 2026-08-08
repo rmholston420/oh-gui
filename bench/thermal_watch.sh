@@ -21,7 +21,7 @@ rows = list(csv.DictReader(open(sys.argv[1])))
 if not rows: print("no samples"); raise SystemExit
 t = [float(r["temp_c"]) for r in rows]; p = [float(r["power_w"]) for r in rows]
 s = [float(r["sm_mhz"]) for r in rows]
-thr = [r for r in rows if r["throttle"] != "Not Active"]
+thr = [r for r in rows if r["throttle"] == "Active"]
 print(f"samples      : {len(rows)}")
 print(f"temp   max/avg: {max(t):.0f} / {sum(t)/len(t):.1f} C")
 print(f"power  max/avg: {max(p):.0f} / {sum(p)/len(p):.1f} W")
@@ -41,7 +41,11 @@ while true; do
   read -r temp power sm util <<<"$(nvidia-smi \
     --query-gpu=temperature.gpu,power.draw,clocks.sm,utilization.gpu \
     --format=csv,noheader,nounits | tr -d ',')"
-  thr=$(nvidia-smi -q -d PERFORMANCE | awk '/SW Power Cap|HW Thermal Slowdown/ {print $NF}' | grep -m1 Active || echo "Not Active")
+  # Value after the colon, not $NF - "Not Active" ends in the word "Active".
+  thr=$(nvidia-smi -q -d PERFORMANCE 2>/dev/null \
+        | awk -F':' '/SW Power Cap |HW Thermal Slowdown |SW Thermal Slowdown |HW Power Brake / \
+                     {v=$2; gsub(/[ \t]/,"",v); if (v=="Active") print "Active"}' | head -1)
+  [ -z "$thr" ] && thr="None"
   echo "$(date +%H:%M:%S),$temp,$power,$sm,$util,$thr" >> "$LOG"
   sleep 1
 done

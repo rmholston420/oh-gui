@@ -36,9 +36,13 @@ gpu_sample() {
   local q thr
   q=$(nvidia-smi --query-gpu=temperature.gpu,power.draw,clocks.sm,utilization.gpu \
         --format=csv,noheader,nounits | tr -d ' ')
+  # Parse the value AFTER the colon, not $NF. "Not Active" has $NF == "Active", so the
+  # naive parser reported throttling on every single sample including idle ones.
   thr=$(nvidia-smi -q -d PERFORMANCE 2>/dev/null \
-        | awk '/SW Power Cap|HW Thermal Slowdown|SW Thermal Slowdown/ {print $NF}' \
-        | grep -m1 '^Active$' || echo "None")
+        | awk -F':' '/SW Power Cap |HW Thermal Slowdown |SW Thermal Slowdown |HW Power Brake / \
+                     {v=$2; gsub(/[ \t]/,"",v); if (v=="Active") print "Active"}' \
+        | head -1)
+  [ -z "$thr" ] && thr="None"
   echo "${q},${thr}"
 }
 
@@ -85,8 +89,16 @@ gpu_watch_start() {
     done
   ) &
   GPU_WATCH_PID=$!
-  trap 'gpu_watch_stop' EXIT INT TERM
+  # The watcher signals the parent on breach. A bare 'gpu_watch_stop' trap prints the
+  # summary and then lets execution continue to the next cell - which is exactly what
+  # happened at 04:46: the cutout fired, said "stopping", and the fa=0 cell ran anyway.
+  # TERM/INT must summarise AND exit non-zero.
+  trap 'gpu_watch_stop' EXIT
+  trap 'gpu_watch_stop; echo "run terminated by thermal cutout" >&2; exit 1' INT TERM
 }
+
+# True if the watcher has tripped. Call between cells of a long matrix.
+gpu_aborted() { [ -n "$GPU_ABORT_FLAG" ] && [ -f "$GPU_ABORT_FLAG" ]; }
 
 gpu_watch_stop() {
   [ -n "$GPU_WATCH_PID" ] || return 0
