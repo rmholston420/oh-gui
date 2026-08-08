@@ -274,3 +274,39 @@ Entry format:
 - **Stop condition:** Phase 0 exit still NOT met. Remaining: quality bench vs Perplexity
   gold, upstream artifact pins, stock Agent Canvas reference checkout, first-run wizard.
 
+## 2026-08-08 04:15 EDT - Embedder matrix run: smaller models are SLOWER on CPU
+
+- **Stage:** Phase 0 (baseline metrics)
+- **Ran:** `bench/embed_matrix.sh` (24 threads, 124 GB RAM, num_ctx 512).
+
+  | Model | Place | dims | single | batch64 | chunks/s | VRAM |
+  |---|---|---:|---:|---:|---:|---:|
+  | qwen3-embedding:0.6b | GPU | 1024 | 93.2 ms | 0.30 s | 215.8 | 1630 MiB |
+  | qwen3-embedding:0.6b | CPU | 1024 | **113.5 ms** | **1.50 s** | **42.5** | ~0 |
+  | nomic-embed-text | GPU | 768 | 21.0 ms | 0.29 s | 219.5 | 851 MiB |
+  | nomic-embed-text | CPU | 768 | 258.1 ms | 14.92 s | 4.3 | 98 MiB |
+  | embeddinggemma:300m | GPU | 768 | 103.1 ms | 0.51 s | 126.7 | 1208 MiB |
+  | embeddinggemma:300m | CPU | 768 | 240.7 ms | 10.49 s | 6.1 | 11 MiB |
+
+- **Counterintuitive result:** on CPU, `nomic-embed-text` (137M) is **10x slower** than
+  `qwen3-embedding:0.6b` (600M) despite being 4.4x smaller. Parameter count does not
+  predict CPU throughput here. Amortised per-chunk in batch: qwen3 23 ms vs nomic 233 ms -
+  nomic gains essentially NOTHING from batching on CPU (single 258 ms vs batched 233 ms),
+  while qwen3 goes 113 ms -> 23 ms. Consistent with the two models running on different
+  Ollama inference engines with different CPU threading/batching quality; nomic is
+  BERT-class on the llama.cpp path, qwen3-embedding is served by the new Go engine.
+  The GPU ordering is reversed (nomic 21 ms vs qwen3 93 ms single), which reinforces that
+  this is an engine/kernel effect, not an architecture-size effect.
+- **`nomic-embed-text` REJECTED on both axes** - lower retrieval quality AND 10x worse CPU
+  latency in the placement we actually ship. `embeddinggemma:300m` likewise rejected.
+- **Verified quality ladder** (MTEB-multilingual Retrieval subscore, Qwen3-Embedding HF
+  card, https://huggingface.co/Qwen/Qwen3-Embedding-0.6B):
+  0.6B **64.64** | 4B **69.60** | 8B **70.88**. Mean(Task): 64.33 / 69.45 / 70.58.
+  0.6B->4B is +4.96 retrieval; 4B->8B only +1.28. Sharp diminishing returns above 4B.
+- **Correction logged:** an earlier ADR-004 draft claimed a "~7 MTEB point" qwen3-vs-nomic
+  gap by comparing MTEB-eng-v2 against MTEB English v1 - different tracks, not
+  apples-to-apples. Direction held, magnitude was unsupported. ADR-004 corrected.
+- **Open:** 4b/8b CPU latency unmeasured. `embed_matrix.sh` extended with 4b/8b (CPU only -
+  neither can share the GPU with the planner) plus an MRL dimension-truncation probe.
+- **Stop condition:** Phase 0 exit still NOT met.
+

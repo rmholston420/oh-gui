@@ -7,12 +7,16 @@ set -uo pipefail
 
 CTX=512
 N=64
+# CPU placement is already ratified (ADR-004), so weight size is nearly free against
+# 124 GB RAM. The live question is CPU latency on the QUERY path, which every agent
+# retrieval step pays. MTEB-multilingual Retrieval subscore in comments (Qwen HF card).
 CANDIDATES=(
-  # model:ctx_cap:dims  (ctx_cap = model's own max; we still run at $CTX)
-  "qwen3-embedding:0.6b:32768:1024"
-  "nomic-embed-text:8192:768"
-  "embeddinggemma:300m:2048:768"
+  "qwen3-embedding:0.6b:32768:1024"   # retrieval 64.64  - current ratified choice
+  "qwen3-embedding:4b:40960:2560"     # retrieval 69.60  - +4.96 over 0.6b
+  "qwen3-embedding:8b:40960:4096"     # retrieval 70.88  - only +1.28 over 4b
+  "nomic-embed-text:8192:768"         # different MTEB track, not directly comparable
 )
+PLACEMENTS_FOR_BIG="cpu"   # 4b/8b cannot share the GPU with the planner; CPU only
 OUT=~/.oh-gui/embed_bench; mkdir -p "$OUT"
 STAMP=$(date +%Y%m%d_%H%M)
 CSV="$OUT/${STAMP}_embed_matrix.csv"
@@ -33,7 +37,11 @@ for entry in "${CANDIDATES[@]}"; do
     echo "-- $model NOT PULLED, skipping.  Get it with: ollama pull $model"
     continue
   fi
-  for placement in gpu cpu; do
+  case "$model" in
+    *:4b|*:8b) PLACEMENTS="$PLACEMENTS_FOR_BIG" ;;
+    *)         PLACEMENTS="gpu cpu" ;;
+  esac
+  for placement in $PLACEMENTS; do
     [ "$placement" = cpu ] && NUMGPU=0 || NUMGPU=999
     unload_all; sleep 2
     idle=$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits)
@@ -80,6 +88,31 @@ done
 unload_all
 echo "CSV: $CSV"
 echo
-echo "Decision rule: keep qwen3-embedding:0.6b unless its CPU latency is unacceptable."
-echo "It scores ~70.7 MTEB-eng-v2 vs ~62-64 for nomic-embed-text. On CPU the weight-size"
-echo "advantage of nomic is nearly irrelevant (128 GB RAM); only latency justifies a swap."
+echo "== MRL dimension-truncation probe =="
+echo "Qwen3-Embedding supports Matryoshka truncation (32..native). If Ollama honours a"
+echo "'dimensions' request, a 4b/8b model can be stored at 1024 dims - same vector-store"
+echo "size as 0.6b, higher quality. If not, truncate client-side and L2-renormalise."
+for m in qwen3-embedding:4b qwen3-embedding:8b; do
+  ollama show "$m" >/dev/null 2>&1 || continue
+  for d in "" 1024; do
+    body=$(python3 -c "
+import json,sys
+o={'num_ctx':512,'num_gpu':0}
+b={'model':'$m','input':'probe','options':o}
+if '$d': b['dimensions']=int('$d')
+print(json.dumps(b))")
+    got=$(curl -s -X POST http://localhost:11434/api/embed -H 'Content-Type: application/json' \
+      -d "$body" | python3 -c "
+import sys,json
+try:
+    d=json.load(sys.stdin); print(len(d['embeddings'][0]))
+except Exception as e: print('err')")
+    echo "  $m  dimensions=${d:-native}  -> returned $got"
+  done
+done
+echo
+echo "DECISION RULE (query path is what matters - every retrieval step pays it):"
+echo "  <150 ms  keep/upgrade freely"
+echo "  150-400 ms  acceptable; take the quality if the jump is >=3 retrieval points"
+echo "  >400 ms  reject - agent loops retrieve repeatedly per task"
+echo "Ingest cost is one-time and off-path; weight it far lower."

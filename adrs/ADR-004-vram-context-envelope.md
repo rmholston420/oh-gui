@@ -81,10 +81,15 @@ that option. Never allow it to load at the Ollama default.
 > embedder was silently dropped from GPU with no error. Retrieval no longer depends on the
 > estimator guessing right.
 >
-> `nomic-embed-text` (137M, 768 dims, ~62–64 MTEB) considered and **rejected**:
-> Qwen3-Embedding-0.6B scores ~70.7 MTEB-eng-v2, and on CPU the weight-size advantage is
-> irrelevant against 124 GB of RAM. 110 ms does not justify trading ~7 MTEB points.
-> Dimensionality also differs (1024 vs 768), making it a vector-store schema change.
+> `nomic-embed-text` (137M, 768 dims) considered and **rejected**: on CPU the weight-size
+> advantage is irrelevant against 124 GB of RAM, and dimensionality differs (1024 vs 768),
+> making it a vector-store schema change rather than a swap.
+>
+> **Correction (2026-08-08):** an earlier draft of this ADR cited a "~7 MTEB point" gap by
+> comparing Qwen3-0.6B on MTEB-eng-v2 against nomic on MTEB English v1. Those are
+> different tracks and the figure was not apples-to-apples. The direction of the result is
+> well supported, the magnitude was not. Authoritative same-track figures are now recorded
+> in the model-size amendment below.
 
 **3. KV-cache quantization is abandoned on Ollama.** Server env stays
 `OLLAMA_KV_CACHE_TYPE=f16` so the configuration does not misrepresent itself.
