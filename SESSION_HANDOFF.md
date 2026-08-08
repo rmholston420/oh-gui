@@ -25,7 +25,7 @@ Spec at v4.3. No application code written yet (both `apps/gui` and
 |---|---|---:|---:|
 | Planner | `qwen3.6:27b` | 131072 | 26113 MiB |
 | Coder | `qwen3-coder:30b` | 65536 | 25167 MiB |
-| Embedding | `qwen3-embedding:0.6b` | **512 (pinned)** | 1502 MiB |
+| Embedding | `qwen3-embedding:0.6b` | **512 (pinned)** | 1502 MiB (CPU placement under eval) |
 
 Server env: `OLLAMA_FLASH_ATTENTION=1`, `OLLAMA_KV_CACHE_TYPE=f16`,
 `OLLAMA_GPU_OVERHEAD=1073741824`. q8_0 KV is a confirmed no-op on Ollama's new engine.
@@ -35,7 +35,8 @@ Server env: `OLLAMA_FLASH_ATTENTION=1`, `OLLAMA_KV_CACHE_TYPE=f16`,
 ```bash
 cd ~/dev/oh-gui && git pull
 bash bench/ollama_env.sh f16
-bash bench/validate_config.sh
+bash bench/embed_cpu_vs_gpu.sh   # decides embedder placement first
+bash bench/validate_config.sh    # then validates the resulting config
 ```
 
 Confirms planner@128K and coder@64K each fit co-resident with the embedding model at

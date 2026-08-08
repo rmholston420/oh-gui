@@ -198,3 +198,15 @@ Entry format:
   quality bench vs Perplexity gold, upstream artifact pins (agent-server digest, pip/npm
   versions), read-only stock Agent Canvas reference checkout, first-run wizard.
 
+## 2026-08-08 03:50 EDT - CPU embedder placement under evaluation
+
+- **Stage:** Phase 0 (baseline metrics)
+- **Built/changed:** `bench/embed_cpu_vs_gpu.sh` - measures single-chunk latency and
+  64-chunk batch throughput for `qwen3-embedding:0.6b` at `num_ctx 512`, GPU vs
+  `num_gpu: 0`, with VRAM cost and Ollama processor split per placement. NOT YET RUN.
+- **Motivation:** operator proposed running the embedder on CPU. Colossus has 128 GB RAM;
+  the model is 0.6B. If viable this reclaims 1502 MiB and reopens the CPU-resident option
+  for the security analyzer (ADR-004 §5).
+- **ADR/ledger:** ADR-004 amended with a STATUS AMENDMENT block; decision pending data.
+- **Stop condition:** Phase 0 exit still NOT met.
+

@@ -62,6 +62,12 @@ env var is ignored for models running on it rather than erroring
 **2. The embedding model is pinned to `num_ctx 512`** and always loaded explicitly with
 that option. Never allow it to load at the Ollama default.
 
+> **STATUS AMENDMENT (2026-08-08):** CPU placement for the embedder (`num_gpu: 0`) is
+> under evaluation via `bench/embed_cpu_vs_gpu.sh`. Colossus has 128 GB RAM and the model
+> is 0.6B, so it is plausible; if CPU latency is acceptable this reclaims the full
+> 1,502 MiB and reopens option (b) in §5 for the security analyzer. `num_ctx 512` remains
+> correct regardless of placement. Decision pending measurement.
+
 **3. KV-cache quantization is abandoned on Ollama.** Server env stays
 `OLLAMA_KV_CACHE_TYPE=f16` so the configuration does not misrepresent itself.
 `OLLAMA_FLASH_ATTENTION=1` and `OLLAMA_GPU_OVERHEAD=1073741824` (1 GiB display reserve)
