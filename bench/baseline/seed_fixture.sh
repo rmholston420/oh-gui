@@ -20,6 +20,12 @@ PY
 
 cat > notes_api/store.py <<'PY'
 """In-memory note storage."""
+# `from __future__ import annotations` is deliberate: without it this module's behaviour DIFFERS
+# between Python 3.12 (eager annotation evaluation) and 3.14 (PEP 649, lazy). The baseline gate and
+# the agent runtime are not guaranteed to be the same interpreter, and a fixture that only breaks
+# on one of them turns "which model is better" into "which model got the broken interpreter".
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from itertools import count
 
@@ -45,7 +51,12 @@ class NoteStore:
     def get(self, note_id: int) -> Note | None:
         return self._notes.get(note_id)
 
-    def list(self) -> list[Note]:
+    # NOT named `list`. A method named `list` binds that name in the class namespace, so every
+    # LATER annotation in the class body (`delete`, `search`) resolves `list` to the method and
+    # raises TypeError: 'function' object is not subscriptable — on 3.12, invisibly on 3.14. In the
+    # first matrix this defect hijacked 4 of 16 cells: they spent their turns repairing the fixture
+    # instead of doing the assigned task, and one reported the repair as its accomplishment.
+    def list_all(self) -> list[Note]:
         return list(self._notes.values())
 
     def delete(self, note_id: int) -> bool:
@@ -58,6 +69,8 @@ PY
 
 cat > notes_api/app.py <<'PY'
 """Minimal FastAPI surface over NoteStore."""
+from __future__ import annotations
+
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
@@ -89,7 +102,7 @@ def read_note(note_id: int) -> dict:
 
 @app.get("/notes")
 def list_notes() -> list[dict]:
-    return [{"id": n.id, "title": n.title, "body": n.body, "tags": n.tags} for n in store.list()]
+    return [{"id": n.id, "title": n.title, "body": n.body, "tags": n.tags} for n in store.list_all()]
 PY
 
 cat > tests/test_store.py <<'PY'

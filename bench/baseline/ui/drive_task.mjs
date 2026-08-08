@@ -18,7 +18,7 @@
  */
 import { openSession, ids, has, ensureConfigured } from "./session.mjs";
 import { execFileSync } from "node:child_process";
-import { readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { readFileSync, readdirSync, writeFileSync, copyFileSync, rmSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -44,6 +44,27 @@ const { page, say, shot, el, errs } = S;
 
 const nowISO = () => new Date().toISOString();
 let outcome = "aborted", failure = null;
+
+// The first matrix logged `litellm.NotFoundError: model 'devstral-small-2:24b' not found`. The
+// `default` profile is invoked mid-run by auxiliary machinery (title generation and friends) and
+// pointed at a model that was never pulled — a third model in the loop, failing on every cell, and
+// the likely source of the "Agent error" that appeared at 47-60s in nearly every one. Point the
+// default profile at the cell's own model for the duration, and put it back afterwards.
+const DEFAULT_PROFILE = `${process.env.HOME}/.openhands/profiles/default.json`;
+let defaultBackup = null;
+const pointDefaultAtCellModel = () => {
+  if (!existsSync(DEFAULT_PROFILE)) return;
+  defaultBackup = readFileSync(DEFAULT_PROFILE, "utf8");
+  const mine = JSON.parse(readFileSync(`${process.env.HOME}/.openhands/profiles/${PROFILE}.json`, "utf8"));
+  const dflt = JSON.parse(defaultBackup);
+  if (dflt.model === mine.model) { defaultBackup = null; return; }
+  say(`default profile: ${dflt.model} -> ${mine.model} (restored after the run)`);
+  writeFileSync(DEFAULT_PROFILE, JSON.stringify({ ...dflt, model: mine.model, base_url: mine.base_url }, null, 2));
+};
+const restoreDefault = () => {
+  if (defaultBackup !== null) { writeFileSync(DEFAULT_PROFILE, defaultBackup); defaultBackup = null; }
+};
+process.on("exit", restoreDefault);
 const t = { submitted_s: null, first_message_s: null, idle_s: null };
 let turns = 0, transcript = "", modelObserved = null, cid = null;
 const errorsSeen = [];
@@ -124,7 +145,10 @@ try {
   say(`${t.submitted_s}s submitted ${TASK}`);
 
   // ---- 5. poll to idle, saying out loud what it sees
-  const ERR_RE = /error|failed|exception|unauthor|refused|timed out|rate limit|invalid|no such model/i;
+  // v2 matched any line containing "error", so it recorded the agent's own narration
+  // ("Interesting - there's a TypeError in store.py") as an error event. Match only machine-shaped
+  // failures and the app's own error banner.
+  const ERR_RE = /^(agent error|.*\b(litellm\.[A-Za-z]*Error|NotFoundError|ConnectionError|APIError|RateLimitError)\b.*|.*\b(model .* not found|connection refused|unauthorized|context length exceeded)\b.*)$/i;
   let stall = 0, lastN = 0, idleFor = 0;
   for (let i = 0; i < TIMEOUT_S; i++) {
     await page.waitForTimeout(1000);
@@ -265,13 +289,19 @@ try {
       files_changed: filesChanged, lines_written: added, lines_removed: removed,
       untracked_files: untracked, numstat,
       fixture_tests: tests, fixture_tests_detail: testsDetail || null,
+      acceptance_gate: gate, acceptance_gate_detail: gateDetail || null,
+      // Task done AND nothing pre-existing broken. Either alone is not acceptance.
+      accepted: gate === "pass" && tests === "pass",
+      gate_python: (() => { try { return execFileSync(venvPy, ["--version"],
+        { encoding: "utf8" }).trim(); } catch { return null; } })(),
       error_events_seen: errorsSeen,
       console_errors: [...new Set(errs)].slice(0, 10),
     },
   };
   writeFileSync(join(OUTDIR, `${TASK}.summary.json`), JSON.stringify(summary, null, 2) + "\n");
   writeFileSync(join(OUTDIR, `${TASK}.transcript.txt`), transcript);
-  say(`\noutcome=${outcome} turns=${turns} files=${filesChanged} +${added}/-${removed} tests=${tests}`);
+  say(`\noutcome=${outcome} turns=${turns} files=${filesChanged} +${added}/-${removed} ` +
+      `tests=${tests} gate=${gate} ACCEPTED=${gate === "pass" && tests === "pass" ? "yes" : "NO"}`);
   say(`summary: ${join(OUTDIR, `${TASK}.summary.json`)}`);
   if (outcome !== "completed" && process.env.OH_GUI_KEEP_OPEN === "1") {
     say(`\nOH_GUI_KEEP_OPEN=1 — leaving the browser up for 300s so you can look at it yourself.`);

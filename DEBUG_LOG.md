@@ -939,3 +939,55 @@ created, then re-verified inside it.
 **Genuinely measured this run (the harness was wrong, the agent was not):** 26.3s submit ->
 61s first agent message -> 3 turns; 3 files, +18/-0. GPU peaked 66C, 0 samples >=80C, 0 thermal
 throttling.
+
+## 2026-08-08 15:10 EDT — First full matrix is INVALID. Five defects, four mine.
+
+All 16 cells ran to `outcome=completed`; 15/16 `tests=pass`. None of it is usable as a baseline.
+
+**1. The accept gate could not fail.** 27b/t04: `turns=1 files=0 +0/-0 tests=pass`. The agent did
+nothing and passed, because the seeded fixture's own tests pass on untouched code. *A gate is not
+trusted until proven to fail on a real defect* — I shipped one that cannot fail at all, and then
+read 15 passes as signal. **Fixed:** `bench/baseline/verify/t01..t08.py`, one per task, testing the
+requirement through the public surface; copied in after the agent stops and deleted after.
+`tests/test_gates_fail_on_pristine.py` seeds a clean fixture and asserts every gate FAILS on it.
+Proven in both directions before shipping: all 8 fail on pristine; t01 and t04 flip to pass when
+implemented by hand. New field `accepted = gate passed AND no regression`; `tests=pass` alone is
+now explicitly not acceptance.
+
+**2. My fixture had a real bug that hijacked an uncontrolled subset of cells.** `store.py` defined
+`def list(self) -> list[Note]`, binding `list` in the class namespace, so every LATER annotation
+(`delete`, `search`) resolved `list` to the method: `TypeError: 'function' object is not
+subscriptable`. 27b t02/t05/t08 and 35b t02 spent most of their turns diagnosing and repairing it
+instead of the assigned task; 27b/t08 reported "Renamed to list_all()" as its accomplishment. Both
+models hit it, so it is a fixture defect and not a model difference — but it contaminated an
+uncontrolled subset, which is worse than contaminating all of them. **Fixed:** renamed to
+`list_all()`.
+
+**3. The gate and the agent ran different Pythons.** My venv is 3.14, where PEP 649 makes
+annotations lazy, so the defect above is invisible; the agent's runtime is 3.12, which evaluates
+eagerly and raises. That is why my own pytest run passed cleanly at t01 while the agent fought an
+exception I could not reproduce. *Verifying in an environment the agent never sees is not
+verification.* **Fixed:** `from __future__ import annotations` in the fixture makes it behave
+identically on both, and `gate_python` is now recorded per cell so skew is visible instead of
+inferred.
+
+**4. A third model was in the loop on every cell.** `litellm.NotFoundError: model
+'devstral-small-2:24b' not found` — `~/.openhands/profiles/default.json` points at devstral, which
+was never pulled, and auxiliary machinery (title generation and friends) invokes it mid-run. This
+is very likely the `Agent error` that appeared at 47-60s in nearly every cell. **Fixed:** the
+driver repoints the default profile at the cell's own model for the duration and restores it on
+exit (including via `process.on("exit")`).
+
+**5. No reports were produced.** `report.py` crashed twice with
+`sum(r["lines_accepted"]) -> int + NoneType`. I introduced null-not-zero in the driver and never
+propagated it to the reporter, so the matrix ended with zero output. **Fixed:** null-safe sums, and
+the report now states accepted-vs-total.
+
+**Also mine:** the error detector matched any line containing "error", so it recorded the agent's
+own prose ("Interesting - there's a TypeError in store.py") as error events. Narrowed to
+machine-shaped failures.
+
+**What the run DID establish, and is worth keeping:** the harness drives 16 cells unattended for
+42 minutes without intervention; the profile is correct on every cell and no stray model loaded
+after the ordering fix; thermals peaked 82C with 0 samples at the 83C ceiling and 0 throttling
+across the whole matrix. The plumbing works. The measurement did not.

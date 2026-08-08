@@ -158,14 +158,20 @@ def main() -> int:
 
     L.append("## Aggregate over completed tasks only")
     L.append("")
-    total_lines = sum(r["lines_accepted"] for r in completed)
-    total_blind = sum(r["lines_accepted_without_inspection"] for r in completed)
+    # These are human-only metrics and are null by design when a run was driven automatically.
+    # Summing them crashed the first matrix report with int + NoneType and produced no report at
+    # all. Null means not measurable and must never be coerced to zero.
+    total_lines = sum(r["lines_accepted"] or 0 for r in completed)
+    total_blind = sum(r["lines_accepted_without_inspection"] or 0 for r in completed)
     share = f"{100 * total_blind / total_lines:.0f}%" if total_lines else "—"
     L.append(f"- Mean time to first review: **{fmt(agg('time_to_first_review_s'), ' s')}**")
     L.append(f"- Mean turns to acceptance: **{fmt(agg('turns_to_acceptance'))}**")
     L.append(f"- Lines accepted: **{total_lines}**, of which **{total_blind}** "
              f"({share}) without inspection")
-    L.append(f"- Lost-track incidents: **{sum(r['lost_track_incidents'] for r in completed)}**")
+    L.append(f"- Lost-track incidents: **{sum(r['lost_track_incidents'] or 0 for r in completed)}**")
+    acc = [r for r in completed if (r.get("automated") or {}).get("accepted")]
+    L.append(f"- **Accepted (task gate passed AND no regression): {len(acc)}/{len(rows)}** "
+             f"— {', '.join(sorted(r['task'] for r in acc)) or 'none'}")
     L.append("")
     L.append("Abandoned tasks are excluded from the means and listed above with their outcome. "
              "They are the more interesting data point and must not be averaged away.")
