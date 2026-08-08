@@ -19,6 +19,7 @@
 import { openSession, ids, has, ensureConfigured } from "./session.mjs";
 import { gradeCell } from "./grade.mjs";
 import { pointAtModel, bindRestoreToExit } from "./default_profile.mjs";
+import { checkWorkspace } from "./conversation_meta.mjs";
 import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync, writeFileSync, copyFileSync, rmSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -54,6 +55,8 @@ let outcome = "aborted", failure = null;
 bindRestoreToExit();
 const t = { submitted_s: null, first_message_s: null, idle_s: null };
 let turns = 0, transcript = "", modelObserved = null, cid = null;
+// match:null = UNKNOWN. Unknown is not a pass; it is recorded as such in the summary.
+let ws = { match: null, working_dir: null, reason: "workspace never checked" };
 const errorsSeen = [];
 
 const profileLabel = async () => (await page.locator('[data-testid="chat-input-llm-profile"]')
@@ -107,6 +110,16 @@ try {
   await page.waitForTimeout(2500);
   // Confirm it survived conversation creation rather than assuming it did.
   await selectProfile();
+
+  // The conversation now exists, so the app has written down where it will work. Check that
+  // against the directory we are about to grade, BEFORE spending a model call. A mismatch and a
+  // model that does nothing both produce an empty git diff, so this cannot be caught afterwards.
+  cid = (page.url().match(/conversations\/([0-9a-f-]{36})/) || [])[1] || null;
+  ws = checkWorkspace(cid, FIXTURE);
+  if (ws.match === true) say(`workspace confirmed: ${ws.working_dir}`);
+  else if (ws.match === false) throw new Error(`WRONG WORKSPACE — ${ws.reason}`);
+  else say(`workspace UNVERIFIED: ${ws.reason} — results for this cell are not auditable`);
+
   await shot("10-configured");
 
   // ---- 4. submit the task card VERBATIM
@@ -204,7 +217,7 @@ try {
   }
   await shot("20-final");
 
-  cid = (page.url().match(/conversations\/([0-9a-f-]{36})/) || [])[1] || null;
+  cid = (page.url().match(/conversations\/([0-9a-f-]{36})/) || [])[1] || cid;
   transcript = (await page.locator('[data-testid="chat-scroll-container"]').innerText()
     .catch(() => "")).replace(/\r/g, "");
   outcome = t.idle_s !== null ? "completed" : "timeout";
@@ -253,6 +266,8 @@ try {
     automated: {
       profile: PROFILE, model_observed_in_ollama: modelObserved,
       conversation_id: cid,
+      workspace_verified: ws.match, agent_working_dir: ws.working_dir,
+      workspace_note: ws.reason || null,
       submit_to_first_message_s: t.first_message_s !== null && t.submitted_s !== null
         ? Number((t.first_message_s - t.submitted_s).toFixed(1)) : null,
       submit_to_idle_s: t.idle_s !== null && t.submitted_s !== null

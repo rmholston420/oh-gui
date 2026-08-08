@@ -61,6 +61,29 @@ if [ -f "$HOME/.openhands/profiles/default.json" ]; then
   ok "default profile is $dm (driver repoints it per cell and restores on exit)"
 fi
 
+echo "== workspace the app will actually use =="
+# VITE_WORKING_DIR on the running stack pointed at a directory that does not exist, while the
+# harness graded another. It was harmless — the app uses the registered workspace and ignores that
+# env var — but nothing checked, and a wrong workspace looks exactly like a model that did nothing.
+WSJ="$HOME/.openhands/workspaces.json"
+if [ -f "$WSJ" ]; then
+  python3 - "$WSJ" "$FIXTURE" <<'PYW'
+import json, sys, os
+paths = [w.get("path") for w in json.load(open(sys.argv[1])).get("workspaces", [])]
+want = os.path.realpath(sys.argv[2])
+if not paths:
+    print("  FAIL  no workspace registered — the agent has nowhere to work"); sys.exit(1)
+if want in [os.path.realpath(p) for p in paths if p]:
+    print(f"  ok    fixture is a registered workspace ({len(paths)} registered)")
+    sys.exit(0)
+print(f"  FAIL  graded fixture is NOT a registered workspace. registered: {paths}")
+sys.exit(1)
+PYW
+  [ $? -ne 0 ] && fail=1
+else
+  bad "no $WSJ — open the app once and select the fixture as the workspace"
+fi
+
 echo "== models pulled =="
 for p in "${PL[@]}"; do
   f="$HOME/.openhands/profiles/$p.json"

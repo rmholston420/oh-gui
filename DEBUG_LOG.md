@@ -1053,3 +1053,49 @@ both at the end, and a failed cell no longer risks the remaining fifteen.
 **Lesson, added to the standing list:** *a clean syntax check is not a clean reference check* — and
 more generally, an automated edit that reports success only proves the tool ran, not that the
 pattern matched.
+
+## 2026-08-08 15:35 EDT — Nothing verified that the agent worked in the directory we grade
+
+Operator ran preflight (PASS) and the app refused to start: ports already bound by a stack up for
+two hours. Checking that stack turned up `VITE_WORKING_DIR=/home/rmholston/.oh-gui/baseline/fixture`
+— a path that **does not exist** — while the harness grades `~/oh-gui-baseline/fixture`.
+
+**Outcome: the last matrix DID grade the right directory.** `meta.json` for cell t01's conversation
+records `workspace.working_dir = /home/rmholston/oh-gui-baseline/fixture`, and the agent's edits are
+recorded against files beneath it. The app ignores `VITE_WORKING_DIR` and uses the workspace
+registered in `~/.openhands/workspaces.json`, which contains exactly one entry: the graded fixture.
+The five defects already logged stand; this is not a sixth.
+
+**But nothing in the harness checked, and that is the defect.** The driver clicks `launch-workspace`
+and inherits whatever workspace the app has configured. It matched by luck of prior configuration.
+A wrong workspace and a model that does nothing are indistinguishable after the fact — both leave an
+empty `git diff` — so all 16 cells would have reported zero accepted with no indication why.
+
+**Fixed:** `ui/conversation_meta.mjs` reads `workspace.working_dir` from the conversation's own
+meta.json immediately after creation and BEFORE the task card is submitted. Match → proceed.
+Mismatch → the cell aborts with `WRONG WORKSPACE`, costing seconds instead of three minutes.
+Unreadable → recorded as `workspace_verified: null` and called out in the log; **unknown is not a
+pass**. Preflight additionally asserts the graded fixture is a registered workspace (verified both
+ways against a synthetic workspaces.json).
+
+**Two of my own detectors lied during this investigation, and both are the same mistake I have
+already written a rule about.**
+1. My probe printed `NO CONVERSATION DIR` for all 16 cells. The directory existed. I used a Python
+   `for/else`, so a present file with an absent key fell through to the else branch and reported the
+   directory missing. *Any detector reporting absence must first prove it was looking at the right
+   screen* — I wrote that rule and then broke it in a throwaway loop.
+2. I looked for `working_dir` at the top level of meta.json. It is nested under `workspace`. The
+   conversation id is also dashed in the URL and undashed on disk, which made the first lookup miss
+   entirely.
+
+**Root-cause fix for the recurring ReferenceError class.** Adding the workspace check introduced an
+undefined `ws`, exactly like `gate` earlier today — both in the finally block, both after the agent
+work is complete and paid for, both invisible to `node --check`, which validates syntax only.
+`apps/gui` already ships eslint; `ui/eslint.undef.config.mjs` runs `no-undef` over the harness and
+`tests/test_no_undefined_identifiers.py` enforces it. It caught `ws` immediately.
+
+Suite is 39 passing (was 31, was 13 this morning). New: `tests/test_workspace_check.py` (6),
+`tests/test_no_undefined_identifiers.py` (2).
+
+**Lesson:** *the harness must verify it is measuring the same thing the agent is acting on* — an
+environment variable naming a directory is not evidence that anyone used it.
