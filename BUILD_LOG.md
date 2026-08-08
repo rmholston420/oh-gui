@@ -950,3 +950,18 @@ Diagnosis pending - see DEBUG_LOG.
   timeout path behave as designed.
 - **Stop condition:** unchanged - harness written and validated, not yet executed.
 
+## 2026-08-08 09:47 EDT - Cold-start target corrected to 33 C
+
+- **Operator correction:** 32 C is not reachable between cells. The 28-29 C idle figure is
+  a true-idle number; with the desktop running the card settles around 33 C, so a 32 C
+  target would exhaust the 300 s timeout on nearly every cell and then proceed anyway -
+  all cost, no benefit, and it would have marked most cells `cold_start_ok: false` for no
+  real reason.
+- `GPU_COLD_C` default changed 32 -> 33 in `bench/lib/gpu.sh` and in the harness fallback.
+- The gate's purpose is unchanged: equalise starting temperature across cells. 33 C is the
+  lowest value actually attainable under working conditions, which is what makes it the
+  right target - a threshold that is never met is not a gate, just a delay.
+- **My error:** I derived the target arithmetically from the stated idle temperature
+  (28-29 + margin) instead of asking what the card reaches between runs in practice. Same
+  pattern as the guessed `sleep 20` it replaced.
+
