@@ -68,6 +68,11 @@ SAMPLING = {
 
 # (cell_id, role, model_id, tasks, num_ctx, think, num_predict)
 #
+# num_predict for thinking cells is 16384, NOT 8192. Run 20260808_0531 showed the
+# reasoning trace alone consumes ~7.4k tokens on the debug task, so an 8192 budget left
+# nothing for the answer: c04 and c05 hit the ceiling mid-thought and emitted no
+# conclusion at all. The budget must cover reasoning PLUS answer, not just the answer.
+#
 # Ordering rationale: all cells are Ollama, which hot-swaps models, so ordering is by
 # model to minimise load churn rather than by role. The 35b MTP/base parity pair sits
 # adjacent so any drift between them is not confounded by everything else in between.
@@ -78,17 +83,17 @@ SAMPLING = {
 # at 65536 (152 KB/token, the worst of the field).
 CELLS = [
     ("c01_planner_ollama_qwen36_27b",    "planner",  "qwen3.6:27b",
-     ["arch", "plan"], 131072, True,  8192),
+     ["arch", "plan"], 131072, True,  16384),
     ("c02_precise_ollama_qwen36_27b",    "precise",  "qwen3.6:27b",
-     ["debug"],        131072, True,  8192),
+     ["debug"],        131072, True,  16384),
     ("c03_planner_ollama_qwen36_35bmtp", "planner",  "qwen3.6:35b-a3b-mtp-q4_K_M",
-     ["arch", "plan"], 131072, True,  8192),
+     ["arch", "plan"], 131072, True,  16384),
     ("c04_precise_ollama_qwen36_35bmtp", "precise",  "qwen3.6:35b-a3b-mtp-q4_K_M",
-     ["debug"],        131072, True,  8192),
+     ["debug"],        131072, True,  16384),
     # Parity check: is the MTP build behaviourally equivalent to the base 35b on the same
     # task? The VRAM sweep showed MTP is smaller at every context; speed is UNMEASURED.
     ("c05_precise_ollama_qwen36_35bbase", "precise", "qwen3.6:35b",
-     ["debug"],        131072, True,  8192),
+     ["debug"],        131072, True,  16384),
     # All Hands recommends qwen3.6-35b-a3b as the first local model for OpenHands, so the
     # 35b must be judged on coder work too, not only planning. c04/c05 cover that.
     ("c06_coder_ollama_qwen3coder30b",   "coder",    "qwen3-coder:30b",
@@ -132,6 +137,29 @@ def gpu_snapshot() -> dict:
         return {"error": str(e)}
 
 
+def warmup(model: str, num_ctx: int) -> dict:
+    """Load the model and allocate its KV cache BEFORE anything is timed.
+
+    Without this, the cold weight load lands inside `prompt_eval_duration` and prefill
+    throughput becomes a disk-speed measurement. In run 20260808_0531 two near-identical
+    35b builds reported 4820 vs 3360 tok/s prefill on an identical prompt - a 43% spread
+    that no property of the models explains - and Devstral reported 194 tok/s while
+    pulling 13.5 GB off disk. Every prefill figure in that run was invalid.
+    """
+    t0 = time.time()
+    try:
+        http_post("/api/chat", {
+            "model": model,
+            "messages": [{"role": "user", "content": "ok"}],
+            "stream": False, "think": False,
+            "options": {"num_ctx": num_ctx, "num_predict": 1},
+        }, timeout=900)
+        return {"ok": True, "load_seconds": round(time.time() - t0, 2)}
+    except Exception as e:
+        return {"ok": False, "error": f"{type(e).__name__}: {e}",
+                "load_seconds": round(time.time() - t0, 2)}
+
+
 def run_task(model: str, role: str, task: str, num_ctx: int, think: bool,
              num_predict: int) -> dict:
     prompt = TASKS[task].read_text()
@@ -172,9 +200,15 @@ def run_task(model: str, role: str, task: str, num_ctx: int, think: bool,
         "total_duration_s": round((resp.get("total_duration", 0) or 0) / 1e9, 2),
         # A cell that generated almost nothing has no interpretable throughput and
         # nothing worth scoring. Flag it loudly rather than averaging it in.
-        "valid": ev >= MIN_VALID_TOKENS,
-        "validity_note": None if ev >= MIN_VALID_TOKENS
-                         else f"INVALID: only {ev} tokens generated (floor {MIN_VALID_TOKENS})",
+        "valid": ev >= MIN_VALID_TOKENS and len(stripped) > 0
+                 and resp.get("done_reason") != "length",
+        "validity_note": (
+            f"INVALID: only {ev} tokens generated (floor {MIN_VALID_TOKENS})"
+            if ev < MIN_VALID_TOKENS else
+            "INVALID: budget consumed by reasoning, no answer emitted"
+            if len(stripped) == 0 else
+            "INVALID: truncated at num_predict - answer is incomplete"
+            if resp.get("done_reason") == "length" else None),
         "think_requested": think,
         "thinking_chars": len(thinking),
         "inline_think_tags_stripped": inline_think,
@@ -183,6 +217,10 @@ def run_task(model: str, role: str, task: str, num_ctx: int, think: bool,
         # reasoning, it does not.
         "think_flag_honored": None if think else (len(thinking) == 0 and not inline_think),
         "gpu_at_finish": gpu_snapshot(),
+        # A cell can burn its whole budget reasoning and emit no answer at all. That is an
+        # INVALID cell, not a low-scoring one - c04/c05 of run 20260808_0531 did exactly
+        # this, producing ~29k characters of reasoning and no conclusion.
+        "answer_empty": len(stripped) == 0,
         "content_stripped": stripped,
         "content_stripped_chars": len(stripped),
         "content_raw_chars": len(raw),
@@ -199,6 +237,11 @@ def run_cell(cell_id: str, out_dir: Path) -> Path:
 
     # Recorded, not just printed: if a cell started hot the driver's cool-wait timed out,
     # and that cell's timings are not comparable with the rest of the matrix.
+    wu = warmup(model, num_ctx)
+    if not wu["ok"]:
+        print(f"   WARMUP FAILED: {wu['error']}")
+    else:
+        print(f"   warmup/load {wu['load_seconds']}s")
     start_gpu = gpu_snapshot()
     print(f"-- {cell_id}  model={model} role={role} ctx={num_ctx} think={think} "
           f"start={start_gpu.get('temp_c','?')}C")
@@ -221,6 +264,7 @@ def run_cell(cell_id: str, out_dir: Path) -> Path:
         "think": think, "num_predict": num_predict,
         "sampling": SAMPLING[role],
         "power_cap_w": os.environ.get("BENCH_POWER_CAP_W", "435"),
+        "warmup": wu,
         "gpu_at_start": start_gpu,
         "cold_start_target_c": int(os.environ.get("GPU_COLD_C", "34")),
         "cold_start_ok": (start_gpu.get("temp_c", 999)

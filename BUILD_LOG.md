@@ -975,3 +975,55 @@ Diagnosis pending - see DEBUG_LOG.
 - Purpose unchanged: equalise starting temperature across the 7 cells so matrix ordering
   does not become a confound.
 
+## 2026-08-08 09:58 EDT - Run 20260808_0531 PARTIALLY INVALID; harness corrected
+
+- **Stage:** Phase 0 / R1. First full Path E matrix executed: 7 cells, 570 s, 0 thermally
+  throttled samples, 77 C peak. Thermally the run was clean.
+- **Note on provenance:** the operator's checkout was at `1819bf2`, which PREDATES the
+  cold-start gate. This run used the guessed `sleep 20`, recorded no `gpu_at_start`, and
+  cell start temperatures climbed 69 -> 77 C across the matrix. Nothing throttled, so
+  decode timings are usable, but the ordering caveat stands.
+
+### Defect 1 - c04 and c05 produced NO ANSWER (cells invalid)
+
+- Both hit `done_reason: length` at exactly 8192 tokens with 29,607 and 29,092 characters
+  of reasoning respectively. The entire token budget went to the think block; neither
+  model reached a conclusion.
+- Root cause: `num_predict=8192` was sized for an answer, ignoring that a thinking model
+  must pay for reasoning out of the same budget. Measured reasoning cost on `debug` is
+  ~7.4k tokens.
+- Fix: thinking cells raised to `num_predict=16384`. Coder cells stay at 4096 (no
+  reasoning; c06 finished in 1477 tokens, c07 in 1407).
+- Harness now marks a cell INVALID - not merely low-scoring - when the stripped answer is
+  empty, and separately when `done_reason == "length"`. Previously `valid` only checked a
+  64-token floor, which an 8192-token pile of reasoning passes trivially.
+
+### Defect 2 - every prefill figure in the run is invalid
+
+- Each cell loads its model cold and the load lands inside `prompt_eval_duration`.
+- Evidence: c05 (35b base) and c04 (35b MTP) reported **4820 vs 3360 tok/s** prefill on an
+  identical 1901-token prompt - a 43% spread between near-identical models that no model
+  property explains. Devstral reported **194 tok/s** while pulling 13.5 GB off disk.
+- Fix: `warmup()` issues a 1-token request per cell before any timed task, so weights and
+  KV cache are resident. Load time is now recorded separately as `warmup.load_seconds`.
+- **The prefill column of run 20260808_0531 must not be quoted anywhere.** Decode is
+  unaffected - it is measured over `eval_duration`, after load.
+
+### Not a defect
+
+- **Devstral's 3142 prompt tokens vs 1901 for the Qwen models on identical text** is a real
+  tokenizer difference, not an error. It is a genuine 65% context-efficiency disadvantage
+  and belongs in the ADR-005 evidence.
+- **278 tok/s decode on the A3B MoE builds** is physically consistent: ~3B active
+  parameters at Q4 is roughly 1.7 GB read per token against ~1.8 TB/s of bandwidth.
+
+### Open question for ADR-005
+
+- c04 (MTP) and c05 (base) returned **278.51 and 278.52 tok/s** - agreement to four
+  significant figures between two different builds. This suggests Ollama is not using the
+  MTP speculative-decoding head at all, which would make the MTP build's only real benefit
+  its smaller VRAM footprint. Same shape as the `OLLAMA_FLASH_ATTENTION` no-op. Both cells
+  were truncated, so this must be re-confirmed on the corrected run before being claimed.
+
+- **Stop condition:** full re-run required. Prior results are superseded, not amended.
+
