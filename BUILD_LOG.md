@@ -751,3 +751,30 @@ Entry format:
 - **Stop condition:** Phase 0 exit still NOT met. Next: gold answers for arch and plan,
   then the Path E harness.
 
+## 2026-08-08 07:30 EDT - Gold answers complete for all three bench tasks
+
+- **Stage:** Phase 0 / R1 (quality benchmark), prerequisite R1.0
+- **`bench/gold/arch.md`** (~1,900 words) and **`bench/gold/plan.md`** (~1,600 words)
+  written, joining `bench/gold/debug.md`. All three gold answers now exist and are
+  committed BEFORE any model cell has run, per the `local-llm-bench` rule that a baseline
+  authored after seeing model output is rationalisation, not scoring.
+- Each carries explicit scoring weights and a "claims a strong answer should NOT make"
+  section, so scoring can penalise confident wrongness rather than only rewarding coverage.
+  - `debug`: A=25, B=20, C=25, D=20, structure=10
+  - `arch`: decision+VRAM arithmetic=30, counter-arguments=20, weakened property=15,
+    port interface=25, falsifier=10
+  - `plan`: ordering=30, DoD=20, invalidation=25, risk+experiment=15, stop condition=10
+- **NEW FINDING while authoring `arch.md` - the 262,144 context is NOT usable in
+  production.** The envelope was measured against an idle desktop (650-850 MiB). The spec
+  states the desktop rises 2-3 GB with a browser and the OH-GUI frontend running, and OH-GUI
+  *is* a desktop GUI, so ~3,500 MiB is the honest working figure:
+  `29,368 + 3,500 = 32,868` against `32,607` total = **261 MiB short, with no classifier
+  loaded.** At 131,072 the same model needs 26,390 + 3,500 = 29,890, leaving 2,717 MiB.
+  **The planner's real operating ceiling is 131,072, not 262,144.** Requires an ADR-004
+  amendment; the raw sweep numbers are not wrong, the operating interpretation was.
+- **Consequence for the bench:** planner cells at 131,072 remain correct as designed. No
+  cell was planned at 262,144, so no harness change is needed.
+- **LACT NVML resolved** (see DEBUG_LOG 07:28) - fan control is now available on the 5090.
+- **Stop condition:** Phase 0 exit still NOT met. Next: ADR-004 amendment #5, then the
+  Path E harness.
+

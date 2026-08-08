@@ -94,3 +94,41 @@ _No entries yet. First debugging action in this repo appends below._
 - **Files:** `bench/fa_probe.sh`.
 - **Process note:** "syntax ok" is not verification of an edit. Assert on content.
 
+## 2026-08-08 07:28 EDT - LACT could not load NVML despite a healthy driver
+
+- **Symptom:**
+  ```
+  ERROR lact_daemon::server::handler: could not load Nvidia management library:
+    libnvidia-ml.so.1: cannot open shared object file: No such file or directory
+  ERROR lact_daemon::server::gpu_controller: NVML is missing, Nvidia controls will not be available
+  ```
+  `lact cli info` defaulted to the Raphael integrated AMD GPU; the RTX 5090 had no controls.
+- **Affected:** host tooling (GPU fan control), not the OH-GUI build.
+- **Diagnosis:** the host driver was healthy and NVML was fully resolvable -
+  `/usr/lib/x86_64-linux-gnu/libnvidia-ml.so.1 -> libnvidia-ml.so.610.57.04`, present in
+  the ldconfig cache, owned by `libnvidia-compute`, driver 610.57.04 (open kernel module).
+  So the library was not missing from the host; it was missing from the daemon's view.
+  `systemctl cat lactd` showed `ExecStart=bash /var/lib/flatpak/app/io.github.ilya_zlobintsev.LACT/.../daemon.sh`.
+- **Root cause:** a **Flatpak** LACT install from 2026-07-18 had placed a unit at
+  `/etc/systemd/system/lactd.service`, which shadows the native package unit at
+  `/usr/lib/systemd/system/lactd.service`. Installing the `.deb` did not take effect
+  because the higher-precedence Flatpak unit kept winning. The Flatpak sandbox cannot see
+  host NVIDIA libraries, and its bundled GL runtime no longer matched host driver 610.57.04
+  (installed 2026-07-29) - which is why the same daemon logged NVML success on Jul 31 and
+  Aug 1 and failed from Aug 8.
+- **Fix:**
+  ```bash
+  sudo systemctl disable --now lactd
+  sudo mv /etc/systemd/system/lactd.service /etc/systemd/system/lactd.service.flatpak.bak
+  sudo systemctl daemon-reload
+  sudo systemctl enable --now lactd
+  ```
+- **Verified:** `Nvidia management library loaded`, `initialized nvidia controller for GPU
+  10DE:2B85`, and `lact cli list-gpus` now reports `1: ... (NVIDIA GeForce RTX 5090) [Dedicated]`.
+- **Files changed:** none in-repo; host systemd only.
+- **Generalisable lesson:** "library not found" from a service whose host copy resolves
+  fine is a namespace problem, not a packaging problem. Check what the unit actually
+  executes before reinstalling anything - the install had already succeeded and was inert.
+- **Residual, benign:** `could not reset the clocks table` and `could not get current
+  performance level` both come from the AMD controller for the Raphael iGPU, not the 5090.
+
