@@ -43,3 +43,4 @@ old one and mark the old one `Amended · superseded by ADR-###`.
 | Desktop VRAM overhead | 657-666 MiB measured with browser open; the ~3,500 MiB estimate is retracted (ADR-004 A#6) |
 | `OLLAMA_FLASH_ATTENTION` | Confirmed no-op on all three axes (VRAM, prefill, decode) |
 | Repo layout for code | `apps/gui/` + `services/middleware/`, confirmed 2026-08-08 |
+| ADR-009 | Qwen3.6 sampling parameters and the MTP asymmetry | Proposed — verdict pending Phase 0 matrix |

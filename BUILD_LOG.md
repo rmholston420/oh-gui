@@ -2323,3 +2323,28 @@ and completes. Recurring at a fixed point suggests a real underlying tool failur
 once the matrix is recorded — `error_events_seen` now captures it per cell.
 
 **Stop condition:** item 3 still OPEN. Harness is proven on one cell; the matrix has not run.
+
+## 2026-08-08 14:36 EDT — ADR-009 drafted: Qwen3.6 sampling and MTP asymmetry
+
+**Stage:** Phase 0 (research conducted while the matrix ran; nothing changed mid-run).
+
+Verified on Colossus: both profiles are byte-identical except `model` and **neither sets any
+sampling parameter**, so Ollama's baked-in values govern. `ollama show --parameters` gives both
+models `temperature 1, top_p 0.95, top_k 20, min_p 0, presence_penalty 1.5, repeat_penalty 1` —
+Qwen3.6's *thinking-general* preset — while Qwen's *coding* recommendation is
+`temperature 0.6, presence_penalty 0.0`. The only parameter differing between the two models is
+`draft_num_predict 4`, present on the 35b only: the 35b has MTP (~1.4-2.2x generation speed, no
+accuracy change) and the 27b does not.
+
+Good news for the matrix: the config axis is clean — one variable, `model`. Bad news: that
+variable bundles MTP with the 35b, so tok/s understates the 27b and cannot be reported without
+the caveat.
+
+Also recorded as UNVERIFIED, not assumed: `reasoning_effort: "high"` and
+`extended_thinking_budget: 200000` are Anthropic/OpenAI-shaped fields and `drop_params: true` may
+discard them before they reach Ollama. Nobody has measured whether they do anything here.
+
+Filed `adrs/ADR-009-qwen3.6-sampling-and-mtp.md` (Proposed), index updated. Four follow-up runs
+proposed, each isolated — changing sampling and MTP together would make both unmeasurable.
+
+**Stop-condition status:** Phase 0 item 3 still OPEN, matrix in flight. ADR-009 does not block it.
