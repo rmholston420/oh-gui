@@ -351,3 +351,33 @@ Entry format:
   is flagged for the operator to reconsider. No model change made unilaterally.
 - **Stop condition:** Phase 0 exit still NOT met.
 
+## 2026-08-08 04:30 EDT - Quant survey for qwen3.6:35b; only MTP is viable
+
+- **Stage:** Phase 0 (baseline metrics)
+- **Surveyed all 15 `35b` tags** (https://ollama.com/library/qwen3.6/tags):
+
+  | Tag | Size | Quant | Verdict |
+  |---|---:|---|---|
+  | `35b` / `35b-a3b` / `35b-a3b-q4_K_M` | 24 GB | q4_K_M | current; digest `07d35212591f` |
+  | `35b-a3b-mtp-q4_K_M` | 23 GB | q4_K_M | **CANDIDATE** - MTP, digest `c7bd058dd977`, newer |
+  | `35b-a3b-nvfp4` | 22 GB | nvfp4 | digest `1b50c6fdc2d4` - IDENTICAL to `35b-mlx`; MLX = Apple Silicon, not CUDA |
+  | `35b-mlx` | 22 GB | - | MLX, Apple only |
+  | `35b-a3b-q8_0` / `mtp-q8_0` | 39 GB | q8_0 | EXCEEDS 32,607 MiB VRAM |
+  | `35b-a3b-mxfp8` / `coding-mxfp8` | 38 GB | mxfp8 | EXCEEDS VRAM |
+  | `35b-a3b-bf16` and variants | 70-72 GB | bf16 | EXCEEDS VRAM |
+
+- **Finding: no quality upgrade is reachable.** The next step up from q4_K_M is q8_0 at
+  39 GB, which exceeds the card by ~6 GB before any KV cache. q4_K_M is the quantization
+  ceiling on a single 32 GB 5090 for this model. Same holds for `qwen3.6:27b-q8_0` (30 GB
+  weights leaves no usable KV room).
+- **`nvfp4` rejected pending evidence:** despite the NVIDIA-sounding name, the
+  `35b-a3b-nvfp4` tag shares digest `1b50c6fdc2d4` with `35b-mlx` and is labelled MLX on
+  the tags page. MLX targets Apple Silicon. Not pulled - 22 GB is too expensive to spend
+  on an unverified hypothesis. If this is a page-labelling artifact it can be revisited.
+- **`35b-a3b-mtp-q4_K_M` added to `bench/vram_sweep.sh`.** MTP = multi-token prediction
+  (speculative decoding head). Same q4_K_M weights, so quality parity is EXPECTED and must
+  be confirmed rather than assumed; the potential gain is generation speed, which matters
+  for agent loops. Whether Ollama actually engages the MTP head is unverified - the sweep
+  plus tok/s in the quality bench will show it.
+- **Stop condition:** Phase 0 exit still NOT met.
+

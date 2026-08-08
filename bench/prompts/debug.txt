@@ -1,0 +1,98 @@
+You are diagnosing a real benchmarking bug on a single-user Linux workstation
+("Colossus": Kubuntu, 24 CPU threads, 124 GB RAM, one RTX 5090 with 32,607 MiB VRAM,
+Blackwell SM_120). Ollama serves local models. There is no cloud, no second GPU.
+
+GOAL OF THE SCRIPT
+Measure how much VRAM each local model consumes at several context lengths, and decide
+which contexts fit entirely on the GPU. The script runs each model at each context, reads
+`nvidia-smi` for used VRAM, reads `ollama ps` for the CPU/GPU split, and marks a row
+SPILLED if Ollama reports any CPU offload.
+
+The script supports two modes. In `fp16` mode it changes nothing. In `q8` mode it is
+supposed to enable flash attention and 8-bit KV-cache quantization first, which should
+roughly halve the memory used by the context cache:
+
+    if [[ "$MODE" == "q8" ]]; then
+      echo "# restarting Ollama with flash attention + q8_0 KV cache"
+      sudo systemctl set-environment OLLAMA_FLASH_ATTENTION=1 OLLAMA_KV_CACHE_TYPE=q8_0
+      sudo systemctl restart ollama 2>/dev/null || {
+        pkill -x ollama; sleep 2
+        OLLAMA_FLASH_ATTENTION=1 OLLAMA_KV_CACHE_TYPE=q8_0 nohup ollama serve >/tmp/ollama.log 2>&1 &
+      }
+      sleep 6
+    fi
+
+    # idle baseline AFTER any restart, with nothing loaded
+    for m in "${MODELS[@]}"; do ollama stop "$m" >/dev/null 2>&1; done
+    sleep 3
+    idle=$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits)
+
+`MODELS` contains exactly two entries: `qwen3.6:27b` and `qwen3-coder:30b`.
+
+After the model sweep, the script performs one extra check: it loads a small embedding
+model, `qwen3-embedding:0.6b` (639 MB on disk), and reports what that costs:
+
+    ollama stop qwen3.6:27b >/dev/null 2>&1; sleep 2
+    curl -s -X POST http://localhost:11434/api/embed \
+      -H 'Content-Type: application/json' \
+      -d '{"model":"qwen3-embedding:0.6b","input":"warmup","keep_alive":"2m"}' >/dev/null
+    embed_used=$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits)
+    echo "embedding resident: used=${embed_used} MiB (cost $(( embed_used - idle )) MiB)"
+
+The two runs were executed back to back, fp16 first, then q8 about one minute later.
+
+OUTPUT OF RUN 1 (fp16)
+
+    gpu_total_mib=32607  idle_used_mib=640  mode=fp16
+    qwen3.6:27b       32768  size=18 GB  100% GPU     used=20005  free=12602  OK
+    qwen3.6:27b       65536  size=20 GB  100% GPU     used=22119  free=10488  OK
+    qwen3.6:27b      131072  size=25 GB  100% GPU     used=26136  free= 6471  OK
+    qwen3.6:27b      262144  size=35 GB  86% CPU/GPU  used=31586  free= 1021  SPILLED
+    qwen3-coder:30b   32768  size=21 GB  100% GPU     used=22025  free=10582  OK
+    qwen3-coder:30b   65536  size=25 GB  100% GPU     used=25172  free= 7435  OK
+    qwen3-coder:30b  131072  size=32 GB  97% CPU/GPU  used=31111  free= 1496  SPILLED
+
+    embedding resident: used=6750 MiB (cost 6110 MiB)
+    NAME                  ID            SIZE    PROCESSOR  CONTEXT
+    qwen3-embedding:0.6b  ac6da0dfba84  5.8 GB  100% GPU   32768
+
+OUTPUT OF RUN 2 (q8)
+
+    gpu_total_mib=32607  idle_used_mib=6747  mode=q8
+    qwen3.6:27b       32768  size=18 GB  100% GPU     used=26138  free= 6469  OK
+    qwen3.6:27b       65536  size=20 GB  100% GPU     used=28023  free= 4584  OK
+    qwen3.6:27b      131072  size=25 GB  100% GPU     used=26113  free= 6494  OK
+    qwen3.6:27b      262144  size=35 GB  86% CPU/GPU  used=31575  free= 1032  SPILLED
+    qwen3-coder:30b   32768  size=21 GB  100% GPU     used=22036  free=10571  OK
+    qwen3-coder:30b   65536  size=25 GB  100% GPU     used=25161  free= 7446  OK
+    qwen3-coder:30b  131072  size=32 GB  97% CPU/GPU  used=31063  free= 1544  SPILLED
+
+    embedding resident: used=6747 MiB (cost 0 MiB)
+
+ADDITIONAL FACT DISCOVERED LATER
+`systemctl show ollama --property=Environment` on this host prints, among others:
+
+    OLLAMA_HOST=0.0.0.0:11434
+    OLLAMA_CONTEXT_LENGTH=65536
+    OLLAMA_KEEP_ALIVE=-1
+
+YOUR TASK
+The q8 run is not trustworthy. Identify every distinct defect you can justify from the
+evidence above. For each one, state:
+
+  1. The specific observation in the output that reveals it.
+  2. The root cause.
+  3. The concrete fix, as exact shell or code changes.
+
+Then answer these directly:
+
+  A. Why does the q8 run report `idle_used_mib=6747` when the fp16 run reported 640?
+  B. The q8 numbers are nearly identical to fp16 at matching contexts. What does that
+     tell you, and what would you check to confirm it?
+  C. Explain the `qwen3.6:27b` row at 131072 in run 2 reading LOWER (26113) than the same
+     model at 65536 (28023). What physically happened?
+  D. A 639 MB model reported 5.8 GB resident. Explain the discrepancy and give the exact
+     request change that reduces it.
+
+Be specific and concise. Prefer exact commands over description. If a claim cannot be
+supported by the evidence given, say so rather than speculating.
