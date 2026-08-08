@@ -131,3 +131,37 @@ Run `bash bench/oneoff/max_loaded_lru_probe.sh`. It changes no configuration and
 **Related and settled:** `=1` is NOT the fix. A CPU-placed model occupies a model slot (measured,
 BUILD_LOG 2026-08-08 05:50 EDT), so `=1` would thrash the embedder on every role switch. ADR-005
 Amendment #4 retracts that change.
+
+## 2026-08-08 09:02 EDT — frontend can bypass the policy plane via `LocalConversation`
+
+**Status: OPEN. Binding requirement with no enforcement yet. Phase 1 authorization prerequisite.**
+
+`@openhands/typescript-client` 1.37.0 exports a **functional** `LocalConversation` from its
+top-level barrel — local agent loop, bash tool definition, caller-supplied `toolExecutor`, plus its
+own `security/confirmation-policy`, `security/security-analyzer`, `stuck-detector` and
+`secret-registry`. ADR-001 described the client as "remote conversations only" and rested its
+`04-authorization.md` §4.8 argument on that ("a remote-only client cannot reach the hole").
+
+**Nothing currently prevents frontend code from importing `LocalConversation` and driving an agent
+loop that never transits the middleware**, bypassing the entire policy plane and defeating
+Principle 8. ADR-001 item 4 is therefore a convention, not a control.
+
+**Required:** a mechanical import gate — frontend must not import `LocalConversation`,
+`LocalWorkspace`, `.../llm`, or `.../security` — plus a test that fails the build on violation.
+Local to this repo, no GitHub-native CI. See ADR-001 Amendment #1 C#1.
+
+**Related, same package:** `@openrouter/sdk ^0.13.24` is a non-optional dependency and
+`dist/llm/openrouter-llm.js` ships. Verify no path reaches OpenRouter and that it is tree-shaken
+from the production bundle; treat an outbound OpenRouter request as a defect.
+
+## 2026-08-08 09:02 EDT — Agent Server / TypeScript client version skew is unquantified
+
+**Status: OPEN, accepted risk, mitigation deferred to first integration slice.**
+
+Pinned server/SDK **1.41.0** vs client **1.37.0** — four minor versions. Separate repos, 15 client
+releases against 81 SDK releases, gaps in the client series, no `peerDependencies`, no published
+compatibility matrix, no supported-server range. The first integration slice must verify the
+endpoints it actually calls against the pinned server rather than trusting version proximity.
+
+Upside recorded in ADR-001 Amendment #1 C#2: a formal, contract-tested OpenAPI schema **does** exist
+upstream, so the anti-corruption layer can be generated and diffed rather than hand-written.

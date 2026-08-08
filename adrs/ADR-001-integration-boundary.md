@@ -133,3 +133,95 @@ it determines what "the checkout" means for the baseline.
 - OpenHands software-agent-sdk — https://github.com/OpenHands/software-agent-sdk
 - OpenHands SDK docs — https://docs.openhands.dev/sdk/getting-started
 - `PORTING_LEDGER.md` — Agent Canvas donor entry
+
+---
+
+## Amendment #1 — 2026-08-08 — four Context/Rationale premises corrected against the pinned artifacts
+
+**Status: Ratified. The DECISION is unchanged. Four supporting factual claims were wrong, one of
+them load-bearing for the authorization architecture.**
+
+Pinning the artifacts (`docs/UPSTREAM_PINS.md`) required inspecting them, and the inspection
+contradicted four statements in this ADR's Context and Rationale. All four were written from
+documentation and repository prose rather than from the shipped artifacts.
+
+### C#1 — "remote conversations only" is FALSE, and the §4.8 argument built on it does not hold
+
+This ADR's Context describes `@openhands/typescript-client` as **"remote conversations only"**, and
+the Rationale rests a security conclusion on it:
+
+> "`RemoteConversation.execute_tool()` raises `NotImplementedError`. A remote-only client cannot
+> reach the hole."
+
+The shipped package (1.37.0) exports **`LocalConversation`** from its top-level barrel
+(`dist/index.js:9`). It is not a stub: it runs the agent loop locally, defines a bash tool
+(`"The bash command to execute…"`), accepts a caller-supplied `toolExecutor`, and ships parallel
+`security/confirmation-policy`, `security/security-analyzer`, `conversation/stuck-detector`, and
+`conversation/secret-registry` modules. Its own docstring: *"runs the agent loop locally without
+connecting to a remote server. This mirrors the Python SDK's LocalConversation class."*
+
+**Consequence.** The structural guarantee this ADR claimed does not exist. Nothing in the package
+prevents frontend code from importing `LocalConversation` and driving an agent loop that never
+transits the middleware — which would bypass the entire policy plane of item 3 and defeat
+Principle 8 ("display is not enforcement").
+
+The decision does not change; if anything this strengthens it. But the protection must be
+**enforced**, not assumed:
+
+> **New binding requirement.** The frontend MUST NOT import `LocalConversation`, `LocalWorkspace`,
+> or anything under `@openhands/typescript-client/llm` or `.../security`. This requires a mechanical
+> gate — an import restriction plus a test that fails the build on violation. Local to this repo, no
+> GitHub-native CI. Not yet implemented; it is a Phase 1 authorization-slice prerequisite, and until
+> it exists the item 4 boundary is a convention rather than a control.
+
+Whether a browser can actually execute the built-in tools is a separate and unanswered question
+(there is no `child_process` in a browser, and `toolExecutor` is caller-supplied). That uncertainty
+is not a mitigation: the correct posture is the gate above, not a bet on the sandbox.
+
+### C#2 — "no formal OpenAPI document … was found" is FALSE
+
+This ADR's risk register states that no formal OpenAPI document, versioning policy, or deprecation
+guarantee was found. Upstream ships all of the following in `software-agent-sdk`:
+
+- `openhands-agent-server/openhands/agent_server/openapi.py`
+- `.github/scripts/export_agent_server_openapi.py`
+- `tests/agent_server/test_openapi_contract.py` — a **contract test**
+- `.github/scripts/check_agent_server_openapi_quality.py` plus a weak-schema allowlist
+
+The client's `dist/generated/agent-server-schema.d.ts` (20,863 lines) is generated from it.
+
+**Revised risk:** a formal, contract-tested, machine-readable schema **does** exist, which is a
+materially better position than recorded and makes the anti-corruption layer cheaper — it can be
+generated and diffed rather than hand-written. **No versioning or deprecation policy was found**;
+that half of the original risk stands.
+
+### C#3 — "ports 8000/8001" is wrong
+
+The pinned image exposes **8000/tcp and 8002/tcp**, and 8002 is `NOVNC_PORT` (a VNC surface), not
+the WebSocket. There is no 8001. Any compose file or health check written from this ADR's Context
+would have probed a closed port.
+
+### C#4 — "no Node dependency" is wrong about the dependency graph
+
+The client declares `ws ^8.20.0` as a normal runtime dependency. Browser **behaviour** is as this
+ADR assumed — `dist/events/websocket-client.js` prefers `window.WebSocket` and only falls back to a
+guarded `require('ws')` — but the dependency is installed unconditionally and a bare `require` in an
+ESM module can break bundlers. Plan an alias or `external`.
+
+Separately, and not previously noted at all: the client declares **`@openrouter/sdk ^0.13.24`** and
+ships `dist/llm/openrouter-llm.js`. A cloud LLM SDK is a non-optional dependency of the frontend
+client in a project whose standing constraint is local-only. Before this package is admitted,
+verify no code path reaches OpenRouter and that the module is tree-shaken from the production
+bundle. Treat an outbound OpenRouter request as a defect.
+
+### Also recorded
+
+Server/SDK **1.41.0** against client **1.37.0** — four minor versions of skew, separate repos, no
+`peerDependencies`, no published compatibility matrix. Unquantified, so the first integration slice
+must verify the endpoints it calls against the pinned server rather than trusting version proximity.
+
+### Lesson
+
+Every one of these four errors came from trusting prose over the artifact. The artifacts were
+available for inspection the entire time. This ADR gated Phase 0 and the errors would have
+propagated into the compose file, the health check, and the authorization boundary.

@@ -34,9 +34,11 @@ MUST call `ollama stop` on the outgoing role model (`OLLAMA_KEEP_ALIVE=-1`, noth
 
 ## Exact next action
 
-**No bench work remains.** Path E is closed and ADR-005 has no open actions. The next action is
-Phase 0 exit item 1 below — pin the upstream artifacts (ADR-001, `docs/specs/02-repo-setup.md`
-item 1). Nothing in the queue needs the GPU.
+**Decide how to satisfy Phase 0 exit item 2** — the read-only stock Agent Canvas reference checkout
+(`docs/specs/03-layout.md` §3.0.1, ADR-001 item 6). Agent Canvas was archived upstream 2026-07-27,
+so it is a frozen donor; the checkout needs a pinned commit SHA and must be marked read-only. The
+open question is **where it lives**: vendored into this repo, or a sibling directory on Colossus
+referenced by pin. That affects repo size and the never-modify guarantee, so confirm before acting.
 
 ## Ollama configuration — SETTLED, do not revisit
 
@@ -55,10 +57,25 @@ stopped calling `ollama stop`.
 
 ## Remaining before Phase 0 Definition of Done
 
-1. Upstream artifact pins — agent-server digest, pip/npm versions (ADR-001,
-   `docs/specs/02-repo-setup.md` item 1).
+1. ~~Upstream artifact pins~~ — **DONE 2026-08-08**, `docs/UPSTREAM_PINS.md`.
 2. Read-only stock Agent Canvas reference checkout (`docs/specs/03-layout.md` §3.0.1).
 3. First-run wizard stating the default trust-dial stop `ConfirmRisky()` in-UI (§3.4).
+
+## Upstream pins — recorded, see `docs/UPSTREAM_PINS.md`
+
+`agent-server` @ `sha256:f0244fd7bb31428216394397cc183a3d820affe7cfe93441c98d8b3e98fa0520`
+(= `refs/tags/v1.41.0`, verified from the image config blob) · `openhands-{sdk,tools,workspace,
+agent-server}` **1.41.0**, `requires_python >=3.12` · `@openhands/typescript-client` **1.37.0**.
+
+**Read ADR-001 Amendment #1 before writing any compose file, health check, or frontend import.**
+Pinning required inspecting the artifacts, and that falsified four ADR-001 claims: the client is
+**not** remote-only (it exports a working `LocalConversation`, so the §4.8 structural argument does
+not hold and an import gate is now required); a formal contract-tested OpenAPI schema **does** exist
+upstream; the server exposes **8000 + 8002**, not 8001; and `ws` plus **`@openrouter/sdk`** are hard
+dependencies of the client.
+
+Lockfiles deliberately do not exist yet — neither project is scaffolded. `UPSTREAM_PINS.md` is the
+source they must be generated from verbatim.
 
 ## Open
 

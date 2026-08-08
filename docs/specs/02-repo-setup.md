@@ -5,6 +5,12 @@
 > modify. Items 4-9 are unchanged and still binding.
 
 1. **(REPLACED)** Pin the OpenHands runtime as a dependency, not a checkout:
+   > **SATISFIED 2026-08-08.** All pins recorded in
+   > [`docs/UPSTREAM_PINS.md`](../UPSTREAM_PINS.md), which is the source of truth and the source
+   > any future lockfile must be generated from verbatim. Lockfiles themselves do not exist yet
+   > because neither the middleware nor the frontend project is scaffolded; that is Phase 1 work.
+   > Inspecting the artifacts to pin them falsified four claims in ADR-001 — see ADR-001
+   > Amendment #1 before relying on this spec's description of the Agent Server surface.
    - `agent-server` Docker image pinned **by digest**, not by floating tag.
    - `openhands-sdk`, `openhands-tools`, `openhands-workspace`, `openhands-agent-server`
      pinned in the middleware's Python lockfile.

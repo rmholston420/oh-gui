@@ -1683,3 +1683,50 @@ trust-dial stop). No further Path E runs are required for Phase 0.
   SESSION_HANDOFF.md.
 - Stop condition: ADR-005 Ratified with Amendments #1-#5, **no open actions**. Phase 0 exit still
   NOT met - three non-bench items remain.
+
+## 2026-08-08 09:02 EDT — Phase 0 exit item 1 SATISFIED: upstream artifact pins recorded
+
+- Stage: Phase 0 exit criterion, `docs/specs/02-repo-setup.md` item 1 (as replaced by ADR-001).
+- **`docs/UPSTREAM_PINS.md` created** - authoritative pin manifest with digests, wheel hashes,
+  npm integrity, provenance, and a paste-ready re-verification procedure for each phase gate.
+- **Pins.** `agent-server` index digest
+  `sha256:f0244fd7bb31428216394397cc183a3d820affe7cfe93441c98d8b3e98fa0520` (amd64 child
+  `sha256:7bfd4fb6...`), tag `ca46719-python`; verified as `refs/tags/v1.41.0` from the image config
+  blob's `OPENHANDS_BUILD_GIT_REF`/`_SHA`, not inferred from the tag name. `openhands-sdk`,
+  `-tools`, `-workspace`, `-agent-server` all **1.41.0**, `requires_python >=3.12`, wheel sha256s
+  recorded. `@openhands/typescript-client` **1.37.0**, MIT, integrity recorded.
+- **Ambiguity FLAGGED, not silently resolved.** Item 1 says pin in "the middleware's Python
+  lockfile" and "the frontend lockfile". **Neither project is scaffolded** - no `pyproject.toml`,
+  no `package.json`, no lockfile in the repo. Phase 0 requires pins *recorded*; lockfile generation
+  is Phase 1. UPSTREAM_PINS.md is designated the source those lockfiles are generated from verbatim.
+- **Registry gotcha recorded.** `ghcr.io` caps `tags/list` at 1000 entries and `ca46719-python` is
+  absent from that page despite resolving. Never infer absence from the listing; resolve the tag.
+  The image carries no OCI `version`/`revision`/`source` labels - only `authors` - so the digest plus
+  the two `OPENHANDS_BUILD_GIT_*` env vars are the only identity signals.
+- **Inspecting the artifacts falsified FOUR claims in ADR-001** (Amendment #1). All four came from
+  trusting documentation prose over the shipped artifact:
+  1. **"remote conversations only" - FALSE, and load-bearing.** The client exports a functional
+     `LocalConversation` (local agent loop, bash tool, `toolExecutor`, its own security/ and
+     stuck-detector). ADR-001's §4.8 argument - "a remote-only client cannot reach the hole" - does
+     not hold. Nothing prevents the frontend from bypassing the middleware policy plane entirely.
+     New binding requirement: a mechanical import gate plus a failing test. Until it exists, ADR-001
+     item 4 is a convention, not a control. Filed in KNOWN_ISSUES.md.
+  2. **"no formal OpenAPI document was found" - FALSE.** Upstream ships `openapi.py`, an export
+     script, a quality gate, and `test_openapi_contract.py`. The anti-corruption layer can be
+     generated and diffed instead of hand-written. The versioning/deprecation half of the risk
+     stands.
+  3. **"ports 8000/8001" - WRONG.** The image exposes 8000 and **8002**, and 8002 is `NOVNC_PORT`.
+     A compose file or health check written from ADR-001 would have probed a closed port.
+  4. **"no Node dependency" - wrong about the dependency graph.** `ws ^8.20.0` is a normal
+     dependency; browser runtime does prefer `window.WebSocket`, but bundlers can choke on the bare
+     `require('ws')`. Newly noted: **`@openrouter/sdk ^0.13.24` is a non-optional dependency** and
+     `openrouter-llm.js` ships - a cloud LLM SDK inside a local-only project. Must be proven
+     unreachable and tree-shaken.
+- **Version skew recorded:** server/SDK 1.41.0 vs client 1.37.0, four minor versions, no compat
+  matrix, no peerDeps. Filed in KNOWN_ISSUES.md.
+- Files: `docs/UPSTREAM_PINS.md` (new), `adrs/ADR-001-integration-boundary.md` (Amendment #1),
+  `docs/specs/02-repo-setup.md` (item 1 marked SATISFIED), `PORTING_LEDGER.md` (runtime deps table
+  filled in), KNOWN_ISSUES.md (2 new entries), BUILD_LOG.md, SESSION_HANDOFF.md.
+- **Stop condition: Phase 0 exit item 1 MET.** Two items remain: read-only stock Agent Canvas
+  reference checkout (`03-layout.md` §3.0.1) and the first-run wizard stating the default trust-dial
+  stop in-UI (§3.4). No GPU work outstanding.

@@ -41,11 +41,15 @@ comment naming the upstream repo, path, and commit SHA it came from.
 
 Recorded here so they are never mistaken for vendored code.
 
-| Artifact | Pin method | Notes |
+**Pinned 2026-08-08.** Authoritative values, digests and re-verification procedure live in
+[`docs/UPSTREAM_PINS.md`](docs/UPSTREAM_PINS.md). The table below is a summary only; on any conflict
+that file wins.
+
+| Artifact | Pin | Notes |
 |---|---|---|
-| `ghcr.io/openhands/agent-server` | Docker digest | Tags are commit SHAs, not semver |
-| `openhands-sdk`, `openhands-tools`, `openhands-workspace`, `openhands-agent-server` | Python lockfile | Middleware-side; owns the policy plane |
-| `@openhands/typescript-client` | Frontend lockfile | **Alpha** - API may change without notice; must sit behind the middleware anti-corruption layer |
+| `ghcr.io/openhands/agent-server` | `sha256:f0244fd7bb31428216394397cc183a3d820affe7cfe93441c98d8b3e98fa0520` | index digest; tag `ca46719-python` = `refs/tags/v1.41.0`, provenance only. Exposes **8000 + 8002**, not 8001 (ADR-001 Amdt #1) |
+| `openhands-sdk`, `openhands-tools`, `openhands-workspace`, `openhands-agent-server` | **1.41.0** (all four) | `requires_python >=3.12`. Middleware-side; owns the policy plane |
+| `@openhands/typescript-client` | **1.37.0** | MIT. **Four minor versions behind the server**, no compat matrix. Ships a working `LocalConversation` and a hard `@openrouter/sdk` dependency — both must be gated out of the frontend (ADR-001 Amdt #1) |
 
 ## Pre-identified port candidates (not yet ported)
 
