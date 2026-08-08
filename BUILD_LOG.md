@@ -2805,3 +2805,29 @@ split.
 - **PORTING_LEDGER / ADR updated:** none
 - **Stop-condition status:** met. Disk reclaim closed at 247 GB with volumes intact. No operator
   question outstanding. Next action unchanged: the ADR-013-compliant task set.
+
+## 2026-08-08 19:50 EDT — ADR-016: benchmark decoupled from Phase 0 exit
+
+- **Stage / plugin / port:** Phase 0 / Phase 1 boundary · no port touched
+- **What changed:** Filed **ADR-016** (Ratified) after the operator delegated the sequencing call
+  ("what do you think is optimal?") under a hard cap ("i'm not willing to spend more than 1 hour on
+  benchmarking"). The baseline metrics report is struck from the Phase 0 exit gate and moved to a
+  parallel track; **first-run wizard is now the sole remaining Phase 0 exit item.**
+  The coupling was never technical — no Phase 1 module imports a benchmark result, and ADR-012
+  already supplies a usable default coder model. ADR-013's clauses 1-7 are **untouched**; what the
+  benchmark now gates is narrower and stricter (ADR-016 clause 3: no superiority claim anywhere
+  until a compliant run supports it). Added a one-hour cap and a pre-GPU attainability gate, since
+  ADR-013 clause 7 makes a knowingly non-compliant run pure waste.
+- **Calibration data confirmed to have survived the disk reclaim:** 754 dirs under
+  `~/.forge-oh/swebench_runs`, each with a `report.json` carrying `resolved`, plus repeat runs of
+  the same task id. Repeat-flip tasks are direct empirical evidence of discordance headroom, so
+  ADR-013 clause 1 can be satisfied at **zero GPU cost**.
+- **Files touched:**
+  - `adrs/ADR-016-decouple-baseline-benchmark-from-phase-0-exit.md` (new)
+  - `adrs/README.md` (index row)
+  - `docs/specs/11-dev-plan.md` (Phase 0 exit list amended inline with ADR-016 reference)
+  - `BUILD_LOG.md`
+- **Ports / adapters affected:** none
+- **PORTING_LEDGER / ADR updated:** ADR-016 filed; ADR-013 Consequences amended by reference
+- **Stop-condition status:** met. Phase 1 authorization slice is unblocked and starts next.
+  Risk accepted and recorded in ADR-016: Phase 0 closes without a published model comparison.

@@ -17,8 +17,16 @@ Exit criterion (v4.3): architecture decision record + baseline metrics report + 
 > ADR-002) are filed and ratified. ~~Baseline model set fixed: `qwen3.6:27b` (planner) and
 > `qwen3-coder:30b` (coder).~~ **Superseded 2026-08-08 by ADR-005 Amdt #6:** planner
 > `qwen3.6:27b` + coder `qwen3.6:35b-a3b-mtp-q4_K_M`.
-> Outstanding for Phase 0 exit: baseline metrics report, ~~upstream artifact pins~~ (done),
-> ~~read-only stock Agent Canvas reference checkout~~ (done), first-run wizard.
+> Outstanding for Phase 0 exit: ~~baseline metrics report~~ **(struck by ADR-016 2026-08-08 19:50
+> EDT — moved to a parallel track; it gates model *claims*, not code)**, ~~upstream artifact
+> pins~~ (done), ~~read-only stock Agent Canvas reference checkout~~ (done), **first-run wizard**
+> — now the sole remaining Phase 0 exit item.
+
+> **AMENDED 2026-08-08 19:50 EDT by ADR-016.** The baseline metrics report is no longer a Phase 0
+> exit criterion. ADR-013's seven clauses remain fully binding on any benchmark that does run, and
+> per ADR-016 clause 3 no model/quantization/runtime superiority claim may be made anywhere until a
+> compliant run supports it — ADR-012's upstream-deference default excepted. The benchmark carries
+> a one-hour GPU cap and a pre-run attainability gate.
 
 ## Phase 1 - Authorization slice
 Files: 04-authorization.md, 04a-prompt-injection.md, 08-telemetry.md (8.0-8.1, 8.5, 8.6), 06-change-review.md (6.4.1-6.4.2 only). *(15-household-profiles.md removed by ADR-003.)*
