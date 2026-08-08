@@ -34,8 +34,15 @@ The stock app defaults to ingress `8000` and vite `3001`. On Colossus both are p
 disposable, so the baseline runs shifted:
 
 ```bash
-PORT=8010 OH_CANVAS_SAFE_VITE_PORT=3011 npm run dev
+VITE_WORKING_DIR=$HOME/.oh-gui/baseline/fixture \
+  PORT=8010 OH_CANVAS_SAFE_VITE_PORT=3011 npm run dev
 ```
+
+`VITE_WORKING_DIR` is **not optional**. Without it the app works in
+`~/.openhands/agent-canvas/workspaces` (`dev-safe.mjs:672`), the fixture is never touched, and every
+accepted-line count is zero — a baseline of zeros that looks like data. The recorder shouts if an
+accept changes nothing, but setting the variable is what prevents it. The variable is baked into the
+frontend at startup, so it must be set when the app is launched, not after.
 
 Open the **ingress** port (8010) in the browser, not the vite port. Variable names read from
 `scripts/dev-with-automation.mjs` at the pinned SHA. This is a configuration deviation from stock

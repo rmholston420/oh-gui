@@ -2058,3 +2058,17 @@ any build starts. Recorded here; no spec or ADR edited yet.
 - Files: `bench/baseline/run_baseline.sh`, `bench/baseline/report.py`,
   `bench/baseline/tests/test_baseline_harness.py`, `adrs/ADR-008-phase-0-baseline-method.md`.
 - Stop condition unchanged.
+
+## 2026-08-08 10:20 EDT — Fixture working-directory requirement (caught pre-run)
+
+- Stage: Phase 0 exit item 3. Caught between the harness starting and the first turn being sent.
+- The agent's working directory is `<stateDir>/workspaces` unless `VITE_WORKING_DIR` is set at
+  launch (`dev-safe.mjs:672`, `dev-with-automation.mjs:442`, pinned SHA). The fixture would never
+  have been touched and every task would have reported zero accepted lines with no error anywhere.
+  Full entry in DEBUG_LOG.
+- Fixed in two places: the launch command now requires `VITE_WORKING_DIR`, and `mark.py` refuses to
+  let a no-op accept pass quietly. Documentation alone would not have caught the next occurrence.
+- t01 attempt #1 abandoned as a harness fault; excluded from the report.
+- Tests 12 → 13. Files: `bench/baseline/mark.py`, `bench/baseline/README.md`,
+  `bench/baseline/tests/test_baseline_harness.py`, DEBUG_LOG.
+- Stop condition unchanged.

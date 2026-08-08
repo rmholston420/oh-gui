@@ -594,3 +594,37 @@ Unrelated observation from the same command: `pkill -f vite` reported
 `killing pid 16688 failed: Operation not permitted` — a non-owned process whose command line
 matches `vite`. Harmless here (the dev server, pid 2433892, did exit), but `pkill -f` is broader
 than it looks; prefer `--strictPort`'s own failure or an explicit pid.
+
+## 2026-08-08 10:19 EDT — Baseline harness would have recorded a silent baseline of zeros
+
+**Symptom:** No error. t01 started cleanly — cold gate passed at 32 °C, `/server_info` recorded,
+task card displayed, recorder waiting for marks. The defect was that the run would have completed
+successfully and produced `lines_accepted: 0` for every task.
+
+**Affected:** Phase 0 exit item 3, `bench/baseline/` (harness only; no port or adapter).
+
+**Root cause:** `mark.py` measures `git diff --numstat` inside the fixture at
+`~/.oh-gui/baseline/fixture`. The stock app's agent-server does not work there. Read from the donor
+at pinned SHA 4d0fe4983b6b8e52c104c7ffa4b7be8c7ab5a364: `dev-safe.mjs:672` resolves
+`workingDir = env.VITE_WORKING_DIR || <stateDir>/workspaces`, and `dev-with-automation.mjs:442`
+bakes that into the frontend as `VITE_WORKING_DIR` at launch. With the variable unset the agent
+works in `~/.openhands/agent-canvas/workspaces`, and the fixture is never touched.
+
+This is the harness's worst failure mode, not its most obvious one: nothing errors, the report
+generates, and the numbers are self-consistent zeros that read as a finding about the stock app
+rather than a defect in the measurement. It was caught by asking where the agent's cwd comes from
+before the first turn was sent, not by anything the harness reported.
+
+**Fix applied:**
+1. `VITE_WORKING_DIR=$HOME/.oh-gui/baseline/fixture` is now required in the documented launch
+   command, with the reason and the source line recorded in `bench/baseline/README.md`.
+2. `mark.py` shouts on any accept that changes no files, names the fixture path, states that every
+   line count in the run is meaningless, and tells the operator to abandon and relaunch. A guard
+   that only lives in documentation is not a guard.
+
+**Files:** `bench/baseline/mark.py`, `bench/baseline/README.md`,
+`bench/baseline/tests/test_baseline_harness.py` (13 tests; the new one asserts the warning fires
+and names the variable).
+
+**Note:** the first t01 attempt was abandoned for this reason. It is a harness fault, not stock-app
+data, and must be excluded from the report.

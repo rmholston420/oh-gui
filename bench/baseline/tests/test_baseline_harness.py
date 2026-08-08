@@ -124,3 +124,24 @@ def test_server_info_is_reported_when_present(tmp_path, capsys):
     sys.argv = ["report.py", str(tmp_path)]
     report.main()
     assert "1.40.1" in capsys.readouterr().out
+
+
+def test_accept_with_no_changes_is_shouted_about(tmp_path):
+    """A baseline of zeros looks exactly like a baseline, so this must never pass quietly."""
+    fixture = tmp_path / "fx"
+    fixture.mkdir()
+    subprocess.run(["git", "init", "-q", "-b", "main", str(fixture)], check=True)
+    (fixture / "a.txt").write_text("one\n")
+    for args in (["add", "-A"], ["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "s"]):
+        subprocess.run(["git", "-C", str(fixture), *args], check=True)
+    out = tmp_path / "out"
+    # No edit between start and accept: the agent worked somewhere else.
+    proc = subprocess.run(
+        [sys.executable, str(BASE / "mark.py"), "--task", "t01",
+         "--outdir", str(out), "--fixture", str(fixture)],
+        input="t\nr\na\ny\nd\n", text=True, capture_output=True, check=True,
+    )
+    assert "ACCEPT CHANGED NOTHING IN THE FIXTURE" in proc.stdout
+    assert "VITE_WORKING_DIR" in proc.stdout
+    s = json.loads((out / "t01.summary.json").read_text())
+    assert s["lines_accepted"] == 0

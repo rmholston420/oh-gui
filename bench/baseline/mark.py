@@ -217,6 +217,16 @@ def main() -> int:
             print(f"  +{ev.detail['lines_added']} -{ev.detail['lines_removed']} "
                   f"across {len(ev.detail['files'])} file(s), "
                   f"inspected={ev.detail['inspected']}")
+            if not ev.detail["files"]:
+                # An accept that changed nothing almost always means the agent is working in a
+                # different directory than the one being measured — the stock app defaults to
+                # ~/.openhands/agent-canvas/workspaces unless VITE_WORKING_DIR points elsewhere.
+                # Silently recording 0 would produce a plausible-looking baseline of zeros.
+                print("  !! ACCEPT CHANGED NOTHING IN THE FIXTURE.")
+                print("  !! The agent is probably not working in "
+                      f"{rec.fixture}.")
+                print("  !! Every line count this run is meaningless. Abandon with 'q' and relaunch")
+                print("  !! the app with VITE_WORKING_DIR set to the fixture path.")
         elif cmd == "l":
             rec.record("lost_track", text=ask("  what did you lose track of? "))
         elif cmd == "c":
