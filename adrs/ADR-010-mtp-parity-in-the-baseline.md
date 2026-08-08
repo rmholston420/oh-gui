@@ -1,5 +1,13 @@
 # ADR-010 — The baseline must compare MTP against MTP
 
+> **STATUS AMENDMENT (2026-08-08):** the throughput half of this decision is measured by
+> `bench/mtp/`, not by the baseline matrix. Ollama through litellm reports `completion_tokens: 0`
+> on every call in the conversation event log, so the matrix cannot produce tok/s; and its
+> wall-clock is dominated by tool calls and tool-call retries rather than generation. The matrix
+> settles acceptance, `bench/mtp/bench_mtp.py` settles speed via Ollama's `eval_count` and
+> `eval_duration`. Both are required before Phase 0 item 3 closes. The decision itself — that
+> speed comparisons are drawn MTP against MTP — is unchanged.
+
 **Status:** Proposed
 **Lock-in phase:** Phase 0, item 3 (baseline metrics report)
 **Supersedes:** —
