@@ -470,3 +470,33 @@ Entry format:
   supersedes it at +6.8 SWE-Bench points.
 - **Stop condition:** Phase 0 exit still NOT met.
 
+## 2026-08-08 05:05 EDT - MTP variant measured; 35b falsification REPLICATED
+
+- **Stage:** Phase 0 (baseline metrics)
+- **Run:** `/home/rmholston/.oh-gui/vram_sweep/20260808_0410_f16.csv`, idle 838 MiB.
+- **REPLICATION - the 04:25 falsification holds.** Second independent run of `qwen3.6:35b`
+  reproduced 100% GPU at all four contexts: 25034 / 25727 / 27087 / **29740** MiB vs the
+  first run's 25114 / 25798 / 27063 / 29864. Max drift 124 MiB. The 256K result is real,
+  not a one-off measurement artifact.
+- **`qwen3.6:35b-a3b-mtp-q4_K_M` WINS on footprint at every context:**
+
+  | ctx | 35b base | 35b MTP | delta |
+  |---:|---:|---:|---:|
+  | 32,768 | 25,034 | **24,239** | -795 |
+  | 65,536 | 25,727 | **24,843** | -884 |
+  | 131,072 | 27,087 | **26,390** | -697 |
+  | 262,144 | 29,740 | **29,453** | -287 |
+
+  Free at 256K rises from 2,867 to **3,154 MiB** - material, given the desktop will grow
+  2-3 GB once a browser and the OH-GUI frontend are running.
+- **Why it is smaller despite carrying an extra head:** the MTP manifest is a 21 GB weight
+  blob plus a 902 MB MTP head (21.9 GB total) against the base tag's single 23 GB blob.
+  Both are labelled q4_K_M; the packing differs. Derived KV cost is unchanged at
+  ~23.3 KB/token (5,214 MiB across 229,376 tokens), consistent with base 35b's 21.8 KB.
+- **Speed is still UNMEASURED and is the entire point of MTP.** Multi-token prediction is a
+  throughput feature; a VRAM sweep cannot see it. No speed claim is made until the quality
+  bench records tok/s. Footprint alone already justifies keeping it.
+- **Coder field pending one row:** Devstral 1.1 has not been pulled yet - the sweep above
+  ran at commit `131d4aa`, before the Devstral entry landed.
+- **Stop condition:** Phase 0 exit still NOT met.
+
