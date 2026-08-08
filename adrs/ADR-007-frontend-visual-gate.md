@@ -1,5 +1,13 @@
 # ADR-007 — The frontend gate renders in a real browser
 
+> **STATUS AMENDMENT (2026-08-08):** ratified on evidence from one IPv4-only host, the gate timed
+> out on Colossus. Vite bound `localhost` (`::1` first on a dual-stack machine) while Playwright
+> polled `127.0.0.1`, and `webServer` discarded the child's output so the failure reported no
+> reason. The harness now binds explicitly to the polled address and pipes stdout/stderr, and
+> `gotoStep` asserts the page title so a foreign process on the port cannot masquerade as the app.
+> See DEBUG_LOG 2026-08-08 09:56 EDT. **A gate is only proven once it has run on the machine it
+> is meant to protect.**
+
 **Status:** Ratified
 **Lock-in phase:** Phase 0
 **Supersedes:** —

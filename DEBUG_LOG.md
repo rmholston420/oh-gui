@@ -551,3 +551,32 @@ observable outcome — a requested parameter silently not applied — is identic
   grown `node_modules`. Hoisting hides missing dependencies.
 - Files: `apps/gui/{package.json,package-lock.json,tsconfig.json,tsconfig.base.json,
   tsconfig.app.json,tsconfig.node.json}`.
+
+## 2026-08-08 09:56 EDT — `Error: Timed out waiting 60000ms from config.webServer` on Colossus
+
+- **Symptom.** `npm run verify` on Colossus: lint, 25 unit tests, `tsc -b` and `vite build` all
+  clean, then Playwright aborted with `Error: Timed out waiting 60000ms from config.webServer.`
+  and **no other output**. The same command passed in the authoring sandbox.
+- **Stage/port:** Phase 0, `apps/gui` e2e harness (ADR-007). No ports touched.
+- **Root cause (two defects, one symptom).**
+  1. `playwright.config.ts` ran `npm run dev` with no `--host`. Vite's default host is `localhost`.
+     On a dual-stack machine that resolves to `::1` first, so Vite binds only the IPv6 loopback
+     while the config polls `http://127.0.0.1:5173`, which never answers. The sandbox is
+     IPv4-only, which is why it passed there and only there. **This is a hypothesis consistent
+     with all observed evidence but not yet confirmed on Colossus**, because —
+  2. Playwright's `webServer` discards the child's stdout/stderr unless told otherwise. Whatever
+     Vite said about the failure was thrown away, leaving a bare timeout. The absence of a
+     diagnosable error is itself the more serious defect: it is what made cause 1 unfalsifiable.
+- **Fix.** Bind explicitly to the address being polled — `--host 127.0.0.1 --port 5173
+  --strictPort` — so name resolution order cannot participate. Add `stdout: 'pipe'` and
+  `stderr: 'pipe'` so a startup failure prints its reason.
+- **Verified by probe, both directions.** Appending a `throw` to `vite.config.ts` now surfaces
+  `[WebServer] Error: DELIBERATE_STARTUP_FAILURE_PROBE` instead of a bare timeout; with the probe
+  removed, all 8 tests pass.
+- **Third defect found while probing.** `reuseExistingServer: true` trusts *anything* answering on
+  the port. Parking a `python -m http.server` on 5173 caused Playwright to adopt it and every
+  assertion failed as though the UI were broken. Added a title assertion in `gotoStep` so a foreign
+  server fails as "something other than OH-GUI is serving the dev port". Probed: it does.
+- Files: `apps/gui/playwright.config.ts`, `apps/gui/e2e/wizard.spec.ts`.
+- Also switched the reporter to `list` + `html` so `npx playwright show-report` has a report to
+  open; `playwright-report/` and `test-results/` were already gitignored.

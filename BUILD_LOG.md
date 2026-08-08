@@ -1961,3 +1961,17 @@ any build starts. Recorded here; no spec or ADR edited yet.
 - **Stop condition: unchanged. Phase 0 exit item 3 (baseline metrics report) remains the only open
   Phase 0 item.** No open KNOWN_ISSUES blockers; one accepted Phase 0 limitation (trust-dial
   display mirror) remains.
+
+## 2026-08-08 09:56 EDT — e2e harness fixed for dual-stack hosts
+
+- Stage: Phase 0, `apps/gui` e2e (ADR-007). Ports touched: none.
+- The gate landed green in an IPv4-only sandbox and timed out immediately on Colossus. Full
+  diagnosis in DEBUG_LOG 2026-08-08 09:56 EDT. Three defects: Vite bound `localhost` (→ `::1`)
+  while Playwright polled `127.0.0.1`; `webServer` output was discarded so the failure had no
+  stated reason; and `reuseExistingServer` would adopt any process answering on the port.
+- All three fixed and each probed by forcing the failure it is supposed to report.
+- **A gate that only runs on the author's machine is not a gate.** ADR-007 was ratified on evidence
+  from one host; this is the correction, one commit later.
+- Files: `apps/gui/playwright.config.ts`, `apps/gui/e2e/wizard.spec.ts`, DEBUG_LOG, BUILD_LOG,
+  ADR-007 (amendment).
+- Stop condition unchanged: Phase 0 exit item 3 (baseline metrics report) remains the only open item.

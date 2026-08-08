@@ -1,15 +1,27 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const HOST = '127.0.0.1';
+const PORT = 5173;
+const URL = `http://${HOST}:${PORT}`;
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
-  reporter: [['list']],
-  use: { baseURL: 'http://127.0.0.1:5173', trace: 'on-first-retry' },
+  reporter: [['list'], ['html', { open: 'never' }]],
+  use: { baseURL: URL, trace: 'on-first-retry' },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
-    command: 'npm run dev -- --port 5173 --strictPort',
-    url: 'http://127.0.0.1:5173',
+    // `--host 127.0.0.1` is load-bearing, not decoration. Vite's default host is `localhost`,
+    // which on a dual-stack machine resolves to ::1 first, so Vite binds only the IPv6 loopback
+    // while Playwright polls the IPv4 one and waits out its timeout. Binding explicitly to the
+    // same literal address we poll removes the resolution order from the equation.
+    command: `npm run dev -- --host ${HOST} --port ${PORT} --strictPort`,
+    url: URL,
     reuseExistingServer: true,
     timeout: 60_000,
+    // Without these, Playwright discards the dev server's output and a startup failure surfaces
+    // only as "Timed out waiting 60000ms", with no reason. Vite's error is the whole diagnosis.
+    stdout: 'pipe',
+    stderr: 'pipe',
   },
 });

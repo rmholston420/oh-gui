@@ -23,6 +23,9 @@ const STEPS = [
 
 async function gotoStep(page: Page, n: number) {
   await page.goto('/');
+  // `reuseExistingServer` trusts anything answering on the port. If some unrelated process holds
+  // 5173, every assertion below fails as though the UI were broken. Fail on the real cause instead.
+  await expect(page, 'something other than OH-GUI is serving the dev port').toHaveTitle(/OH-GUI/);
   for (let i = 1; i < n; i++) await page.getByRole('button', { name: 'Next' }).click();
   await expect(page.getByText(`Step ${n} of 5`)).toBeVisible();
 }
