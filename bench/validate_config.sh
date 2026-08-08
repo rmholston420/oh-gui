@@ -2,13 +2,16 @@
 # Validate the two production VRAM configs co-resident with the embedding model,
 # and measure role-switch (hot-swap) cost. Run after bench/ollama_env.sh f16.
 set -uo pipefail
+source "$(dirname "$0")/lib/gpu.sh"   # MANDATORY thermal instrumentation
 
-EMB=qwen3-embedding:0.6b
+EMB=qwen3-embedding:4b   # ADR-004 A#2
 EMB_CTX=512
 PLANNER=qwen3.6:27b;     PLANNER_CTX=131072
 CODER=qwen3-coder:30b;   CODER_CTX=65536
 
 total=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits)
+gpu_guard 80
+gpu_watch_start
 
 unload_all() {
   curl -s http://localhost:11434/api/ps \
@@ -24,8 +27,9 @@ load_llm() { # model ctx -> seconds
   echo "$(date +%s.%N) $t0" | awk '{printf "%.1f", $1-$2}'
 }
 load_emb() {
+  # num_gpu:0 pins the embedder to CPU per ADR-004 - removes the eviction race.
   curl -s -X POST http://localhost:11434/api/embed -H 'Content-Type: application/json' \
-    -d "{\"model\":\"$EMB\",\"input\":\"warmup\",\"keep_alive\":\"10m\",\"options\":{\"num_ctx\":$EMB_CTX}}" >/dev/null
+    -d "{\"model\":\"$EMB\",\"input\":\"warmup\",\"keep_alive\":\"10m\",\"options\":{\"num_ctx\":$EMB_CTX,\"num_gpu\":0}}" >/dev/null
 }
 
 unload_all; sleep 3
@@ -51,6 +55,7 @@ for pair in "$PLANNER $PLANNER_CTX" "$CODER $CODER_CTX"; do
   elif [ "$spill" -ne 0 ];    then verdict="FAIL (CPU spill)"
   else verdict="CO-RESIDENT"; fi
   echo "   vram_used=${u} MiB   free=$(( total - u )) MiB   load=${secs}s   verdict=${verdict}"
+  echo "   gpu: $(gpu_sample)"
   echo
 done
 
@@ -62,9 +67,10 @@ for i in 1 2; do
   a=$(load_llm "$CODER" "$CODER_CTX")
   ollama stop "$CODER" >/dev/null 2>&1
   b=$(load_llm "$PLANNER" "$PLANNER_CTX")
-  echo "  cycle $i:  ->coder ${a}s   ->planner ${b}s"
+  echo "  cycle $i:  ->coder ${a}s   ->planner ${b}s   gpu=$(gpu_sample)"
 done
 unload_all
 echo
 echo "NOTE: OLLAMA_KEEP_ALIVE=-1 is set on this host, so models never auto-unload."
 echo "The middleware MUST explicitly 'ollama stop' the outgoing model on every role switch."
+gpu_watch_stop

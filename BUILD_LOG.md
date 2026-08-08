@@ -624,3 +624,32 @@ Entry format:
   captured in the data rather than assumed.
 - **Stop condition:** Phase 0 exit still NOT met.
 
+## 2026-08-08 06:20 EDT - Thermal instrumentation made mandatory; hard cutout at 83 C
+
+- **Stage:** Phase 0 (baseline metrics)
+- **Standing operator requirement:** every script that invokes a local LLM must monitor and
+  record GPU temperature inline. Adopted as a project-wide rule, not a per-script option.
+- **Operator thermal limits recorded:** **88 C redline**, **83 C hard ceiling** (do not
+  exceed), **78 C warn**. `GPU_START_C=80` refuses to begin a run on an already-hot card.
+- **`bench/lib/gpu.sh` added** - shared, sourced by every LLM-invoking script.
+  `gpu_sample` (temp/power/SM clock/util/live throttle), `gpu_temp`, `gpu_guard`,
+  `gpu_watch_start`, `gpu_watch_stop`.
+- **It aborts, it does not merely report.** The 1 Hz background watcher enforces the 83 C
+  ceiling: on breach it writes an ABORT flag, unloads every resident model, and signals the
+  parent script to stop. This matters because the cap now sits at 600 W and benches run
+  unattended - reporting a breach after the fact would be too late. Thresholds are
+  overridable via `GPU_MAX_C` / `GPU_WARN_C` / `GPU_START_C`.
+- **Wired into all four existing LLM scripts:** `vram_sweep.sh`, `embed_matrix.sh`,
+  `validate_config.sh`, `fa_probe.sh`. Each now emits `temp_c,power_w,sm_mhz,util_pct,throttle`
+  **per result row** and prints a thermal summary with an explicit verdict at the end. The
+  summary flags any throttling as invalidating tok/s comparability across cells.
+- **Two stale configs corrected while editing** (both contradicted a ratified decision):
+  `validate_config.sh` and the `vram_sweep.sh` co-residency probe still used
+  `qwen3-embedding:0.6b`; both now use `qwen3-embedding:4b`, and `validate_config.sh` now
+  passes `num_gpu:0` to pin it to CPU per ADR-004 A#2.
+- **Consequence for the record:** every VRAM figure in the closed envelope was captured
+  WITHOUT thermal data. Those are memory measurements and remain valid - VRAM does not
+  depend on temperature - but no existing tok/s figure in this project carries thermal
+  evidence. The Path E quality bench will be the first that does.
+- **Stop condition:** Phase 0 exit still NOT met.
+

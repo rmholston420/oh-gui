@@ -28,8 +28,9 @@ print(f"power  max/avg: {max(p):.0f} / {sum(p)/len(p):.1f} W")
 print(f"sm clk min/avg: {min(s):.0f} / {sum(s)/len(s):.0f} MHz")
 print(f"throttled samples: {len(thr)}")
 print()
-if max(t) >= 83:   print("VERDICT: hot. Revert to 435 W: sudo nvidia-smi -pl 435")
-elif max(t) >= 78: print("VERDICT: warm but acceptable. Watch it.")
+# Operator limits: 88 C redline, 83 C hard ceiling, 78 C warn.
+if max(t) >= 83:   print("VERDICT: CEILING BREACHED. Revert to 435 W: sudo nvidia-smi -pl 435")
+elif max(t) >= 78: print("VERDICT: warm but under the 83 C ceiling. Acceptable; watch it.")
 else:              print("VERDICT: thermally fine at this cap.")
 if thr: print("WARNING: throttling occurred - tok/s figures are NOT comparable across cells.")
 PY

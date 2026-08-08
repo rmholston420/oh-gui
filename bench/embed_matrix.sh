@@ -4,6 +4,7 @@
 # the whole corpus and migrating the vector-store dimension.
 # Run after: bash bench/ollama_env.sh f16
 set -uo pipefail
+source "$(dirname "$0")/lib/gpu.sh"   # MANDATORY thermal instrumentation
 
 CTX=512
 N=64
@@ -27,9 +28,11 @@ unload_all() {
     | while read -r n; do [ -n "$n" ] && ollama stop "$n" >/dev/null 2>&1; done
 }
 
+gpu_guard 80
+gpu_watch_start
 echo "cpu_threads=$(nproc)  ram_gb=$(free -g | awk '/^Mem:/{print $2}')  num_ctx=$CTX"
 echo
-echo "model,placement,dims,single_ms,batch_${N}_s,chunks_per_s,vram_cost_mib,processor" > "$CSV"
+echo "model,placement,dims,single_ms,batch_${N}_s,chunks_per_s,vram_cost_mib,processor,temp_c,power_w,sm_mhz,util_pct,throttle" > "$CSV"
 
 for entry in "${CANDIDATES[@]}"; do
   model="${entry%:*:*}"; dims="${entry##*:}"
@@ -45,9 +48,10 @@ for entry in "${CANDIDATES[@]}"; do
     [ "$placement" = cpu ] && NUMGPU=0 || NUMGPU=999
     unload_all; sleep 2
     idle=$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits)
-    python3 - "$model" "$CTX" "$NUMGPU" "$N" "$placement" "$CSV" "$idle" "$dims" <<'PY'
+    python3 - "$model" "$CTX" "$NUMGPU" "$N" "$placement" "$CSV" "$idle" "$dims" "$(gpu_sample)" <<'PY'
 import json,subprocess,sys,time,urllib.request
 model,ctx,numgpu,n,placement,csv,idle,dims = sys.argv[1],int(sys.argv[2]),int(sys.argv[3]),int(sys.argv[4]),sys.argv[5],sys.argv[6],int(sys.argv[7]),sys.argv[8]
+gpu=sys.argv[9]
 URL="http://localhost:11434/api/embed"
 chunk=("The middleware owns the entire policy plane and mediates every policy-bearing "
        "call from the frontend to the OpenHands agent server. "*18)
@@ -76,8 +80,8 @@ try:
         sv,tot=ent.get("size_vram",0),ent.get("size",1)
         proc="100% CPU" if sv==0 else ("100% GPU" if sv>=tot*0.99 else f"{round(100*(tot-sv)/tot)}% CPU")
     print(f"  {model:26} {placement.upper():3}  dims={real_dims:<5} single={single_ms:>7}ms  "
-          f"batch{n}={bt:>6.2f}s  {cps:>6} chunks/s  vram={vram-idle:>5} MiB  [{proc}]")
-    open(csv,"a").write(f"{model},{placement},{real_dims},{single_ms},{bt:.2f},{cps},{vram-idle},{proc}\n")
+          f"batch{n}={bt:>6.2f}s  {cps:>6} chunks/s  vram={vram-idle:>5} MiB  [{proc}]  {gpu.split(',')[0]}C")
+    open(csv,"a").write(f"{model},{placement},{real_dims},{single_ms},{bt:.2f},{cps},{vram-idle},{proc},{gpu}\n")
 except Exception as e:
     print(f"  {model:26} {placement.upper():3}  ERROR: {e}")
 PY
@@ -116,3 +120,4 @@ echo "  <150 ms  keep/upgrade freely"
 echo "  150-400 ms  acceptable; take the quality if the jump is >=3 retrieval points"
 echo "  >400 ms  reject - agent loops retrieve repeatedly per task"
 echo "Ingest cost is one-time and off-path; weight it far lower."
+gpu_watch_stop

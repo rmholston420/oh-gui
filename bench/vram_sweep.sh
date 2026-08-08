@@ -7,6 +7,7 @@
 #   bash bench/vram_sweep.sh            # fp16 KV (Ollama default)
 #   bash bench/vram_sweep.sh q8         # q8_0 KV (restarts Ollama with env vars)
 set -uo pipefail
+source "$(dirname "$0")/lib/gpu.sh"   # MANDATORY thermal instrumentation
 
 # qwen3.6:35b == qwen3.6:35b-a3b (same digest 07d35212591f): MoE, 3B active, 24 GB.
 # 7 GB more weight than 27b but far fewer active params -> expect faster gen, worse KV.
@@ -19,6 +20,8 @@ STAMP=$(date +%Y%m%d_%H%M)
 CSV="$OUT/${STAMP}_${MODE}.csv"
 
 total=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits)
+gpu_guard 80
+gpu_watch_start
 
 # v2: this script no longer changes server env. Run bench/ollama_env.sh first and
 # confirm it reported the setting as active. MODE is a label for the output file only.
@@ -41,7 +44,7 @@ if [ "$resident" != "0" ]; then
 fi
 idle=$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits)
 echo "gpu_total_mib=$total  idle_used_mib=$idle  mode=$MODE"
-echo "model,ctx,ollama_size,processor,vram_used_mib,vram_free_mib,model_cost_mib,status" > "$CSV"
+echo "model,ctx,ollama_size,processor,vram_used_mib,vram_free_mib,model_cost_mib,status,temp_c,power_w,sm_mhz,util_pct,throttle" > "$CSV"
 
 for m in "${MODELS[@]}"; do
   for ctx in "${CTXS[@]}"; do
@@ -53,7 +56,7 @@ for m in "${MODELS[@]}"; do
           | python3 -c 'import sys,json;d=json.load(sys.stdin);print(d.get("error",""))' 2>/dev/null)
 
     if [[ -n "$err" ]]; then
-      echo "$m,$ctx,-,-,-,-,-,LOAD_ERROR" >> "$CSV"
+      echo "$m,$ctx,-,-,-,-,-,LOAD_ERROR,$(gpu_sample)" >> "$CSV"
       printf '%-18s %7d  LOAD ERROR: %s\n' "$m" "$ctx" "${err:0:80}"
       continue
     fi
@@ -67,8 +70,9 @@ for m in "${MODELS[@]}"; do
     cost=$(( used - idle ))
 
     if [[ "$proc" == "100% GPU" ]]; then status=OK; else status=SPILLED; fi
-    echo "$m,$ctx,$size,$proc,$used,$free,$cost,$status" >> "$CSV"
-    printf '%-18s %7d  size=%-8s %-16s used=%6s free=%6s  %s\n' "$m" "$ctx" "$size" "$proc" "$used" "$free" "$status"
+    g=$(gpu_sample)
+    echo "$m,$ctx,$size,$proc,$used,$free,$cost,$status,$g" >> "$CSV"
+    printf '%-18s %7d  size=%-8s %-16s used=%6s free=%6s  %-7s %sC\n' "$m" "$ctx" "$size" "$proc" "$used" "$free" "$status" "$(gpu_temp)"
 
     unload_all
     [[ "$status" != "OK" ]] && { echo "   -> stopping sweep for $m, larger contexts will also spill"; break; }
@@ -78,12 +82,12 @@ done
 # co-residency: largest passing ctx for the planner + the embedding model
 echo
 echo "== embedding footprint vs num_ctx =="
-echo "(v1 loaded this at the 32768 default and it cost 6110 MiB for a 639 MB model)"
+echo "(qwen3-embedding:4b per ADR-004 A#2. v1 loaded at the 32768 default: 6110 MiB for a 639 MB model.)"
 echo "embed_ctx,ollama_size,vram_used_mib,cost_mib" > "$OUT/${STAMP}_${MODE}_embed.csv"
 for ectx in 512 2048 8192 32768; do
   unload_all; sleep 2
   curl -s -X POST http://localhost:11434/api/embed -H 'Content-Type: application/json' \
-    -d "{\"model\":\"qwen3-embedding:0.6b\",\"input\":\"warmup\",\"keep_alive\":\"2m\",\"options\":{\"num_ctx\":$ectx}}" >/dev/null
+    -d "{\"model\":\"qwen3-embedding:4b\",\"input\":\"warmup\",\"keep_alive\":\"2m\",\"options\":{\"num_ctx\":$ectx}}" >/dev/null
   eu=$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits)
   es=$(ollama ps | awk '/qwen3-embedding/ {print $3" "$4}')
   printf '  num_ctx=%-6s size=%-8s used=%6s  cost=%6s MiB\n' "$ectx" "$es" "$eu" "$(( eu - idle ))"
@@ -95,3 +99,4 @@ echo
 echo "CSV: $CSV"
 echo "Embed CSV: $OUT/${STAMP}_${MODE}_embed.csv"
 echo "Revert server env with: bash bench/ollama_env.sh f16"
+gpu_watch_stop

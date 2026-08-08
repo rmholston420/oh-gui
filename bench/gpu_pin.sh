@@ -26,7 +26,10 @@ if [[ "$ACTION" == "power" ]]; then
   # "SW Power Capping" counter was already non-zero (854,692 us) at IDLE - the card has
   # been hitting its cap. Raising the limit lets Blackwell hold boost clocks under a
   # sustained decode load. Check PSU headroom and case thermals before using this.
-  sudo nvidia-smi -pl 600 && echo "power limit raised to 600 W"
+  # Operator thermal limits: 88 C redline, 83 C hard ceiling, 78 C warn.
+  # bench/lib/gpu.sh enforces the 83 C ceiling by aborting any run that reaches it,
+  # so a raised cap cannot silently cook the card during an unattended bench.
+  sudo nvidia-smi -pl 600 && echo "power limit raised to 600 W (83 C ceiling enforced by bench/lib/gpu.sh)"
   echo "Revert with: sudo nvidia-smi -pl 435"
 fi
 
