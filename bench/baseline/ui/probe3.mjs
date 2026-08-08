@@ -79,6 +79,54 @@ try {
   const cors = errs.filter((e) => /CORS|ERR_FAILED|Access-Control/i.test(e));
   if (cors.length) { say(`!! API BLOCKED: ${cors[0]} — nothing below is valid`); throw new Error("blocked"); }
 
+  // ALWAYS say what screen we are on before reporting anything about it. probe3 v1 reported two
+  // absences without this, from a screen it never identified — the same error the last two probes
+  // made about the accept gate. An absence is a claim about a screen; name the screen.
+  const first = await ids(page);
+  say(`\nlanded on: ${page.url()}`);
+  say(`   ${first.length} test ids present`);
+  const isOnboarding = first.some((x) => x.startsWith("onboarding-"));
+  say(`   onboarding wizard: ${isOnboarding ? "YES — driving it" : "no"}`);
+  await shot(page, "10-landed");
+
+  if (isOnboarding) {
+    const click = async (id) => {
+      if (await has(page, id)) {
+        await page.locator(`[data-testid="${id}"]`).first().click();
+        await page.waitForTimeout(1500); say(`   clicked ${id}`); return true;
+      }
+      say(`   MISSING ${id}`); return false;
+    };
+    const fill = async (id, v) => {
+      if (await has(page, id)) {
+        await page.locator(`[data-testid="${id}"]`).first().fill(v);
+        say(`   filled ${id}`); return true;
+      }
+      say(`   MISSING ${id}`); return false;
+    };
+    say(`\n-- onboarding --`);
+    await click("onboarding-agent-option-openhands");
+    await click("onboarding-agent-next");
+    await page.waitForTimeout(1500);
+    await click("sdk-section-advanced-toggle");
+    await fill("llm-custom-model-input", process.env.OH_GUI_BASELINE_MODEL
+      || "ollama_chat/qwen3.6:35b-a3b-mtp-q4_K_M");
+    await fill("base-url-input", process.env.OH_GUI_OLLAMA_URL || "http://localhost:11434");
+    await fill("llm-api-key-input", "ollama");
+    await click("onboarding-llm-next");
+    await page.waitForTimeout(2000);
+    // Skip the hello step if possible: it creates a conversation and burns a model call.
+    // We want a conversation we drive ourselves, not one seeded by the wizard.
+    if (!(await click("onboarding-skip"))) {
+      await click("onboarding-hello-close");
+    }
+    await page.waitForTimeout(3000);
+    const after = await ids(page);
+    say(`   after onboarding: ${page.url()} — ${after.length} ids, still onboarding: ${
+      after.some((x) => x.startsWith("onboarding-")) ? "YES" : "no"}`);
+    await shot(page, "11-after-onboarding");
+  }
+
   // ---------- Q1: the new-thread picker ----------
   say(`\n===== Q1: new-thread picker =====`);
   const before = await ids(page);
@@ -109,7 +157,11 @@ try {
   // ---------- Q2: is a WRITE gated ----------
   say(`\n===== Q2: write task — is an edit gated? =====`);
   const box = page.locator('[data-testid="chat-input"]').first();
-  if (!(await box.count())) { say("   MISSING chat-input — cannot ask for a write"); throw new Error("no input"); }
+  if (!(await box.count())) {
+    say(`   MISSING chat-input on ${page.url()} — cannot ask for a write.`);
+    say(`   That is a statement about THIS screen, not about the app having no chat input.`);
+    throw new Error("no chat-input on " + page.url());
+  }
   await box.click();
   await page.keyboard.type(
     "Create a new file named probe_calc.py containing a single function add(a, b) that returns a + b. " +
@@ -174,6 +226,14 @@ try {
   say(`   status->idle:        ${firstDone || "never"}s`);
 } catch (err) {
   say(`\nPROBE3 FAILED: ${err.message}`);
+  say(`   url at failure: ${page.url()}`);
+  try {
+    const seen = await ids(page);
+    say(`   ${seen.length} test ids on the failing screen:`);
+    seen.slice(0, 80).forEach((x) => say(`      ${x}`));
+    const bt = (await page.locator("body").innerText().catch(() => "")).replace(/\s+/g, " ").slice(0, 600);
+    say(`   visible text: ${bt}`);
+  } catch (e2) { say(`   (could not inventory: ${e2.message})`); }
   await shot(page, "99-failure");
 } finally {
   clearInterval(gpuTimer);
