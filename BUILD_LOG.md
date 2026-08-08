@@ -2110,3 +2110,35 @@ any build starts. Recorded here; no spec or ADR edited yet.
   including the click path and the working-dir detection, before asking for it to be re-run.
 - Files: `bench/baseline/ui/probe.mjs`, DEBUG_LOG.
 - Stop condition unchanged.
+
+## 2026-08-08 10:31 EDT — Stage 2 probe: onboarding drive + conversation-view inventory
+
+- Stage: Phase 0 exit item 3, automated driver stage 2.
+- Stage 1 finding: the app at `localhost:8010` is on the **first-run onboarding screen**, never
+  configured. 134 test ids, all stable and prefixed. Flow is three slides:
+  `onboarding-step-choose-agent` -> `onboarding-step-setup-llm` -> `onboarding-step-say-hello`.
+  Agent options: openhands (native SDK), claude-code, codex, gemini-cli.
+- Consequence: **model configuration becomes part of the recorded baseline conditions** rather than
+  something set by hand off-camera. Better for reproducibility, and it means the driver must fill
+  the LLM form itself.
+- Stage 1 could not confirm the working directory — `working dir visible in page text: NOT VISIBLE`.
+  So stage 2's hello prompt is `pwd`, which settles it from the agent's own view instead of from a
+  process env var.
+- **The open question stage 2 exists to answer:** whether Agent Canvas gates edits behind an
+  explicit accept, or the agent writes files directly. OpenHands agents generally do the latter. If
+  there is no accept gate then "turns to acceptance" and "lines accepted" do not mean what the
+  manual harness assumed, and both `mark.py` and ADR-008 need amending. The probe reports the
+  accept/approve vocabulary present in the settled conversation view rather than assuming either.
+- Also reports what signals "first reviewable proposal" and "done", since without a reliable pair
+  there is no time-to-first-review and no turn boundary to count.
+- Verified by execution against a stand-in page reproducing the stage-1 test ids: all three
+  onboarding steps drove, the path detector fired, the gate detector correctly reported a planted
+  accept button, and the dump was written. Not syntax-checked-and-shipped.
+- Files: `bench/baseline/ui/probe2.mjs`.
+- Stop condition unchanged: Phase 0 exit item 3 stays open until the report exists and ADR-008's
+  verdict is filled.
+- **Open question for the operator, flagged not assumed:** which model the baseline runs. ADR-005's
+  pair is planner `qwen3.6:27b` / coder `qwen3.6:35b-a3b-mtp-q4_K_M`, but the 35b falsification is
+  recorded and the 27b-vs-35b planner comparison is awaiting an operator call. The stock app takes
+  one model, so this is a single choice and it is spec-flagged. Probe defaults to the coder via
+  `OH_GUI_BASELINE_MODEL` purely so the probe can run; the baseline model is not thereby decided.
