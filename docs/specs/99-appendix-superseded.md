@@ -12,7 +12,7 @@ considered and rejected across the v2.0-v4.0 revision history.
 - Treating framer-motion as the current package name - stale as of v4.0. The package was renamed to motion; import from motion/react. See 07-visual-design.md section 7.2.1.
 - Treating Aceternity UI / Magic UI as npm-installable dependencies - incorrect; they are copy-paste component libraries. See 12-portable-components.md.
 - Bundling WCAG 2.5.8 (Target Size Minimum, Level AA) and 2.4.13 (Focus Appearance, Level AAA) under a single "AA" conformance claim - inaccurate; label them separately. See 07-visual-design.md section 7.3.
-- Assuming a single-operator household - superseded by 15-household-profiles.md (v4.0 addition) once a multi-user deployment was identified.
+- ~~Assuming a single-operator household - superseded by 15-household-profiles.md (v4.0 addition) once a multi-user deployment was identified.~~ **REVERSED v4.3 by ADR-003:** the multi-user premise was wrong. Single-operator is the current and correct assumption. Do not reintroduce household profiles, proficiency tiers, `created_by` attribution, assist mode, or delegated approval.
 
 ## v4.2 additions (ADR-001 - integration boundary)
 

@@ -62,6 +62,6 @@ Approve the whole plan, edit task wording, reorder independent tasks, mark do-no
 
 ## 5.7 Session Profile Card
 
-Accumulates per conversation: observed style signals, recurring failure patterns with a one-click "add as constraint," a free-text scratchpad. (v4.0) In household deployments, per created_by user - see 15-household-profiles.md section 15.3.
+Accumulates per conversation: observed style signals, recurring failure patterns with a one-click "add as constraint," a free-text scratchpad. (v4.3, ADR-003: per-user scoping removed - single operator.)
 
 Phase 3 exit criteria: a redirected task correctly forks a new worktree; drift is visibly flagged; a rewind produces a linked new Plan revision; fork-from-step and rewind both produce correctly-linked new conversations; the DAG renders correctly for the diamond case; an over-threshold plan cannot have a task approved without the interstitial; the disclosure text correctly reflects the deterministic_replay flag.

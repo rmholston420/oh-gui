@@ -1,3 +1,16 @@
+> # ARCHIVED - REMOVED FROM THE SPEC v4.3 (2026-08-08)
+>
+> **Removed by [ADR-003](../../../adrs/ADR-003-single-operator-remove-household.md).**
+> OH-GUI is single-operator. The v4.0 multi-user household premise was wrong and is
+> withdrawn. Nothing in this file is in force. It is retained only so the removal is
+> auditable.
+>
+> **Do not resurrect any of this**: household profiles, proficiency tiers, per-user default
+> trust-dial stops, `created_by` attribution, assist mode, delegated approval, per-user
+> inbox scoping, or per-user budget pooling. See `99-appendix-superseded.md`.
+
+---
+
 # 15. Multi-User Household Profiles (NEW in v4.0 — PHASE 1, fixed by ADR-002)
 
 ## 15.1 Rationale

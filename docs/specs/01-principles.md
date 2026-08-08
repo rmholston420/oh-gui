@@ -10,4 +10,7 @@
 8. Provenance is a first-class governing concern. Every context/action/authorization decision carries a trust class. Display is not enforcement - see 05-plan-model.md section 5.2.1 and 04a-prompt-injection.md.
 9. Two depth layers, one system, never two products. Vibe Mode (default) and Pro Mode as semantic-zoom lenses over one shared data model. Mode switch is a binary toggle, not a segmented control.
 10. Design for one capable local model, not a fleet. Every surface assuming multiple simultaneous models/worktrees must degrade gracefully to single-model default. Parallel capability is additive, opt-in, Phase 6.
-11. (v4.0 addition) Design for mixed-proficiency households, not one operator. Vibe Mode may be the permanent home surface for non-technical household members. Every Phase 1-5 exit criterion must be demonstrable in both lenses. See 15-household-profiles.md.
+11. (v4.3, ADR-003) Design two lenses for one operator at different times, not for
+    different people. Vibe Mode is for supervising a routine run; Pro Mode is for
+    debugging a stuck one. Every Phase 1-5 exit criterion must still be demonstrable in
+    both lenses - that requirement survives the removal of the household premise.

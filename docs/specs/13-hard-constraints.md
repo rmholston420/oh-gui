@@ -29,7 +29,6 @@
 - [ ] Budget ceiling is denominated correctly per provider and is orthogonal to the trust dial.
 - [ ] Kinetic-feedback/motion treatments never relax a diff-performance gate or an accessibility gate.
 - [ ] Authorization-card actions above read-only are unavailable below the 900px breakpoint; hunk-level swipe review remains available.
-- [ ] In household delegated-review mode, a sub-900px novice-owner surface may expose only "Ask delegate to review" while keeping Approve/Reject/Relax unavailable.
 - [ ] Vibe Mode and Pro Mode share one data model; switching lenses never triggers a route change, data refetch, or loss of in-progress input.
 - [ ] Notifications for the five specified event types write to the inbox as the record of truth, independent of desktop-notification delivery success.
 - [ ] Air-gapped mode passes CI under network-namespace isolation with all network-dependent features disabled.
@@ -52,19 +51,11 @@
 - [ ] motion/react is used for all new animation code; framer-motion is not added as a new dependency.
 - [ ] Aceternity UI and Magic UI components are vendored source in components/ui/, not listed as npm dependencies, and pass the same CI contrast gates as project code.
 - [ ] Model profiles include a deterministic_replay boolean field, correctly read by the rewind/fork disclosure UI.
-- [ ] Every conversation, audit-log entry, and budget-ledger entry carries a created_by field; no cross-user attribution occurs without an explicit, logged "assist" action.
-- [ ] The "needs you" inbox and desktop notifications are scoped per-user, never broadcast to all household profiles by default.
-- [ ] A novice-tier household profile's trust dial defaults to AlwaysConfirm() for its configurable step-down window.
 - [ ] Shared conversation visibility is opt-in per conversation, never a global "family can see everything" toggle.
 - [ ] Every Phase 1-5 exit criterion is demonstrated in both Vibe and Pro lenses, not only Pro.
 
 ## v4.1 additions
 
-- [ ] Optional delegated approval for novice-owned conversations is owner-initiated, off by default, and never becomes a hidden permission wall.
-- [ ] A delegated-review request preserves the original pending-action policy lock; routing the card does not auto-approve, auto-reject, or re-rate the action.
-- [ ] Delegated-review requests are delivered only to the selected delegate(s) and logged with owner, delegate, and outcome.
-- [ ] The sub-900px delegated-review affordance is available only for requesting review, never for direct approval/rejection/relaxation.
-- [ ] Household onboarding explains delegated approval with a harmless example and states that owner autonomy is preserved.
 
 ## v4.2 additions (ADR-001 - integration boundary)
 
@@ -83,3 +74,11 @@
       goes through the OH-GUI middleware API.
 - [ ] Third-party client surface is confined behind the middleware anti-corruption layer,
       so an upstream API change touches one module.
+
+## v4.3 additions (ADR-003 - single operator)
+
+- [ ] No schema carries a user/owner/profile identity field. One operator, no attribution dimension.
+- [ ] No UI surface references profiles, proficiency tiers, delegates, assist mode, or a household-wide view.
+- [ ] The authorization safety plane is intact: trust dial, authorization cards, capability manifest, emergency stop, `execute_tool()` bypass closure, untrusted-content quarantine, and audit log all ship in Phase 1. Removing multi-user must not weaken any of these.
+- [ ] Below 900px the surface is read-only with no exception path. Approve/reject/relax require >=900px.
+- [ ] Vibe and Pro lenses remain a semantic-zoom pair for one operator; every Phase 1-5 exit criterion is still demonstrated in both.

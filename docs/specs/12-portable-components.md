@@ -12,7 +12,7 @@
 | Command palette | cmdk / react-cmdk | No OpenHands-specific logic; port as commodity UI. |
 | Rewind/fork UX reference | microsoft/agdebugger | v4.0 verified: send/step/edit messages, revert to earlier points, interactive conversation-graph visualization. Lift the graph component directly for DAG rendering. |
 | Authorization card UX reference | agentkitai/agentgate | v4.0 verified: full HITL approval system - policy engine, REST server, TypeScript SDK, Slack/Discord/email routing, MCP server, React dashboard. Read dashboard source directly. |
-| Agent inbox UX reference | langchain-ai/agent-inbox | v4.0 verified: production interrupt-review UI, add-any-graph flow, accept/respond/ignore actions. Informs the "needs you" inbox and per-user scoping. |
+| Agent inbox UX reference | langchain-ai/agent-inbox | v4.0 verified: production interrupt-review UI, add-any-graph flow, accept/respond/ignore actions. Informs the "needs you" inbox. |
 | Stuck detection | StuckDetector, already in openhands-sdk | First-party SDK code. Wire directly; do not rebuild. |
 | Explain affordance backing | conversation.ask_agent(), already in openhands-sdk | Thread-safe, stateless, no event emission; use directly. |
 | Untrusted-content enforcement | state.block_action() / state.block_message(), already in openhands-sdk | Enforcement point for 04a-prompt-injection.md. |

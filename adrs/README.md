@@ -12,7 +12,8 @@ old one and mark the old one `Amended · superseded by ADR-###`.
 | ID | Title | Status | Lock-in phase |
 |---|---|---|---|
 | [ADR-001](ADR-001-integration-boundary.md) | OpenHands Integration Boundary: Standalone App over Agent Server API | Ratified | Phase 0 |
-| [ADR-002](ADR-002-household-mode-phase-1.md) | Household Multi-User Mode Ships in Phase 1 | Ratified | Phase 0 |
+| [ADR-002](ADR-002-household-mode-phase-1.md) | Household Multi-User Mode Ships in Phase 1 | **Superseded by ADR-003** | Phase 0 |
+| [ADR-003](ADR-003-single-operator-remove-household.md) | Single-Operator Deployment: Remove Household Multi-User Mode | Ratified | Phase 0 |
 
 ## Open items awaiting a decision
 
@@ -27,6 +28,8 @@ old one and mark the old one `Amended · superseded by ADR-###`.
 
 | Item | Resolved by |
 |---|---|
-| Household-mode onboarding timing | ADR-002 - Phase 1 |
+| Household-mode onboarding timing | ADR-003 - household mode removed; question is void |
+| Scope of "remove the auth stuff" | ADR-003 - multi-user removed, safety plane retained |
+| Phase 0 baseline model set | qwen3.6:27b (planner) + qwen3-coder:30b (coder); qwen3:32b dropped as superseded |
 | LICENSE for this repo | MIT, added 2026-08-08 with NOTICE for donor attribution |
 | Repo layout for code | `apps/gui/` + `services/middleware/`, confirmed 2026-08-08 |

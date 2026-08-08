@@ -1,7 +1,7 @@
 # OH-GUI Session Handoff
 
 **This file reflects current state only. Overwrite it each session end.**
-Last updated: 2026-08-08 02:53 EDT
+Last updated: 2026-08-08 03:20 EDT
 
 ## Current stage
 
@@ -58,9 +58,12 @@ Browser frontend  ->  OH-GUI Python middleware  ->  OpenHands Agent Server
 
 ## Decisions closed 2026-08-08
 
-- **Household mode -> Phase 1** (ADR-002). Phase 1 is now the largest slice in the plan
-  and carries the project's only comprehension-testing gate (§4.2 authorization-card copy
-  verified with a non-technical reviewer). Do not compress that check.
+- **Single operator** (ADR-003, supersedes ADR-002). Household mode removed entirely;
+  §15 archived. The authorization safety plane in `04-authorization.md` and
+  `04a-prompt-injection.md` is **retained in full** - it authorizes the agent's actions,
+  not users, and is unaffected by user count. Phase 1 shrank accordingly.
+- **Baseline models fixed:** `qwen3.6:27b` (planner, dense 27.8B, 17GB) and
+  `qwen3-coder:30b` (coder, MoE 30.5B-A3B, 19GB). `qwen3:32b` dropped as superseded.
 - **MIT licensed.** `LICENSE` + `NOTICE` added; NOTICE carries Agent Canvas attribution.
 - **Layout fixed:** `apps/gui/` and `services/middleware/`, each with a README stating its
   boundary contract. No code inside either - deliberately.
@@ -78,9 +81,36 @@ model choice in the dense Qwen3 27B-35B band and a set of 5-10 representative ta
 - No formal OpenAPI document, versioning policy, or deprecation guarantee was found for
   the Agent Server API. Revisit if upstream publishes one.
 
+## VRAM plan (Colossus, 32.6 GB)
+
+```
+32.6  total
+ -1.5  KDE desktop + browser compositing
+ -0.8  qwen3-embedding:0.6b resident (639 MB weights)
+ -0.6  CUDA context / Ollama runner
+=====
+~29.7  for the main LLM (weights + KV cache)
+```
+
+- `qwen3.6:27b` @ 17 GB -> ~12 GB KV headroom
+- `qwen3-coder:30b` @ 19 GB -> ~10 GB KV headroom
+- The two cannot be co-resident (36 GB). Ollama hot-swaps; swap cost is unmeasured.
+- Dense models cost roughly 2.5x more KV per token than the A3B MoE at equal context.
+- **Unresolved:** the LLM-based security analyzer (§4.1 EnsembleSecurityAnalyzer) needs
+  concurrent VRAM. It should be a small dedicated model. Not yet sized.
+
 ## Exact next action
 
-Pull to `~/dev/oh-gui` on Colossus and read both ADRs. Then begin Phase 0 proper by
-recording upstream artifact pins - resolve the `agent-server` image to a digest and pin
-the openhands-sdk pip family - logging each to `BUILD_LOG.md`. The baseline metrics run
-follows; it needs a chosen dense Qwen3 27B-35B model and 5-10 representative tasks.
+Pull to `~/dev/oh-gui` and read ADR-001 and ADR-003. Then measure real VRAM before
+committing to the model plan:
+
+```bash
+ollama pull qwen3.6:27b && ollama pull qwen3-coder:30b && ollama pull qwen3-embedding:0.6b
+for m in qwen3.6:27b qwen3-coder:30b; do
+  ollama run $m "hi" >/dev/null; echo "--- $m"; ollama ps; ollama stop $m
+done
+```
+
+`ollama ps` must report `100% GPU`; anything else means it spilled to CPU. Then build the
+bench harness per the `local-llm-bench` skill: prompts on disk, one JSON per cell,
+Perplexity gold answers generated first, `<think>` stripped before scoring.

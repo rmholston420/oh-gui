@@ -1,6 +1,12 @@
 # ADR-002 — Household Multi-User Mode Ships in Phase 1
 
-**Status:** Ratified
+> **STATUS AMENDMENT (2026-08-08):** Superseded by
+> [ADR-003](ADR-003-single-operator-remove-household.md) the same day, before any code was
+> written against it. The user confirmed OH-GUI is single-operator; the multi-user premise
+> this ADR scheduled was itself withdrawn. The decision text below is retained unaltered
+> for audit. **It is not in force.**
+
+**Status:** Amended - superseded by ADR-003
 **Lock-in phase:** Phase 0 (kickoff decision)
 **Supersedes:** —
 

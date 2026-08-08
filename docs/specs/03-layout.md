@@ -29,8 +29,9 @@ The unmodified Agent Canvas is not a third mode. Retained only as: a pinned refe
 - One-keystroke maximize for any surface, with restore.
 - Breakpoints: >=1600px (up to 4 regions), 1200-1599px (2 panes + collapsible sides), 900-1199px (1 pane + drawer), <900px (monitoring/approvals/conversation only).
 - Mobile/tablet approval policy: below 900px, authorization cards are read-only - Approve/Reject/Relax require >=900px viewport.
-- Delegated-review exception: in household deployments where optional delegated approval is enabled for the owning conversation user, a below-900px novice-owner card may expose a single "Ask delegate to review" action while keeping Approve/Reject/Relax unavailable.
-- Save per-mode layouts for expert users; novices land in Vibe Mode by default.
+- Save per-mode layouts. (v4.3, ADR-003: the delegated-review exception and the
+  novice-default-lens rule are removed. Below 900px the surface stays read-only; approve,
+  reject, and relax require a >=900px viewport, with no exception path.)
 
 ## 3.3 Implementation notes
 
@@ -41,12 +42,13 @@ The unmodified Agent Canvas is not a third mode. Retained only as: a pinned refe
 ## 3.4 First-run experience
 
 1. Connect a model/agent - detected local backends pre-populate from the model-profile scan.
-2. (v4.0) Fork at step 1: "Set up for yourself, or set up your household?" See 15-household-profiles.md section 15.5.
+2. ~~(v4.0) Household fork at step 1.~~ **REMOVED v4.3 by ADR-003** - the wizard has a
+   single path.
 3. Walk trust-dial stops with one live, harmless example action shown at each stop.
 4. State and justify default stop explicitly: ConfirmRisky(). NeverConfirm() is opt-in-only and the wizard must say why.
 5. Seed "lines accepted without inspection" counter at zero with a one-line explanation.
 6. Show a sample plan tree (clearly labeled "example").
-7. (v4.1) In household mode, explain optional delegated approval during the novice walkthrough with one harmless example showing: owner requests delegate review on tablet/phone, delegate acts from eligible viewport, owner retains autonomy.
+7. ~~(v4.1) Delegated-approval walkthrough.~~ **REMOVED v4.3 by ADR-003.**
 
 Phase 0 exit criterion addition: first-run wizard ships with Phase 0 baseline-metrics report and states the default trust-dial stop explicitly in its own UI copy.
 
@@ -61,7 +63,9 @@ Phase 0 exit criterion addition: first-run wizard ships with Phase 0 baseline-me
 
 To make Principle 11 testable instead of aspirational, every phase that introduces a new intervention surface must define the Vibe-mode success condition explicitly.
 
-- Phase 1 authorization slice: a novice user in Vibe Mode can understand the card copy in comprehension testing, can request delegated review when enabled, can see who is assisting, and can return to the conversation without losing context.
+- Phase 1 authorization slice: the operator in Vibe Mode can read an authorization card,
+  act on it, and return to the conversation without losing context. (v4.3, ADR-003:
+  comprehension testing, delegated review, and assist attribution removed.)
 - Phase 2 review slice: the scope-shape screen, security checklist, and review batching remain legible and actionable in Vibe Mode without requiring the Pro layout.
 - Phase 3 planning slice: plan drift, fork-from-step, and provenance interstitials render in Vibe Mode as simplified cards over the same underlying data model.
 - Phase 5 mission-control slice: return-to-context and "needs you" inbox flows work in Vibe Mode without forcing a lens switch.

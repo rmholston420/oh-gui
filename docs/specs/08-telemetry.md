@@ -39,7 +39,6 @@ Schema additions:
 - Orthogonal to trust dial: NeverConfirm never bypasses a hard budget ceiling.
 - Speculative execution: N parallel attempts counted against ceiling before commit.
 - Tool-call-depth ceiling, a distinct budget axis independent of turn count and wall-clock time.
-- (v4.0) In household deployments, budget ceilings default per-user but can be pooled at project level if explicitly configured.
 
 ## 8.6 Local tool-calling reliability posture
 

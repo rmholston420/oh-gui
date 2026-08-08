@@ -22,6 +22,9 @@
 7. Qwen3-specific baseline: run Phase 0 baseline tasks against a Qwen3 27B-35B model specifically. Record variant and quantization.
 8. Capture the stock-Agent-Canvas regression baseline as the permanent reference checkout.
    (v4.2: this checkout is **read-only** - baseline and donor reading only, never edited.)
-9. (v4.0) Household onboarding decision point: decide at Phase 0 kickoff whether household mode ships in Phase 1 or Phase 3. See 15-household-profiles.md section 15.1.
+9. ~~(v4.0) Household onboarding decision point.~~ **REMOVED v4.3 by ADR-003** -
+   single-operator deployment; there is no household mode to schedule.
 
-Phase 0 exit criterion: architecture decision record + baseline metrics report + first-run wizard shipped with default trust-dial stop stated in-UI + household-mode timing decision recorded.
+Phase 0 exit criterion (v4.3): architecture decision record + baseline metrics report +
+upstream artifact pins recorded + first-run wizard shipped with default trust-dial stop
+stated in-UI. (The household-mode timing criterion is removed by ADR-003.)

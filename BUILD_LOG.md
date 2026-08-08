@@ -120,3 +120,50 @@ Entry format:
   here.** No application code written. Phase 0 exit still requires: baseline metrics
   report vs. a dense Qwen3 27B-35B model, upstream artifact pins recorded, read-only stock
   Agent Canvas reference checkout, and the first-run wizard.
+
+## 2026-08-08 03:20 EDT - ADR-003: single-operator; household removed, safety plane retained
+
+- Stage/phase: Pre-Phase-0
+- Component/port: none; no code written
+- What changed: User stated "remove the household and auth stuff, i will be the only one
+  using the app." Household is unambiguous and was removed in full. **"Auth" was flagged
+  before touching it**: 04-authorization.md authorizes the *agent's actions* (trust dial,
+  authorization cards, capability manifest, emergency stop, execute_tool bypass closure,
+  prompt-injection quarantine, audit log) and is not user authentication. Single-operator
+  deployment does not reduce that need - it means the operator is the only control between
+  an autonomous agent and the Colossus filesystem. User confirmed: keep the safety plane,
+  cut only multi-user.
+- ADR-003 filed and ratified; **ADR-002 superseded the same day**, before any code was
+  written against it. ADR-002 text retained unaltered under a STATUS AMENDMENT block.
+- Removed across the spec: household profiles, proficiency tiers, per-user default
+  trust-dial stops, created_by attribution, assist mode, delegated approval (4.2.2 in
+  full), per-user inbox and notification scoping, per-user budget ceilings and pooling,
+  the household wizard fork (3.4 step 2) and delegated-approval walkthrough (step 7), the
+  non-technical comprehension gate, and nine gates in 13-hard-constraints.md.
+- Retained deliberately: the entire authorization safety plane (4.1-4.11) and
+  04a-prompt-injection.md. Vibe/Pro dual-lens retained on new grounds - Principle 11
+  rewritten as two lenses for one operator at different times, not for different people.
+  The both-lenses exit requirement survives.
+- Files touched: adrs/ADR-003-single-operator-remove-household.md (new),
+  adrs/ADR-002-household-mode-phase-1.md (amended), adrs/README.md,
+  docs/specs/{00,01,02,03,04,05,08,09,10,11,12,13,99,README}.md
+- Files moved: docs/specs/15-household-profiles.md -> docs/specs/archive/ with a
+  do-not-resurrect banner. 99-appendix-superseded.md reversed its v4.0 entry: the
+  single-operator assumption is now the current and correct position.
+- Verified: grep for household/created_by/delegat/novice/proficiency/per-user/assist over
+  docs/specs returns only removal notices and negative constraints. 13-hard-constraints.md
+  went from 65 to 61 gates net (9 removed, 5 added under a v4.3 heading).
+  04-authorization.md section list confirmed intact: 4.1, 4.1.1, 4.2, 4.2.1, 4.3-4.11.
+- Spec version: v4.2 -> **v4.3**.
+- Phase 0 baseline model set decided (provisional, ADR to follow the bench run):
+  `qwen3.6:27b` dense 27.8B Q4_K_M 17GB as planner/thinker, and `qwen3-coder:30b` MoE
+  30.5B-A3B Q4_K_M 19GB as coder. `qwen3:32b` dropped - 20GB, ~1 year old, superseded by
+  the smaller and newer qwen3.6:27b in the same dense class. VRAM: 32.6GB total, less
+  ~1.0-1.5GB desktop, ~0.8GB qwen3-embedding:0.6b resident, ~0.6GB CUDA/runner overhead
+  => ~29.7GB for the main model, so 12GB KV headroom at 17GB weights and 10GB at 19GB.
+  The two main models cannot be co-resident (36GB); Ollama hot-swap cost per role switch
+  is unmeasured and must be benchmarked. Open risk: the LLM-based security analyzer needs
+  concurrent VRAM and should be a small dedicated model, not the main agent model.
+- Stop-condition status: **Stopped here.** No application code written. Phase 0 exit still
+  requires baseline metrics report, upstream artifact pins, read-only stock Agent Canvas
+  reference checkout, and the first-run wizard.

@@ -1,5 +1,12 @@
 # 04. Authorization - The Missing Primitive (Phase 1, Highest Priority)
 
+> **AMENDED v4.3 (2026-08-08) by [ADR-003](../../adrs/ADR-003-single-operator-remove-household.md).**
+> The authorization safety plane is **retained in full**. Only the multi-user dimension is
+> removed: per-user default stops, the non-technical comprehension gate, `created_by`
+> attribution, assist mode, and delegated approval (4.2.2). This file authorizes *the
+> agent's actions*; it is not user authentication and is not weakened by single-operator
+> deployment.
+
 ## 4.1 Trust dial (not a checkbox)
 
 | Stop | Maps to | Behavior |
@@ -16,7 +23,6 @@ Hard correction (final, do not re-litigate): ConfirmationPolicyBase.should_confi
 - Must be settable per task type, not only globally.
 - Must be mutable mid-run without cancelling the conversation - wire directly to conversation.set_confirmation_policy().
 - Race-condition rule: if the trust dial is made stricter while an action is WAITING_FOR_CONFIRMATION, that pending action is evaluated against the policy in force at the time it was raised and is never retroactively auto-approved or auto-rejected.
-- (v4.0) In household deployments, per-user default stops seed this control at profile creation but never hard-lock it.
 
 ### 4.1.1 Policy-lock visualization
 
@@ -31,7 +37,6 @@ When the conversation enters WAITING_FOR_CONFIRMATION, render a rail-anchored ca
 - If upstream context is tagged untrusted per 04a-prompt-injection.md, display a distinct badge separate from the risk badge.
 - Three actions: Approve / Reject with reason (free-text required) / Approve and relax for this class.
 - Wire Reject directly to conversation.reject_pending_actions(reason).
-- (v4.0) For non-technical users, this card's copy must pass a comprehension check with a non-technical reviewer before Phase 1 exit - see 15-household-profiles.md section 15.2.
 - UX pattern references (read source directly, see 12-portable-components.md): agentkitai/agentgate's dashboard/policy engine, CopilotKit's human-in-the-loop example.
 
 ### 4.2.1 Authorization audit log
@@ -40,22 +45,12 @@ When the conversation enters WAITING_FOR_CONFIRMATION, render a rail-anchored ca
 - Every "relax for this class" grant is session-scoped and expires automatically at conversation end.
 - The trust-dial widget displays a live badge count of currently-active relaxations for the session.
 - Cross-links to the Context Inspector's per-item provenance data.
-- (v4.0) Every log entry carries a created_by field (household user); cross-user "assist" actions logged with both identities - see 15-household-profiles.md section 15.4.
-- Delegated approvals are also logged here, recording delegator, delegate approver, owning conversation user, original risk level, final decision, and whether the delegate approved directly or returned the card unresolved.
 
-## 4.2.2 Optional delegated approval for novice-owned conversations
+## 4.2.2 ~~Optional delegated approval~~ - REMOVED v4.3
 
-To preserve autonomy without forcing novices to adjudicate blast radius alone, add an optional delegated-approval path for household deployments.
-
-- Available only when the owning conversation user is a novice-tier household profile, or when any profile explicitly opts into it for that conversation.
-- The owner may nominate one or more household expert/intermediate delegates at profile setup or per conversation; default is off.
-- For actions at or above a configurable threshold (default HIGH), the authorization card adds a fourth action: "Ask delegate to review."
-- This action does not approve anything. It routes the pending card to the selected delegate's "needs you" inbox and desktop notifications, marks the owner card as awaiting delegated review, and preserves the original policy lock semantics from section 4.1.
-- The delegate can Approve, Reject with reason, or Return to owner with note; all three outcomes are logged in section 4.2.1.
-- The owner can always revoke delegation for future cards and can still approve or reject the currently pending card themselves from a >=900px viewport.
-- Delegation is advisory-assistive, not a hard permission wall: it never prevents the owner from switching to Pro Mode or making their own decision from an eligible viewport.
-- Below the 900px breakpoint, delegated review is the only above-read-only path exposed in the novice owner's UI; direct Approve / Reject / Relax remain unavailable there per 03-layout.md section 3.2.
-- For a delegate acting on someone else's conversation, the UI enters explicit assist mode and the conversation banner shows "currently assisted by [user]" per 15-household-profiles.md section 15.4.
+> **AMENDED v4.3 (2026-08-08) by [ADR-003](../../adrs/ADR-003-single-operator-remove-household.md).**
+Single-operator deployment: there is no delegate to route to. The pending-action policy
+lock semantics from 4.1 are unaffected.
 
 ## 4.3 Batching to avoid approval fatigue
 
@@ -96,4 +91,4 @@ A "Speculative" mode: the agent spawns N parallel attempts in disposable worktre
 
 StuckDetector.is_stuck() firing triggers a dismissible-but-persistent card with one-click actions: Nudge simplify, Nudge add constraint, Nudge switch model, Fork and restart from step N, Kill and open post-mortem. Each logged to section 4.2.1.
 
-Phase 1 exit criteria (cumulative): a user can approve, reject-with-reason, and adjust the trust dial mid-run without restarting; a pending action never retroactively (auto-)approved; an untrusted-content-derived action correctly surfaces its provenance badge; a "relax for this class" grant correctly expires and appears in the audit log; a synthetic stuck-loop scenario surfaces the intervention card with all five actions wired; a synthetic hard-budget scenario correctly pauses with Extend/Review; reliability-tier indicator and malformed-tool-call diagnostic pass synthetic tests; cloud-fallback escape hatch preserves context; (v4.0) scope-shape review screen is present and functional; (v4.0) UNKNOWN-risk handling is visibly configurable; (v4.1) delegated approval routes a HIGH-risk novice-owned card to the selected delegate without changing the underlying pending-action policy lock, and the delegate outcome is attributed correctly in the audit log.
+Phase 1 exit criteria (cumulative, v4.3): the operator can approve, reject-with-reason, and adjust the trust dial mid-run without restarting; a pending action is never retroactively (auto-)approved; an untrusted-content-derived action correctly surfaces its provenance badge; a "relax for this class" grant correctly expires and appears in the audit log; a synthetic stuck-loop scenario surfaces the intervention card with all five actions wired; a synthetic hard-budget scenario correctly pauses with Extend/Review; reliability-tier indicator and malformed-tool-call diagnostic pass synthetic tests; cloud-fallback escape hatch preserves context; the scope-shape review screen is present and functional; UNKNOWN-risk handling is visibly configurable. All demonstrable in both Vibe and Pro lenses (Principle 11).

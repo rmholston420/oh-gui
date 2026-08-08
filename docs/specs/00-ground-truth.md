@@ -64,6 +64,9 @@ GPU/accelerator telemetry portability gap (closed): nvidia-smi does not exist on
 
 Primary deployment profile: single local Qwen3 model in the 27B-35B parameter range, served via Ollama/vLLM/llama.cpp on a single high-VRAM GPU (RTX 5090-class, 32GB), cloud providers used rarely as an escape hatch, parallel/multi-agent execution treated as occasional.
 
-Multi-user household deployment (v4.0 addition): this install may serve multiple household users of mixed technical proficiency, not a single expert operator. See 15-household-profiles.md.
+Single-operator deployment (v4.3, ADR-003): this install serves exactly one expert
+operator on Colossus. There are no additional profiles, proficiency tiers, or delegation
+relationships. The v4.0 multi-user household premise is withdrawn; see
+`docs/specs/archive/15-household-profiles.md`.
 
 vLLM determinism note (v4.0 addition): vLLM supports a batch-invariant mode producing bit-exact reproducible outputs at a measured latency cost. Model profiles should record whether the active backend has this enabled.
