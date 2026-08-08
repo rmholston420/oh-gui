@@ -45,8 +45,11 @@ cell. **No model has been selected, and none should be selected from these numbe
 
 ## Open questions and known gaps
 
-1. **Model selection for the Phase 1 router is unresolved** and needs a harness this one is not:
-   repetitions per cell so variance is visible, and tasks hard enough to spread the results.
+1. **Model selection is decided (ADR-012) but the harness gap is not closed.** Since our own six
+   blocks could not separate the candidates, the default coder model is
+   `qwen3.6:35b-a3b-mtp-coder`, on OpenHands' own documented recommendation for local use. A
+   discriminating harness — repetitions per cell, harder tasks — is still needed, and ADR-012 has
+   a concrete revisit trigger tied to it.
 2. **Malformed tool-call JSON, ~2 per cell**, on every build regardless of preset. It cost an entire
    cell once (t02 on `27b-mtp-q4_K_M`: three identical rejected `file_editor` calls, run never
    started). Open defect, wants its own ADR. Whether the coding preset helps is unproven — 17→11,

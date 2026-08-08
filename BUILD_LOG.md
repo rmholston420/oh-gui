@@ -2511,3 +2511,22 @@ Thermals across all 48 cells: peak 79C, 0s at or above the 80C warn line, 0 thro
 - **Bug fixed:** summed floats leaked a binary repetend tail (`535.8000000000001 s`) into a
   committed comparison table; `_n()` now formats floats, 5 tests added.
 - **Stop condition:** Phase 0 item 3 met. Phase 0 exit criteria all satisfied.
+
+## 2026-08-08 17:55 EDT — ADR-012: default coder model chosen on upstream recommendation
+
+- **Stage:** Phase 0 close / Phase 1 input
+- **Ports/adapters:** none (model selection)
+
+Since ADR-008 found the baseline could not separate the three candidates — 7/8 on every block with
+a different task failing each time — the choice was deferred to OpenHands' own documentation, which
+recommends Qwen3.6-35B-A3B for local use in two places. Default coder model is therefore
+`qwen3.6:35b-a3b-mtp-coder`. The dense 27b builds stay as alternates.
+
+Recorded against the decision: tool errors were 19 and 20 on the MoE across both presets versus
+11–17 for the dense builds — the only metric in six blocks that consistently separates the
+candidates, and it disfavours the model chosen. Accepted knowingly, with a falsifiable revisit
+trigger written into the ADR.
+
+- **Files touched:** `adrs/ADR-012-default-coder-model.md` (new), `adrs/README.md`,
+  `SESSION_HANDOFF.md`
+- **Stop condition:** Phase 0 closed. Phase 1 router has its default model.

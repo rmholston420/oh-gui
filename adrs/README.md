@@ -46,3 +46,4 @@ old one and mark the old one `Amended · superseded by ADR-###`.
 | ADR-009 | Qwen3.6 sampling parameters and the MTP asymmetry | Ratified |
 | ADR-010 | The baseline must compare MTP against MTP | Ratified |
 | ADR-011 | Correct the sampling preset at the layer that governs it | Ratified |
+| ADR-012 | Default coder model: defer to upstream where our own evidence is silent | Ratified |
