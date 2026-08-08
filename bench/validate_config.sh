@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# Validate the two production VRAM configs co-resident with the embedding model,
+# and measure role-switch (hot-swap) cost. Run after bench/ollama_env.sh f16.
+set -uo pipefail
+
+EMB=qwen3-embedding:0.6b
+EMB_CTX=512
+PLANNER=qwen3.6:27b;     PLANNER_CTX=131072
+CODER=qwen3-coder:30b;   CODER_CTX=65536
+
+total=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits)
+
+unload_all() {
+  curl -s http://localhost:11434/api/ps \
+    | python3 -c 'import sys,json;[print(m["name"]) for m in json.load(sys.stdin).get("models",[])]' 2>/dev/null \
+    | while read -r n; do [ -n "$n" ] && ollama stop "$n" >/dev/null 2>&1; done
+}
+used() { nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits; }
+
+load_llm() { # model ctx -> seconds
+  local t0=$(date +%s.%N)
+  curl -s -m 900 -X POST http://localhost:11434/api/generate -H 'Content-Type: application/json' \
+    -d "{\"model\":\"$1\",\"prompt\":\"hi\",\"stream\":false,\"keep_alive\":\"10m\",\"options\":{\"num_ctx\":$2,\"num_predict\":1}}" >/dev/null
+  echo "$(date +%s.%N) $t0" | awk '{printf "%.1f", $1-$2}'
+}
+load_emb() {
+  curl -s -X POST http://localhost:11434/api/embed -H 'Content-Type: application/json' \
+    -d "{\"model\":\"$EMB\",\"input\":\"warmup\",\"keep_alive\":\"10m\",\"options\":{\"num_ctx\":$EMB_CTX}}" >/dev/null
+}
+
+unload_all; sleep 3
+idle=$(used); echo "gpu_total=${total} MiB   idle=${idle} MiB"
+echo
+
+for pair in "$PLANNER $PLANNER_CTX" "$CODER $CODER_CTX"; do
+  set -- $pair; m=$1; c=$2
+  unload_all; sleep 3
+  load_emb
+  secs=$(load_llm "$m" "$c")
+  u=$(used)
+  echo "== $m @ ${c} + $EMB @ ${EMB_CTX}"
+  ollama ps
+  spill=$(ollama ps | grep -cE '[0-9]+% CPU' || true)
+  echo "   vram_used=${u} MiB   free=$(( total - u )) MiB   load=${secs}s   verdict=$([ "$spill" -eq 0 ] && echo FITS || echo SPILLED)"
+  echo
+done
+
+echo "== role-switch cost (planner <-> coder, embedding stays resident) =="
+unload_all; sleep 3; load_emb
+load_llm "$PLANNER" "$PLANNER_CTX" >/dev/null
+for i in 1 2; do
+  ollama stop "$PLANNER" >/dev/null 2>&1
+  a=$(load_llm "$CODER" "$CODER_CTX")
+  ollama stop "$CODER" >/dev/null 2>&1
+  b=$(load_llm "$PLANNER" "$PLANNER_CTX")
+  echo "  cycle $i:  ->coder ${a}s   ->planner ${b}s"
+done
+unload_all
+echo
+echo "NOTE: OLLAMA_KEEP_ALIVE=-1 is set on this host, so models never auto-unload."
+echo "The middleware MUST explicitly 'ollama stop' the outgoing model on every role switch."

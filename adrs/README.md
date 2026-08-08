@@ -14,6 +14,7 @@ old one and mark the old one `Amended · superseded by ADR-###`.
 | [ADR-001](ADR-001-integration-boundary.md) | OpenHands Integration Boundary: Standalone App over Agent Server API | Ratified | Phase 0 |
 | [ADR-002](ADR-002-household-mode-phase-1.md) | Household Multi-User Mode Ships in Phase 1 | **Superseded by ADR-003** | Phase 0 |
 | [ADR-003](ADR-003-single-operator-remove-household.md) | Single-Operator Deployment: Remove Household Multi-User Mode | Ratified | Phase 0 |
+| [ADR-004](ADR-004-vram-context-envelope.md) | VRAM and Context Envelope on Colossus | Ratified | Phase 0 |
 
 ## Open items awaiting a decision
 

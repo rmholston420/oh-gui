@@ -167,3 +167,34 @@ Entry format:
 - Stop-condition status: **Stopped here.** No application code written. Phase 0 exit still
   requires baseline metrics report, upstream artifact pins, read-only stock Agent Canvas
   reference checkout, and the first-run wizard.
+
+## 2026-08-08 03:45 EDT - VRAM/context envelope measured; ADR-004 filed
+
+- **Stage:** Phase 0 (baseline metrics)
+- **Built/changed:**
+  - `bench/vram_sweep.sh` v2 - aborts if any model is resident before the idle baseline
+    (v1's q8 run was contaminated by a resident embedding model, idle read 6747 MiB);
+    unloads all models between cells; sweeps embedding `num_ctx`.
+  - `bench/ollama_env.sh` - sets Ollama server env via systemd drop-in
+    (`/etc/systemd/system/ollama.service.d/oh-gui.conf`) and echoes the effective
+    environment. `systemctl set-environment` did not reach the service in v1.
+  - `bench/validate_config.sh` - co-residency + role-switch-cost harness (NOT YET RUN).
+  - `adrs/ADR-004-vram-context-envelope.md` - Ratified.
+- **Measurements (2 clean runs, idle 653 / 614 MiB, gpu_total 32607 MiB):**
+  - `qwen3.6:27b` fits 100% GPU up to **131072** (26113 MiB); 262144 spills to 86% CPU.
+  - `qwen3-coder:30b` fits 100% GPU up to **65536** (25167 MiB); 131072 spills to 97% CPU.
+  - KV/token: 27b ~74.6 KB, coder ~110 KB. The MoE costs MORE than the dense model -
+    the pre-measurement assumption was inverted and is corrected in ADR-004.
+  - `qwen3-embedding:0.6b` costs **6041 MiB** at the default 32768 ctx, **1502 MiB** at
+    512. Pinned to 512.
+- **Negative result:** `OLLAMA_KV_CACHE_TYPE=q8_0` is confirmed present in the service
+  environment yet produces byte-identical VRAM to f16 across all 8 cells. Ollama's new Go
+  engine ignores it (ollama#8921). KV quantization abandoned on Ollama; env left at f16.
+- **Ports/adapters affected:** middleware model router gains a hard requirement - explicit
+  `ollama stop` on every role switch (host runs `OLLAMA_KEEP_ALIVE=-1`, models never
+  auto-unload). Planner and coder can never be co-resident (~41 GB combined).
+- **ADR/ledger:** ADR-004 added; `adrs/README.md` index updated. No PORTING_LEDGER change.
+- **Stop condition:** Phase 0 exit still NOT met. Remaining: run `validate_config.sh`,
+  quality bench vs Perplexity gold, upstream artifact pins (agent-server digest, pip/npm
+  versions), read-only stock Agent Canvas reference checkout, first-run wizard.
+
