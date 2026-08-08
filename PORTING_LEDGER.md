@@ -23,8 +23,25 @@ Entry format:
 ## Primary donor - OpenHands Agent Canvas (ADR-001)
 
 Per [ADR-001](adrs/ADR-001-integration-boundary.md), Agent Canvas is a **donor source**,
-not a base to extend. It is MIT-licensed and was archived 2026-07-27, which makes it a
-frozen, stable donor with no upgrade treadmill. Vendor selectively, attribute, log here.
+not a base to extend. Vendor selectively, attribute, log here.
+
+> **CORRECTED 2026-08-08 (ADR-001 Amendment #2).** This section previously said Agent Canvas
+> "is MIT-licensed and was archived 2026-07-27, which makes it a frozen, stable donor with no
+> upgrade treadmill." That conflated two repositories and was false about both.
+>
+> - `github.com/OpenHands/agent-canvas` is archived, but is a **README-only stub with no LICENSE
+>   file**. It is **not** MIT and there is nothing in it to vendor. **Never vendor from it.**
+> - The real donor is **`github.com/OpenHands/OpenHands`** — MIT, `LICENSE` at root, root
+>   `package.json` named `@openhands/agent-canvas`. It is **not archived** (pushed 2026-08-08), so
+>   the "no upgrade treadmill" premise was wrong; that is exactly why it is pinned.
+
+| Field | Value |
+|---|---|
+| Donor repo | `https://github.com/OpenHands/OpenHands` |
+| Pin | tag `v1.12.0` = commit `4d0fe4983b6b8e52c104c7ffa4b7be8c7ab5a364` (verified 2026-08-08) |
+| SPDX | `MIT` (verified: `LICENSE` at root of the pinned tree) |
+| Reference checkout | `~/dev/oh-gui-ref/agent-canvas/v1.12.0/`, read-only, outside the repo |
+| Provisioned by | `scripts/provision-reference-checkout.sh` |
 
 | Surface | Donor path | Status |
 |---|---|---|
@@ -34,8 +51,11 @@ frozen, stable donor with no upgrade treadmill. Vendor selectively, attribute, l
 | Commits surface | `src/routes/commits-tab.tsx` | Not ported |
 | Task list surface | `src/routes/task-list-tab.tsx` | Not ported |
 
+All donor paths above were verified to exist at the pinned commit on 2026-08-08.
+
 Attribution requirement: every vendored file carries an SPDX header and a source
-comment naming the upstream repo, path, and commit SHA it came from.
+comment naming the upstream repo, path, and commit SHA it came from — concretely
+`OpenHands/OpenHands`, the path, and `4d0fe4983b6b8e52c104c7ffa4b7be8c7ab5a364`.
 
 ## Runtime dependencies (pinned, NOT ports)
 

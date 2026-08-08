@@ -225,3 +225,75 @@ must verify the endpoints it calls against the pinned server rather than trustin
 Every one of these four errors came from trusting prose over the artifact. The artifacts were
 available for inspection the entire time. This ADR gated Phase 0 and the errors would have
 propagated into the compose file, the health check, and the authorization boundary.
+
+---
+
+## Amendment #2 — 2026-08-08 — reference-checkout location, and the donor was misidentified
+
+**Status: Ratified. Implements item 6. Also corrects a licensing error in `PORTING_LEDGER.md`.**
+
+### The donor was the wrong repository
+
+`PORTING_LEDGER.md` said Agent Canvas "is MIT-licensed and was archived 2026-07-27, which makes it
+a frozen, stable donor with no upgrade treadmill." That sentence describes **two different
+repositories** and is false about both:
+
+| Repo | Reality (checked 2026-08-08) |
+|---|---|
+| `github.com/OpenHands/agent-canvas` | Archived 2026-07-27, but a **README-only stub — one file, and no LICENSE at all**. Not MIT. Nothing to vendor. |
+| `github.com/OpenHands/OpenHands` | The actual donor. **MIT**, `LICENSE` at root, root `package.json` is literally `@openhands/agent-canvas`. **Not archived** — pushed 2026-08-08. |
+
+Two consequences. First, **the "frozen donor, no upgrade treadmill" premise is wrong**: the real
+donor is actively developed, which is precisely why item 6 says to pin. Second, and worse, anyone
+acting on the ledger's MIT claim while looking at the archived repo would have vendored **unlicensed
+code** into an MIT-attributed project.
+
+`docs/specs/00-ground-truth.md` had the correct pin all along — `OpenHands/OpenHands`, tag
+`v1.12.0`, commit `4d0fe4983b6b8e52c104c7ffa4b7be8c7ab5a364` — and that is now verified: the tag
+resolves to that commit, and all five donor paths the ledger names exist at it.
+
+### Decision — the checkout lives outside the repo
+
+```
+~/dev/oh-gui-ref/agent-canvas/v1.12.0/     pristine, chmod a-w, never installed, never run
+~/.oh-gui/reference/agent-canvas-run/      disposable writable copy, for baseline metrics only
+```
+
+Provisioned and re-verified by `scripts/provision-reference-checkout.sh`, which is the only artifact
+committed to this repo. Sibling to `~/dev/oh-gui`, never inside it.
+
+**Why not vendored in-repo.** The decisive reason is not size — a shallow single-tag clone is
+**21 MB**, measured, so size was never the constraint. It is that **git does not track write
+permissions**; it records only the executable bit. An in-repo checkout is writable the moment anyone
+clones, so item 6's "never modified" would be unenforceable by construction — reduced to a comment.
+Outside the repo, `chmod -R a-w` is a real control: writes and deletes were both attempted against
+the provisioned tree and both were refused. Secondarily, an in-repo copy carries its own
+`package.json` and would be swept up by npm workspaces, `tsconfig` includes, eslint globs and test
+discovery, making it a build input in exactly the way item 6 forbids.
+
+**Why not a submodule.** A gitlink is a coupling, and item 5 says "vendoring is a copy, not a
+coupling." It also lands the tree inside the working directory (same build-input hazard) and adds
+`git submodule update` to every clone for something that is deliberately pinned and inert.
+
+**Why the two-layer split.** §3.0.1 asks the checkout to be both a *diff reference* and the *Phase 0
+regression baseline*. The second requires running stock Agent Canvas, which requires `npm ci` and a
+`node_modules/` — i.e. writing into the tree. One read-only tree cannot serve both. The pristine
+layer stays inert and authoritative; the run copy is regenerated from it on demand and may be
+deleted at any time. Neither is a build input to OH-GUI.
+
+**Why version-scoped directories.** `agent-canvas/v1.12.0/` rather than `agent-canvas/` means a
+future re-pin is additive, and two pins can be diffed against each other.
+
+### Guard against recurrence
+
+The script refuses to install a tree whose root `package.json` is not named
+`@openhands/agent-canvas`, and refuses one whose `LICENSE` is not MIT. Pointing it at the archived
+stub fails closed rather than silently producing an unlicensed reference.
+
+### Consequences
+
+- `PORTING_LEDGER.md` donor section corrected: right repo, right commit, MIT confirmed, plus an
+  explicit do-not-vendor note for the archived stub.
+- Attribution requirement is now concrete: SPDX header naming `OpenHands/OpenHands`, the file path,
+  and commit `4d0fe4983b6b8e52c104c7ffa4b7be8c7ab5a364`.
+- Phase 0 exit item 2 is **not** met until the script has been run on Colossus and logged.

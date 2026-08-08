@@ -1730,3 +1730,47 @@ trust-dial stop). No further Path E runs are required for Phase 0.
 - **Stop condition: Phase 0 exit item 1 MET.** Two items remain: read-only stock Agent Canvas
   reference checkout (`03-layout.md` §3.0.1) and the first-run wizard stating the default trust-dial
   stop in-UI (§3.4). No GPU work outstanding.
+
+## 2026-08-08 09:06 EDT — Phase 0 exit item 2: reference-checkout location decided, provisioner written and executed
+
+- Stage: Phase 0 exit item 2, `docs/specs/03-layout.md` §3.0.1 / ADR-001 item 6.
+- **Decision (ADR-001 Amendment #2):** the read-only stock Agent Canvas checkout lives **outside**
+  the repo at `~/dev/oh-gui-ref/agent-canvas/v1.12.0/` (pristine, `chmod a-w`, never installed,
+  never run), with a disposable writable copy at `~/.oh-gui/reference/agent-canvas-run/` for Phase 0
+  baseline metrics. Only `scripts/provision-reference-checkout.sh` is committed here.
+- **Deciding argument was not size.** A shallow single-tag clone measures **21 MB**, so the
+  386 MB full-history figure was irrelevant. The real reason: **git records only the executable bit,
+  not write permissions**, so an in-repo checkout is writable for every cloner and item 6's "never
+  modified" would be unenforceable by construction. Outside the repo, `chmod -R a-w` is a real
+  control — verified by attempting a write and a delete against the provisioned tree; both refused.
+  Secondary reason: an in-repo copy ships its own `package.json` and would be captured by npm
+  workspaces, tsconfig includes, eslint globs and test discovery — a build input, which item 6
+  forbids. Submodule rejected as a coupling (item 5: "vendoring is a copy, not a coupling").
+- **Two layers because §3.0.1 asks for two things.** Diff reference must be inert; regression
+  baseline must be runnable (`npm ci` needs to write). One read-only tree cannot do both.
+- **DONOR WAS MISIDENTIFIED IN PORTING_LEDGER.md — licensing defect, now corrected.** The ledger
+  said Agent Canvas "is MIT-licensed and was archived 2026-07-27 … frozen, stable donor with no
+  upgrade treadmill." That conflated two repos and was false about both:
+  - `OpenHands/agent-canvas` — archived, but a **README-only stub with NO LICENSE file**. Not MIT.
+    Acting on the ledger would have vendored **unlicensed code** into an MIT-attributed project.
+  - `OpenHands/OpenHands` — the real donor. MIT, `LICENSE` at root, root `package.json` is
+    `@openhands/agent-canvas`. **Not archived** (pushed 2026-08-08), so "no upgrade treadmill" was
+    wrong — which is exactly why item 6 pins it.
+  `docs/specs/00-ground-truth.md` had the correct pin all along and is now verified: tag `v1.12.0`
+  → commit `4d0fe4983b6b8e52c104c7ffa4b7be8c7ab5a364`, and **all five donor paths the ledger names
+  exist at that commit**.
+- **Provisioner executed, not just written.** Fresh clone, idempotent re-run (verifies, no
+  re-clone), tamper detection (re-locks a chmod'd file with a WARN), `--run-copy`, and
+  write-refusal all exercised. Fails closed if root `package.json` is not
+  `@openhands/agent-canvas` or `LICENSE` is not MIT, so pointing it at the archived stub errors
+  instead of silently producing an unlicensed reference.
+- **Bug found by executing rather than asserting:** the first version ran `chmod -R a-w` before
+  `mv`, which fails — renaming a directory rewrites its `..` entry and so requires write permission
+  on the directory itself. Order corrected to move-then-lock, with a comment recording why.
+- Files: `scripts/provision-reference-checkout.sh` (new, executable),
+  `adrs/ADR-001-integration-boundary.md` (Amendment #2), `PORTING_LEDGER.md` (donor section
+  corrected: repo, pin, SPDX, do-not-vendor note), `docs/specs/03-layout.md` (§3.0.1 location note),
+  BUILD_LOG.md, SESSION_HANDOFF.md.
+- **Stop condition: item 2 NOT yet met.** The mechanism is delivered and proven in the sandbox, but
+  the checkout does not exist on Colossus until the operator runs the script and the run is logged
+  here. Remaining Phase 0 item after that: the first-run wizard (§3.4).

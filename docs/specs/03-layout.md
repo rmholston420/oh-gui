@@ -24,6 +24,13 @@ The lens switch: a single binary toggle in the global command bar - CSS/layout t
 
 The unmodified Agent Canvas is not a third mode. Retained only as: a pinned reference checkout for diffing; the regression baseline for Phase 0 metrics. Never exposed as a runtime toggle or settings option.
 
+> **Located 2026-08-08 (ADR-001 Amendment #2).** Pristine read-only checkout at
+> `~/dev/oh-gui-ref/agent-canvas/v1.12.0/` — outside the repo, because git does not track write
+> permissions and an in-repo copy could not be held read-only. Baseline metrics run against a
+> disposable copy at `~/.oh-gui/reference/agent-canvas-run/`. Both provisioned by
+> `scripts/provision-reference-checkout.sh`. Donor is `OpenHands/OpenHands` @ `v1.12.0`, **not** the
+> archived `OpenHands/agent-canvas` stub, which has no LICENSE.
+
 ## 3.2 Responsiveness
 
 - One-keystroke maximize for any surface, with restore.

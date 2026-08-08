@@ -34,11 +34,21 @@ MUST call `ollama stop` on the outgoing role model (`OLLAMA_KEEP_ALIVE=-1`, noth
 
 ## Exact next action
 
-**Decide how to satisfy Phase 0 exit item 2** — the read-only stock Agent Canvas reference checkout
-(`docs/specs/03-layout.md` §3.0.1, ADR-001 item 6). Agent Canvas was archived upstream 2026-07-27,
-so it is a frozen donor; the checkout needs a pinned commit SHA and must be marked read-only. The
-open question is **where it lives**: vendored into this repo, or a sibling directory on Colossus
-referenced by pin. That affects repo size and the never-modify guarantee, so confirm before acting.
+Provision the reference checkout on Colossus and log it:
+
+```bash
+cd ~/dev/oh-gui && git pull && bash scripts/provision-reference-checkout.sh
+```
+
+Expect: `ok commit 4d0fe498…`, `ok 7 donor paths present`, `ok LICENSE is MIT`,
+`ok root package is @openhands/agent-canvas`, ~21 MB at
+`~/dev/oh-gui-ref/agent-canvas/v1.12.0/`. Paste the output back; it gets a BUILD_LOG entry and
+closes Phase 0 exit item 2. Add `--run-copy` later, when baseline metrics are actually being
+measured — it is not needed to close item 2.
+
+Then the last Phase 0 item is the **first-run wizard** (`docs/specs/03-layout.md` §3.4): must state
+and justify the default trust-dial stop `ConfirmRisky()` in its own UI copy, and ship alongside the
+Phase 0 baseline-metrics report.
 
 ## Ollama configuration — SETTLED, do not revisit
 
@@ -58,8 +68,25 @@ stopped calling `ollama stop`.
 ## Remaining before Phase 0 Definition of Done
 
 1. ~~Upstream artifact pins~~ — **DONE 2026-08-08**, `docs/UPSTREAM_PINS.md`.
-2. Read-only stock Agent Canvas reference checkout (`docs/specs/03-layout.md` §3.0.1).
+2. Read-only stock Agent Canvas reference checkout (`docs/specs/03-layout.md` §3.0.1) —
+   **location decided and provisioner written + executed (ADR-001 Amdt #2); awaiting one command
+   on Colossus.** See "Exact next action".
 3. First-run wizard stating the default trust-dial stop `ConfirmRisky()` in-UI (§3.4).
+
+## Agent Canvas donor — corrected 2026-08-08, read before vendoring
+
+Donor is **`github.com/OpenHands/OpenHands`** @ tag `v1.12.0` = commit
+`4d0fe4983b6b8e52c104c7ffa4b7be8c7ab5a364`, **MIT**, root `package.json` named
+`@openhands/agent-canvas`. All five donor paths verified present at that commit.
+
+**Do NOT vendor from `github.com/OpenHands/agent-canvas`** — it is a README-only stub with **no
+LICENSE file**. PORTING_LEDGER.md previously conflated the two repos and claimed MIT plus
+"archived, frozen donor"; both halves were wrong, and the real donor is actively developed. Fixed in
+PORTING_LEDGER.md and ADR-001 Amendment #2.
+
+Checkout layout: pristine read-only `~/dev/oh-gui-ref/agent-canvas/v1.12.0/` (outside the repo —
+git does not track write permissions, so in-repo could not be held read-only); disposable writable
+`~/.oh-gui/reference/agent-canvas-run/` for baseline metrics only.
 
 ## Upstream pins — recorded, see `docs/UPSTREAM_PINS.md`
 
