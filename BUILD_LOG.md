@@ -2437,3 +2437,37 @@ Fixed the cid nesting defect above; reports and comparison regenerated.
 Suites: baseline 61, mtp 5.
 
 Stop condition: Phase 0 item 3 OPEN. Blocking on the MTP microbench, then the third matrix block.
+
+## 2026-08-08 16:42 EDT — MTP measured at 1.48-1.81x; ADR-010 corrected on two points
+
+`bench/mtp` against Ollama directly, three reps per cell, plain 27b vs 27b-mtp-q4_K_M:
+
+| task | 27b | 27b-mtp | speedup |
+|---|---:|---:|---:|
+| short_gen | 68.1 | 123.4 | 1.81x |
+| long_gen | 67.7 | 112.7 | 1.66x |
+| prefill_heavy | 72.3 | 107.3 | 1.48x |
+
+Inside Unsloth's documented 1.4-2.2x band, run-to-run spread under 0.5 tok/s. Every cell hit the
+1024-token cap exactly, so both models generated identical output lengths — the right condition for
+comparison. First-rep prefill figures are cold-load artifacts (216 vs 1480 tok/s on the same model)
+and are disregarded. Peak 73C.
+
+This confirms the ADR-010 premise: the plain 27b's throughput in the two-model matrix was being
+understated by roughly 1.6x, so the tie on acceptance could not have been broken on that data.
+
+**Two corrections to ADR-010, both from `ollama show --parameters` on Colossus.**
+
+1. ADR-010 claimed both tags ship the identical params blob including `draft_num_predict 4`,
+   inert on the plain 27b. Wrong — inferred from the registry page, not read from the daemon.
+   Plain 27b has no `draft_num_predict` whatsoever. ADR-009's table was right and I contradicted
+   it in a later ADR without noticing.
+
+2. Unanticipated: `27b-mtp-q4_K_M` is a MULTIMODAL build carrying a CLIP vision tower (460.73M)
+   absent from plain 27b, with 27.3B text params against 27.8B. The pair is not "same model plus
+   heads". The speedup remains MTP-attributable — an idle vision tower does not accelerate text —
+   but a QUALITY difference between these tags cannot be pinned on MTP alone. Of the three tags
+   only plain 27b is text-only.
+
+Block 3 launched 16:39 (`20260808_1639`), preflight PASS, 61 self-tests green. t01 ACCEPTED=yes in
+3 turns, idle at 66s — the cell plain 27b failed on a regression.

@@ -15,8 +15,29 @@
 ## Context
 
 The 2×8 baseline matrix runs `qwen3.6:27b` against `qwen3.6:35b-a3b-mtp-q4_K_M`. Only the second
-has multi-token prediction heads. Ollama reports `draft_num_predict 4` in *both* tags' parameter
-blobs (both ship the identical blob `276ffc6327ae`), but the parameter is inert on the plain 27b,
+has multi-token prediction heads.
+
+> **CORRECTION (2026-08-08 16:42, verified on Colossus).** The paragraph below originally claimed
+> both tags ship the identical parameter blob `276ffc6327ae` including `draft_num_predict 4`, with
+> the parameter merely inert on the plain 27b. That is **wrong**, and it was inferred from the
+> registry web page rather than read from the daemon. `ollama show --parameters` on Colossus:
+> plain `qwen3.6:27b` has **no `draft_num_predict` at all**; both `27b-mtp-q4_K_M` and
+> `35b-a3b-mtp-q4_K_M` have `draft_num_predict 4`. ADR-009's table was correct and this ADR
+> contradicted it. Sampling parameters are otherwise identical across all three tags
+> (temperature 1, top_p 0.95, top_k 20, min_p 0, presence_penalty 1.5, repeat_penalty 1).
+>
+> The same check turned up a fact neither ADR anticipated: **`27b-mtp-q4_K_M` is a multimodal
+> build.** It carries a CLIP vision tower (`architecture clip`, 460.73M) that plain `27b` does not
+> have, and reports 27.3B text parameters against the plain tag's 27.8B. The two tags are therefore
+> NOT the same model plus prediction heads — they are different builds. This ADR's claim that
+> 27b vs 27b-mtp is "the only clean measurement of what MTP is worth" is **overstated** and is
+> narrowed here: it is the closest available pair, and the measured 1.66x/1.48x/1.81x is still
+> attributable to MTP because an unused vision tower cannot accelerate text generation, but a
+> quality difference between these two tags cannot be attributed to MTP alone. `35b-a3b-mtp` also
+> carries a CLIP tower (446.57M), so of the three tags only plain `27b` is text-only — relevant if
+> OH-GUI ever accepts image input.
+
+The parameter is absent on the plain 27b,
 which has no prediction heads to draft with — the asymmetry is in the weights, not the config.
 
 Unsloth documents MTP as "~1.4–2.2x faster generation with no change in accuracy"
