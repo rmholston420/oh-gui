@@ -2297,3 +2297,29 @@ task; git numstat plus untracked files after; `pytest` run in the fixture (pass/
 **Stop condition:** unchanged — Phase 0 item 3 OPEN until the matrix runs and
 `docs/BASELINE-METRICS-*.md` exists with ADR-008's verdict filled in. Next action is a single-cell
 smoke test, not the full sixteen.
+
+## 2026-08-08 14:13 EDT — First clean automated cell (t01 / qwen3.6-27b)
+
+**Stage:** Phase 0, item 3 — ADR-008. Run `~/.oh-gui/baseline/20260808_1411_run`.
+
+`outcome=completed` · 4 turns · 2 files · +18/-0 · **tests=pass** (real venv: fastapi 0.141.1,
+pytest 9.1.1) · submit 20.7s → first agent message 73.7s → idle 97.1s · fixture restored to
+`d63c775` and asserted clean first · **only `qwen3.6:27b` resident for the whole cell** · GPU peak
+67C, 0 samples ≥80C, 0 thermally throttled, 55 power-capped at the 435 W cap.
+
+All four things that were wrong in the previous run are now right, verified in output rather than
+asserted: profile set before the conversation exists (no "Switched to profile" in the transcript),
+no stray 35b load, `Agent error` recorded as non-fatal at 47.1s with the run continuing through it,
+and the test signal coming from a venv that actually has fastapi.
+
+**Correction to my own fix, so it is not overstated:** switching the status icons to `isVisible()`
+did NOT make them discriminate — the heartbeat still prints
+`visible-status=working,active,check,error`, all four, in a healthy run. The signal that actually
+works is `stop-button` visibility, which flipped RUNNING→idle correctly. The status list is
+decoration in the heartbeat, not a state source, and nothing should be built on it.
+
+**Open, not blocking:** an `Agent error` event appears mid-run in both t01 runs. The agent recovers
+and completes. Recurring at a fixed point suggests a real underlying tool failure worth diagnosing
+once the matrix is recorded — `error_events_seen` now captures it per cell.
+
+**Stop condition:** item 3 still OPEN. Harness is proven on one cell; the matrix has not run.
