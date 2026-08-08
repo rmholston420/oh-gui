@@ -226,3 +226,59 @@ in §3.
 - An `analyze()` that raises on failure.
 - Proposing a fine-tune, a second GPU, or any hosted moderation API — all excluded by the
   brief.
+
+---
+
+> **CORRECTION (2026-08-08 08:15 EDT) — this gold file's central arithmetic rests on a
+> figure that ADR-004 Amendment #6 retracted. Read before quoting any number above.**
+>
+> §2 asserts "the honest desktop budget during normal operation is **~3,500 MiB**, not the
+> idle figure", and every row of its table adds 3,500. **That figure is retracted.**
+> ADR-004 A#6 records idle VRAM measured immediately before load, with the operator's
+> normal desktop *and browser* running: **657 MiB** and **666 MiB** across two Path E runs.
+> Run `20260808_0738` recorded 675 MiB. The ~3,500 MiB number was never measured.
+>
+> **What this breaks.** Recomputed against 666 MiB at the working ceiling of 131,072:
+>
+> | Configuration | Role model | Desktop | Classifier | Total | Free of 32,607 |
+> |---|---:|---:|---:|---:|---:|
+> | 27b @131,072 + classifier | 26,140 | 666 | 2,000 | 28,806 | **3,801** |
+> | 35b-mtp @131,072 + classifier | 26,390 | 666 | 2,000 | 29,056 | **3,551** |
+> | 35b-a3b @262,144 + classifier | 29,698 | 666 | 2,000 | 32,364 | 243 |
+>
+> **Option A is not "arithmetically dead" at 131,072.** It has ~3.8 GB of headroom there.
+> The claim that it "does not fit" — and the related §2 finding that 262,144 is "−261 MiB
+> short" — are artifacts of the retracted desktop figure. The 262,144 row remains a genuine
+> squeeze once a classifier is added, and remains *unmeasured*, per A#6.
+>
+> **What survives, and now carries the decision on its own.** Option C is still correct,
+> but on the non-arithmetic grounds, which are untouched:
+>
+> - **The scheduler argument.** Ollama evicts least-recently-used. A classifier is idle
+>   between actions by construction, so it is exactly what gets evicted — then reloaded at
+>   2.8–6.9 s with an action blocked on its verdict. A safety component whose latency spikes
+>   under memory pressure is the wrong component to make evictable.
+> - **`OLLAMA_NUM_PARALLEL=1`** serialises Option B behind the agent's own generation, and a
+>   fresh conversation discards the agent's KV cache. Option B is not free.
+> - **0 MiB and sub-millisecond** on a path that runs for every shell command, file write,
+>   network call and git operation.
+> - **Only the deterministic layer is unit-testable, reproducible and auditable** — which
+>   matters more for a policy plane than semantic sophistication.
+>
+> **Scoring impact: none.** All six cells of run `20260808_0738` received the identical
+> prompt, and `bench/prompts/arch.txt` itself states the desktop "will rise by 2-3 GB". The
+> models reasoned correctly from the premise they were given; the premise was wrong, not
+> their arithmetic. Relative ranking is therefore unaffected and the ADR-005 verdict stands.
+>
+> **Consequence for scoring commentary:** praise given to any answer for reproducing the
+> "does not fit / system crash" result must be read as *correct reasoning from the stated
+> premise*, not as a production fact. No answer's VRAM conclusion about Option A should be
+> carried into the codebase.
+>
+> **`bench/prompts/arch.txt` contains the same wrong premise** and is deliberately NOT being
+> edited: changing it would break comparability with rounds 1 and 2. Logged in
+> `KNOWN_ISSUES.md` for round 3.
+>
+> Method note, and this is the third instance of the same error pattern today: the retracted
+> figure entered this file because it was inherited from A#5 rather than re-derived from the
+> per-run idle-VRAM measurement that the harness had already been recording.

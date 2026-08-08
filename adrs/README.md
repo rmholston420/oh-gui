@@ -15,14 +15,13 @@ old one and mark the old one `Amended · superseded by ADR-###`.
 | [ADR-002](ADR-002-household-mode-phase-1.md) | Household Multi-User Mode Ships in Phase 1 | **Superseded by ADR-003** | Phase 0 |
 | [ADR-003](ADR-003-single-operator-remove-household.md) | Single-Operator Deployment: Remove Household Multi-User Mode | Ratified | Phase 0 |
 | [ADR-004](ADR-004-vram-context-envelope.md) | VRAM and Context Envelope on Colossus | Ratified | Phase 0 |
-| [ADR-005](ADR-005-planner-and-coder-model-selection.md) | Planner and Coder Model Selection for OH-GUI | **OPEN** - round 1 scored, verdict withheld pending round 2 | Phase 0 |
+| [ADR-005](ADR-005-planner-and-coder-model-selection.md) | Planner and Coder Model Selection for OH-GUI | Ratified | Phase 0 |
 
 ## Open items awaiting a decision
 
 | Item | Blocking | Source |
 |---|---|---|
 | Upstream artifact pins (agent-server digest, pip/npm versions) | Phase 0 exit | ADR-001, `docs/specs/02-repo-setup.md` item 1 |
-| Baseline metrics report vs. dense Qwen3 27B-35B | Phase 0 exit | ADR-005, `docs/specs/02-repo-setup.md` items 5-7 |
 | Read-only stock Agent Canvas reference checkout | Phase 0 exit | `docs/specs/03-layout.md` §3.0.1 |
 | First-run wizard stating default trust-dial stop in-UI | Phase 0 exit | `docs/specs/03-layout.md` §3.4 |
 
@@ -32,7 +31,8 @@ old one and mark the old one `Amended · superseded by ADR-###`.
 |---|---|
 | Household-mode onboarding timing | ADR-003 - household mode removed; question is void |
 | Scope of "remove the auth stuff" | ADR-003 - multi-user removed, safety plane retained |
-| Phase 0 baseline model set | qwen3.6:27b (planner) + qwen3-coder:30b (coder); qwen3:32b dropped as superseded |
+| Phase 0 baseline model set | **Superseded by ADR-005.** The coder slot is `qwen3.6:35b-a3b-mtp-q4_K_M`, not `qwen3-coder:30b` - the specialist placed last of four on the machine-scored code task. Planner remains `qwen3.6:27b` |
+| Baseline metrics report vs. dense Qwen3 27B-35B | ADR-005 Ratified - planner `qwen3.6:27b` @131,072, coder `qwen3.6:35b-a3b-mtp-q4_K_M` @131,072, roles do not collapse. Scored in `bench/path_e/SCORING-20260808_{0555,0705,0738}.md` |
 | LICENSE for this repo | MIT, added 2026-08-08 with NOTICE for donor attribution |
 | Thermal operating point | 435 W ratified; 600 W rejected at 82 C with throttling (BUILD_LOG 2026-08-08 08:20). Core sensor only - VRAM temp is not exposed by this driver (`docs/THERMAL-5090.md`) |
 | GPU hotspot enforcement | Record-only; NVIDIA removed the hotspot sensor on RTX 50 - the reading is a duplicate of core (`docs/THERMAL-5090.md`) |

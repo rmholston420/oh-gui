@@ -111,6 +111,25 @@ on CPU at native 2560 dims (see Amendment #2; supersedes the initial 0.6b select
 > 69.60, and at single-user scale the larger vectors are not a real cost.
 >
 
+> **STATUS AMENDMENT #8 (2026-08-08) — Amendment #3's reopened planner question is CLOSED
+> by ADR-005, and A#3's prediction held on capacity while losing the decision:**
+> A#3 reopened the planner comparison because measurement showed `qwen3.6:35b-a3b` dominates
+> the 27b on capacity (21.8 vs 74.6 KB/token) and "likely on speed", leaving "only reasoning
+> quality per token" open. Both halves of that prediction were confirmed: the MTP build ran
+> ~2× the 27b's decode on `arch` (96.3 vs 49.1 tok/s median).
+>
+> **It lost the planner slot anyway.** ADR-005 is Ratified with planner = `qwen3.6:27b`
+> @131,072. Across three interleaved replicates of the identical `arch` prompt, the 35b-mtp
+> reached the gold decision **1 of 3** times against the 27b's **3 of 3**, choosing Option B
+> twice while asserting it costs "0 additional VRAM" — a claim the gold file prohibits. The
+> 35b-mtp did win the **coder** slot outright (99 vs the specialist `qwen3-coder:30b`'s 78 on
+> a task where 60 points were machine-scored by executing 30 unittest cases).
+>
+> Consequence: capacity did not select the model, which is exactly what ADR-005's Context
+> predicted it would fail to do. A#3's arithmetic was right and its implied conclusion was
+> not; a model that fits better and runs faster can still be the wrong planner. Both role
+> models sit at 131,072, so the working ceiling this ADR set is unchanged.
+
 > **STATUS AMENDMENT #7 (2026-08-08) — iGPU placement tested and REJECTED; A#2 stands:**
 > The operator raised the iGPU (Ryzen 9 7900X, RDNA2 Raphael) as possibly better than CPU for
 > the embedder. Tested as a one-off outside the Path E matrix

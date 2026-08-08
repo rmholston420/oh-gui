@@ -1418,3 +1418,82 @@ power-capped samples. The 07:05 run showed 437 W. 450 W is 3.4% over cap. Most l
 explanation is telemetry sampling above the enforcement window rather than a cap breach, but
 that is a hypothesis and no causal claim enters an artifact until executed. Not blocking:
 `THERMALLY throttled samples: 0`.
+
+## 2026-08-08 08:20 EDT — ADR-005 RATIFIED: both role slots decided; Phase 0 blocker cleared
+
+**Stage/phase:** Phase 0 exit. **ADRs:** ADR-005 OPEN → **Ratified**; ADR-004 **Amendment #8**
+added (closes A#3). **Ledger:** no entry owed — Devstral lost, so the unsloth GGUF is not
+vendored.
+
+**Decision.** The two roles do **not** collapse:
+
+| Role | Model | ctx | Preset | Think |
+|---|---|---:|---|---|
+| Planner | `qwen3.6:27b` | 131,072 | `planner` (1.0 / 0.95 / 20) | on |
+| Coder | `qwen3.6:35b-a3b-mtp-q4_K_M` | 131,072 | `precise` (0.6 / 0.95 / 20) | on |
+
+**Coder — decided on machine points, not judgement.** c10 99, c11 92, c09 81, c08 78; 60 of
+each 100 came from executing 30 unittest cases. Both *code-marketed* models placed last, both
+failing `test_unparseable_value_raises` the same way — value match constrained to the literal
+set, so malformed input is skipped silently and c08's `raise ValueError` is unreachable. A
+silent-skip failure mode in the component that parses agent output cannot be the default,
+which is why c08's 37× speed advantage (2.24 s / 466 tok vs 83.6 s / 9,876 tok) does not save
+it. Criteria 7 and 8 both checked and neither fires.
+
+**Planner — decided on median of three, and on one thing that isn't my judgement.** Medians
+c12 `27b` **72** vs c13 `35b-mtp` **66** (`bench/path_e/SCORING-20260808_0738.md`). 6 points
+is outside criterion 1's 3-point band, so c13's ~2× decode (96.3 vs 49.1 tok/s) never enters
+the verdict. Every one of those 100 points is my judgement and a 6-point single-judge margin
+is not robust, so the verdict rests instead on a binary re-checkable fact: **c12 reached the
+gold decision 3/3, c13 1/3.** c13 chose Option B twice from the identical prompt, both times
+asserting it costs "0 additional VRAM" — a claim the gold file prohibits, since
+`OLLAMA_NUM_PARALLEL=1` serialises it behind the agent's own generation. Neither B answer
+mentioned `NUM_PARALLEL`.
+
+**Round 2's confound resolved against the hypothesis it was built to test.** The c12/c13 cell
+comment recorded that round 1's planner gap came from "c03 choosing Option B in that one draw"
+and that "at that sampling temperature one draw is not evidence." Three draws later Option B
+is reproducible — 2 of 3. The replication was designed to exonerate the 35b and confirmed the
+behaviour instead. Meanwhile the n=1 gap did shrink as predicted, 16 points → 6.
+
+c13 produced the single best answer of all six (rep 3, **79**) and the only one in either
+round to surface the gold file's own key arithmetic finding. The case against it is variance,
+not capability.
+
+**Alternative recorded as rejected:** collapsing both roles onto `35b-mtp` (zero swap cost,
+cheapest KV at 23.3 KB/token, coder slot already won at 99) costs 6 median arch points.
+Criterion 1 forbids it, but the real reason is that a planner that flips its architectural
+conclusion on 2 of 3 identical prompts is the wrong component to make deterministic decisions.
+Re-examine if the pre-registered follow-up removes the instability.
+
+**Pre-registered follow-up, filed in the ADR so it cannot be fitted afterwards:** `REPS=3` of
+c13 `arch` at the `precise` preset. Temp 1.0 is the Qwen3.6 card's "Thinking, general" row —
+on-card, not a harness defect — but the same model at 0.6 scored 99 on `code` with no wobble.
+If c13 reaches Option C 3/3 with a median above 75, the planner slot reopens.
+
+**Second correction of the day, and it cuts against my own gold file.** `bench/gold/arch.md`
+built its entire VRAM table on the ~3,500 MiB working-desktop figure that **ADR-004 A#6
+retracted** (measured 657 / 666 / 675 MiB with the browser up). Recomputed honestly at
+131,072: **Option A was never arithmetically dead — it has ~3.8 GB of headroom.** Option C is
+still correct, but on the grounds that survive: Ollama evicts LRU and an idle classifier is
+exactly what gets evicted, then reloads at 2.8–6.9 s with an action blocked on its verdict;
+`NUM_PARALLEL=1`; and only a deterministic gate is unit-testable and auditable. Scoring is
+unaffected — all six cells got the identical prompt and `bench/prompts/arch.txt` states the
+2–3 GB rise itself, so the error is common-mode. The prompt is deliberately **not** edited, to
+preserve comparability with rounds 1–2.
+
+**Files touched:** `adrs/ADR-005-...md` (Decision/Rationale/Consequences written, status
+Ratified), `adrs/ADR-004-...md` (A#8), `adrs/README.md` (status + Baseline metrics report
+moved Open→Closed; Phase 0 baseline model set marked superseded — the coder is no longer
+`qwen3-coder:30b`), `bench/path_e/SCORING-20260808_0738.md` (new),
+`bench/gold/arch.md` (correction block), `KNOWN_ISSUES.md` (new, 3 entries).
+
+**Pending, deliberately NOT applied:** `OLLAMA_MAX_LOADED_MODELS` 2 → **1**. The two role
+models are 26,140 + 26,390 = 52,530 MiB against a 32,607 MiB card, so co-residency is
+impossible and the value should stop Ollama attempting it. Not changed in this commit because
+`ollama_guard` asserts all 7 live settings — the unit and the guard's expected value must
+change together or every subsequent preflight fails.
+
+**Stop condition:** ADR-005 was the last bench blocker on Phase 0 exit. Three non-bench items
+remain (upstream artifact pins, read-only stock Agent Canvas checkout, first-run wizard
+trust-dial stop). No further Path E runs are required for Phase 0.

@@ -1,6 +1,6 @@
 # ADR-005 — Planner and Coder Model Selection for OH-GUI
 
-**Status:** OPEN — round 1 scored, verdict withheld pending round 2
+**Status:** **Ratified** (2026-08-08) — round 2 scored, both slots decided
 **Lock-in phase:** Phase 0 (blocks Phase 0 exit)
 **Supersedes:** —
 
@@ -142,26 +142,162 @@ OpenHands LM 32B v0.1 (37.2% SWE-bench, below Devstral).
 
 ## Decision
 
-**PENDING.** To be written after scoring. Must state, explicitly:
+**The two roles do NOT collapse. OH-GUI routes to two models, never co-resident.**
 
-- Planner model + context + sampling preset.
-- Coder model + context + sampling preset.
-- Whether the two roles collapse to one model.
-- The `OLLAMA_MAX_LOADED_MODELS` and unload policy implied by that choice.
+| Role | Model | Context | Preset | Thinking | `num_predict` |
+|---|---|---:|---|---|---:|
+| **Planner / thinker** | `qwen3.6:27b` | 131,072 | `planner` — temp 1.0, top_p 0.95, top_k 20, min_p 0.0, presence 0.0, repeat 1.0 | **on** | 16,384 |
+| **Coder** | `qwen3.6:35b-a3b-mtp-q4_K_M` | 131,072 | `precise` — temp 0.6, top_p 0.95, top_k 20, min_p 0.0, presence 0.0, repeat 1.0 | **on** | 16,384 |
+
+Both presets are the Qwen3.6 card's own rows: `planner` is "Thinking, general",
+`precise` is "Thinking, precise coding" (`bench/SAMPLING.md`).
+
+**`OLLAMA_MAX_LOADED_MODELS=1`.** The two role models are 26,140 and 26,390 MiB at
+131,072; their sum is 52,530 MiB against a 32,607 MiB card, so co-residency is physically
+impossible and the value must stop Ollama from attempting a second load and thrashing. The
+embedder no longer competes for a slot — ADR-004 A#2 placed it on CPU, confirmed by A#7.
+Role switches cost the measured 2.8–6.9 s and the router must `ollama stop` the outgoing
+model explicitly, because `OLLAMA_KEEP_ALIVE=-1` means nothing auto-unloads.
+
+**This is a change from the live value of 2** and is not yet applied — see Consequences.
 
 ## Rationale
 
-**PENDING.**
+### Coder — `35b-a3b-mtp`, decided on machine-scored tests
+
+`bench/path_e/SCORING-20260808_0705.md`. 60 of the 100 points came from executing 30
+`unittest` cases, so the ordering does not rest on my judgement:
+
+| Cell | Model | Tests | Judged /40 | **Total** | tok/s |
+|---|---|---:|---:|---:|---:|
+| **c10** | 35b-a3b-mtp | **30/30** → 60 | 39 | **99** | 119.9 |
+| c11 | 27b | 30/30 → 60 | 32 | 92 | 48.7 |
+| c09 | Devstral UD-Q4_K_XL | 29/30 → 58 | 23 | 81 | 90.4 |
+| c08 | qwen3-coder:30b | 29/30 → 58 | 20 | 78 | 276.3 |
+
+Both *code-marketed* models placed last. Both failed the same test,
+`test_unparseable_value_raises`, by constraining the value match to the literal set
+`(Active|Not Active|N/A)` — so malformed input is skipped silently and c08's `raise
+ValueError` is unreachable dead code. The gold file names that anti-pattern explicitly.
+A silent-skip failure mode in the component that parses agent output is disqualifying for a
+default, regardless of speed.
+
+Criterion 7 does not fire: the 35b did not *tie* the specialist, it beat it by 21 points.
+Criterion 8 does not fire: Devstral neither won nor tied within 3 points, so no Q6_K retest
+is owed — already recorded after round 1.
+
+**Latency counter-consideration, recorded not buried:** c10 took 83.6 s for 9,876 tokens
+against c08's 2.24 s for 466 — a 37× wall-clock penalty. c08 remains a candidate *fast
+path* for trivial edits, but it cannot be the default, because its failure mode is silence
+rather than an error.
+
+### Planner — `27b`, decided on median of three replicates
+
+`bench/path_e/SCORING-20260808_0738.md`. Per criterion 10, medians of three interleaved
+`arch` replicates: **c12 `27b` = 72, c13 `35b-a3b-mtp` = 66.** A 6-point gap is outside
+criterion 1's 3-point tie band, so the speed tiebreak does not apply and c13's ~2× decode
+advantage (96.3 vs 49.1 tok/s median) does not enter the verdict.
+
+The point totals are entirely my judgement, and a 6-point median gap from a single judge is
+not a robust margin. The verdict does not rest on them alone. It rests on a binary,
+re-checkable observation:
+
+| Cell | Reached the gold decision (Option C) |
+|---|---|
+| c12 `27b` | **3 / 3** |
+| c13 `35b-a3b-mtp` | **1 / 3** |
+
+c13 chose **Option B twice and Option C once from the identical prompt.** Twice it asserted
+Option B "consumes 0 additional VRAM" — a claim `bench/gold/arch.md` lists under *claims a
+strong answer should NOT make*, because `OLLAMA_NUM_PARALLEL=1` serialises the
+classification behind the agent's own generation and a fresh conversation discards the
+agent's KV cache. Neither B answer mentioned `NUM_PARALLEL`.
+
+**Round 2's confound resolved against the hypothesis it was designed to test.** The round-2
+cell comment states the round-1 planner gap came from "c03 choosing Option B in that one
+draw" and that "at that sampling temperature one draw is not evidence." Three draws later,
+Option B is **reproducible, not a draw artifact** — 2 of 3. The replication was built to
+exonerate the 35b and instead confirmed the behaviour.
+
+For a model whose output is architecture decision records, non-determinism *on the chosen
+architecture* is a worse defect than consistently slightly weaker prose. c12's three answers
+vary in quality (64–75) but never in verdict.
+
+**c13 produced the single best answer in the set** — rep 3 at 79, the highest of all six.
+The case against it is variance, not capability.
+
+### Alternative explicitly considered and rejected: collapse both roles to `35b-a3b-mtp`
+
+Attractive on operations: one resident model, **zero** role-switch latency, the cheapest KV
+in the field (23.3 KB/token vs the 27b's 74.6), a simpler router, and the coder slot already
+won at 99. It costs 6 median `arch` points.
+
+Rejected. Criterion 1 forbids it — the gap exceeds the 3-point band — but the 6 points are
+not the real reason. The real reason is that the model flipped its architectural conclusion
+on 2 of 3 identical prompts, and the planner's entire job is to produce decisions that hold
+still. Re-examine if the follow-up below removes the instability; the operational case for
+collapsing is strong enough that it should not be dismissed permanently.
+
+### Confound flagged, and a pre-registered follow-up
+
+Both planner cells ran at temperature **1.0** — the Qwen3.6 card's "Thinking, general" row,
+so the preset is on-card and not a harness defect. It is nonetheless high, and it is the
+most plausible driver of c13's instability: the *same model* at temp 0.6 (`precise`) scored
+99 on `code` with no such wobble. I have not tested c13 `arch` at 0.6, so I cannot claim the
+flip is a property of the model rather than of the temperature it was benched at.
+
+This does not change the verdict — c12 was benched at the same temperature and did not flip,
+so at the benched preset the 27b is better. But the result is pre-registered here so it
+cannot be fitted afterwards:
+
+> **Pre-registered:** run `REPS=3` of c13 `arch` at the `precise` preset (temp 0.6). If c13
+> reaches Option C 3/3 **and** its median exceeds 75, the planner slot is **reopened** and
+> speed plus single-model routing become decisive. If it flips again, the instability is a
+> model property and this verdict hardens. Note that 0.6 is the card's *precise-coding* row
+> applied off-label to architecture, so a win there also argues for changing the planner
+> preset, not only the model.
+
+### Gold-file premise retracted after scoring
+
+`bench/gold/arch.md` built its VRAM table on a ~3,500 MiB working-desktop figure that
+**ADR-004 A#6 retracted** (measured: 657 / 666 / 675 MiB with the browser up). A correction
+block is appended to the gold file and the issue is logged in `KNOWN_ISSUES.md`.
+
+**No effect on this verdict.** All six cells received the identical prompt, and
+`bench/prompts/arch.txt` itself states the 2–3 GB rise, so the premise error is common-mode
+and relative ranking is measured cleanly. Two things do change: recomputed against the
+measured desktop, **Option A is not "arithmetically dead"** — it has ~3.8 GB of headroom at
+131,072 — so no cell's Option A conclusion may be carried into the codebase; and the credit
+I gave c13 rep 3 for deriving "−1,013 MiB → system crash" stands as a *quality* score only,
+not as a production fact.
 
 ## Consequences
 
-**PENDING.** Expected to touch:
+**Applied by this commit:**
 
-- `bench/SAMPLING.md` — the winning presets become the router's defaults.
-- The middleware LLM router — model IDs, context, and unload policy.
-- `PORTING_LEDGER.md` — a Devstral win adds an entry for the unsloth GGUF (Apache-2.0).
-- `ADR-004` Amendment #3 — closes the reopened planner question either way.
-- `adrs/README.md` — "Baseline metrics report" moves from Open to Closed.
+- `adrs/README.md` — ADR-005 status → Ratified; "Baseline metrics report vs. dense Qwen3
+  27B-35B" moves from Open to Closed.
+- `ADR-004` Amendment #3 — the reopened planner comparison is **closed**: the 35b dominates
+  the 27b on capacity and speed as A#3 predicted, and loses the planner slot anyway on
+  decision stability. Capacity did not select the model, exactly as this ADR's Context said.
+- `bench/gold/arch.md` — correction block for the retracted desktop figure.
+- `KNOWN_ISSUES.md` — created; three entries.
+
+**Pending, NOT yet applied — requires an `ollama_env.sh` change and a restart:**
+
+- `OLLAMA_MAX_LOADED_MODELS` 2 → **1**. Not done silently, because it alters the live
+  systemd user unit that the guard verifies, and `ollama_guard` asserts all 7 settings; the
+  guard's expected value must change in the same commit or every subsequent run fails
+  preflight.
+
+**Still open, unaffected by this ADR:**
+
+- The middleware LLM router does not exist yet. These model IDs, contexts, presets and the
+  unload policy are its required defaults when it is built.
+- `PORTING_LEDGER.md` — no entry owed. Devstral lost, so the unsloth GGUF is not vendored.
+- The security analyzer decision that `arch` was a *proxy* for is **not** decided by this
+  ADR. `bench/gold/arch.md` is a scoring rubric, not a ratified architecture. Option C with
+  a CPU second stage needs its own ADR before implementation.
 
 ## Falsifier
 

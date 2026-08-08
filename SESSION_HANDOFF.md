@@ -1,73 +1,67 @@
-# Session Handoff
+# SESSION HANDOFF — OH-GUI
 
-**Updated:** 2026-08-08 06:47 EDT
-**Stage:** Phase 0 · local model selection · ADR-005 (OPEN)
+**Overwritten each session. Current state only. Last updated 2026-08-08 08:20 EDT.**
 
-## State
+## Current stage
 
-Path E round 1 (`20260808_0555`) is scored in full at
-`bench/path_e/SCORING-20260808_0555.md`. **The verdict was withheld** — three confounds
-meant the numbers did not answer the question ADR-005 asks. All three are now fixed in
-the harness, which is committed and statically validated but **has not been run**.
-Round 2 needs the GPU.
-
-Two round-1 findings do stand and are recorded in ADR-005 so they are not re-litigated:
-the Devstral contingency (criterion 8) did **not** fire (38 on `debug`, no Q6_K retest
-owed), and the earlier "Ollama ignores the MTP head" conclusion is **retracted** — both
-cells in run `20260531` had truncated at exactly 8,192 tokens, and untruncated the MTP
-build leads the base 308.05 to 279.01 tok/s while also scoring higher (62 vs 57).
+**Phase 0, exit gate.** ADR-005 is **Ratified** — the last *bench* blocker on Phase 0 exit is
+cleared. No further Path E runs are required for Phase 0.
 
 ## Completed this session
 
-- Scored round 1 against `bench/gold/`; wrote `SCORING-20260808_0555.md`.
-- Closed two false alarms (a foreign GPU client on :11434 that was our own bench; LACT
-  allegedly pinning fans at 0%). Run 0555 is uncontaminated.
-- Added a real code-generation task: `bench/prompts/code.txt`, a 30-case stdlib
-  `unittest` suite, a reference solution verified 30/30, and `score_code.py`.
-- Added planner replicates (cells c12/c13, interleaved `REPS` loop).
-- Replaced the fixed 45 C cold gate with `gpu_cold_calibrate` (idle floor + 3 C).
-- Added `bench/validate_harness.py`; it caught two defects in code written this session
-  (see DEBUG_LOG 06:44 and 06:45).
-- Amended ADR-005 with round-1 results and criteria 9-12, fixed before round 2 runs.
+- **ADR-005 Ratified.** Planner `qwen3.6:27b` @131,072 `planner` preset; coder
+  `qwen3.6:35b-a3b-mtp-q4_K_M` @131,072 `precise` preset. Roles do **not** collapse.
+- **Round 2 coder cells** (`20260808_0705`) scored: c10 99, c11 92, c09 81, c08 78. 60/100
+  machine-scored by executing 30 unittest cases. Both code-marketed models placed last.
+- **Round 2 planner replicates** (`20260808_0738`) scored: medians c12 **72**, c13 **66**.
+  Decisive sub-metric: gold-decision agreement **3/3 vs 1/3**.
+- **ADR-004 Amendment #8** — closes A#3's reopened planner question.
+- **Embedder question closed** (A#7): iGPU 3.31× slower than CPU; A#2 stands (CPU, 4b, 2560).
+- **Harness fixes:** bash `local` + `set -u` bug; fake 39× iGPU win caught by my own device
+  assertion (Vulkan loader ignores `CUDA_VISIBLE_DEVICES`, pinned via `VK_DRIVER_FILES`);
+  cold gate raised to a self-checking 45 C preset; `validate_harness.py` now 41 assertions.
+- **Two corrections filed against my own prior work:** the c12/c13 start-temperature caveat
+  (the 45 C gate was not yet in effect on that run), and `bench/gold/arch.md`'s retracted
+  ~3,500 MiB desktop premise.
 
-## Next action — needs the operator and the GPU
+## Remaining before Phase 0 exit — none are bench work
 
-Two runs, in this order. Each starts by unloading all models and calibrating the cold
-gate against the measured idle floor, so **do not** preheat the card.
+1. Upstream artifact pins (agent-server digest, pip/npm versions) — ADR-001,
+   `docs/specs/02-repo-setup.md` item 1.
+2. Read-only stock Agent Canvas reference checkout — `docs/specs/03-layout.md` §3.0.1.
+3. First-run wizard stating the default trust-dial stop `ConfirmRisky()` in-UI —
+   `docs/specs/03-layout.md` §3.4.
 
-```bash
-cd ~/dev/oh-gui && git pull
+## Open questions awaiting the operator
 
-# 1. Planner replicates (~35-45 min). Interleaved c12,c13,c12,c13,c12,c13.
-REPS=3 bash bench/path_e/run_path_e.sh c12_planner_arch_27b c13_planner_arch_35bmtp
+1. **Apply `OLLAMA_MAX_LOADED_MODELS` 2 → 1?** Required by ADR-005. Must change
+   `bench/lib/ollama_env.sh` **and** `ollama_guard`'s expected value in the same commit, or
+   every subsequent preflight fails. Not done unilaterally — it edits the live systemd user
+   unit.
+2. **Run the pre-registered c13 `precise`-preset test?** `REPS=3` of c13 `arch` at temp 0.6.
+   If it reaches Option C 3/3 with a median above 75, the planner slot **reopens** and
+   single-model routing (zero swap cost, 2× decode) becomes decisive. Filed in ADR-005 so the
+   result cannot be fitted after the fact.
+3. **`NUM_CTX=2048 bash bench/oneoff/embed_query_latency.sh`** was requested two turns ago and
+   its output was never received. Still unrun. Pre-registered bands: <250 ms → A#2/A#7 stand;
+   250–500 ms borderline; >500 ms → reopen embedder placement.
 
-# 2. Code-generation cells (~25-35 min).
-bash bench/path_e/run_path_e.sh c08_code_ollama_qwen3coder30b c09_code_ollama_devstral \
-     c10_code_ollama_qwen36_35bmtp c11_code_ollama_qwen36_27b
+## Exact next action
 
-# 3. Machine-score the code cells (60 of 100 points, no judgement involved).
-python3 bench/path_e/score_code.py ~/.oh-gui/bench_path_e/<STAMP>_run
-```
+Nothing is blocked on me. Pick one of the three open questions above. If the intent is to
+proceed to Phase 0 exit, the next substantive work is item 1 of "Remaining" — upstream
+artifact pins — which needs the operator to confirm which agent-server digest to pin.
 
-Then paste the run directory listing and `score_code.py` output back. Remaining work:
-judge the 40 non-machine code points and the three `arch` replicates against
-`bench/gold/`, take the median per planner, fill ADR-005's Decision / Rationale /
-Consequences, flip its status, and update `adrs/README.md`.
+## Do not repeat
 
-## Open questions
-
-None awaiting an answer. Criteria 9-12 in ADR-005 were fixed before round 2 runs, so the
-verdict is determined by the numbers once they exist.
-
-## Definition of Done for this slice
-
-ADR-005 ratified with a named planner model, a named coder model, an explicit answer on
-whether the two roles collapse to one model, and the implied `OLLAMA_MAX_LOADED_MODELS`
-and unload policy.
-
-## Phase 0 exit — still blocked on
-
-1. This bench (ADR-005).
-2. Upstream artifact pins (agent-server digest, pip/npm versions).
-3. Read-only stock Agent Canvas reference checkout.
-4. First-run wizard stating the default trust-dial stop `ConfirmRisky()` in-UI.
+- `git pull` before any run — the user's clone was last known to be at `49a70c0`; `main` is
+  several commits ahead.
+- Do not quote `bench/gold/arch.md`'s VRAM table without its correction block. Option A is
+  **not** "arithmetically dead"; it has ~3.8 GB headroom at 131,072 against the measured
+  desktop.
+- Do not quote ADR-004 A#2's absolute embedder throughput (13.7 chunks/s). A#7 measured 1.09
+  chunks/s by a different method; the ~12× discrepancy is unresolved. A#2's *ranking* stands.
+- Only GPU **core** temp is real on this card. Hotspot duplicates core, VRAM temp is N/A, fan
+  tach reads 0% while spinning. Fan recommendation: no change.
+- `power max 450W` against the 435 W cap is logged in `KNOWN_ISSUES.md` as an unexplained
+  anomaly, not a confirmed breach. 0 thermally throttled samples.
