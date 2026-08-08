@@ -46,3 +46,39 @@ rather than a genuine cap breach. No causal claim enters an artifact until execu
 
 **Closes when:** a sampling run at fixed load compares `nvidia-smi` instantaneous power
 against the LACT enforcement window, or the cap is confirmed to be advisory for transients.
+
+## 2026-08-08 08:40 EDT — ADR-004 A#2 vs A#7 embedder discrepancy: input length RULED OUT, still open
+
+`bench/oneoff/embed_query_latency.sh` was written to test whether the ~12x gap between A#2's
+13.7 chunks/s (73 ms/chunk) and A#7's 1.09 chunks/s (915 ms/chunk) was simply a difference in
+input size. **It is not.**
+
+Measured on CPU, `qwen3-embedding:4b`, 9 reps per length:
+
+| tokens | median | ms/tok |
+|---:|---:|---:|
+| 8 | 160.3 ms | 20.04 |
+| 16 | 149.8 ms | 9.36 |
+| 32 | 154.4 ms | 4.82 |
+| 64 | 150.6 ms | 2.35 |
+| 128 | 155.5 ms | 1.21 |
+| 256 | 160.7 ms | 0.63 |
+
+Wall time is **flat across a 32x range of input length** — 149.8 to 160.7 ms, a 1.0x ratio where
+~12x would have been needed to explain the gap. Single-embed cost on CPU is essentially pure
+fixed overhead; per-token work is invisible below 256 tokens.
+
+**Consequences.**
+- The A#2/A#7 discrepancy **stays OPEN** and now has one fewer available explanation. Candidate
+  remaining causes: different batching, different `num_ctx`, chunk count vs chunk size
+  confusion in one of the two measurements, or one figure being amortised indexing throughput
+  while the other is single-call latency. Not yet investigated.
+- **A separate result is settled, and favourably:** query-band latency (16-64 tokens) is
+  **150.6 ms** median. Not user-visible for interactive retrieval. **ADR-004 A#2 (embedder on
+  CPU) and A#7 (iGPU rejected) both stand**, and the flatness means the 2560-dim native output
+  costs nothing measurable at query time.
+- The 512-token row is invalid — at/over the 512 `num_ctx` the input was truncated. The operator
+  intended `NUM_CTX=2048` but set it as a separate shell statement, so it never reached the
+  script. Re-run as `NUM_CTX=2048 bash bench/oneoff/embed_query_latency.sh` on one line if the
+  long-input tail matters; it does not affect the query-band verdict.
+- Thermally irrelevant: peak 39 C, 34 W, 0 samples under load.

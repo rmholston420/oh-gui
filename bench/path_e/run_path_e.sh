@@ -41,6 +41,27 @@ fi
 REPS="${REPS:-1}"
 [[ "$REPS" =~ ^[1-9][0-9]*$ ]] || { echo "FATAL: REPS must be a positive integer" >&2; exit 1; }
 
+# SAMPLING overrides the cell's role preset for every cell in this invocation.
+#
+# Before 2026-08-08 this variable did not exist. `SAMPLING=precise bash run_path_e.sh c13_...`
+# ran, printed nothing unusual, and silently used the planner preset - three cells of GPU time
+# that were nearly filed as the pre-registered precise-preset test in ADR-005. A knob a caller
+# can plausibly reach for must either work or refuse loudly; silently ignoring it is the worst
+# of the three options. Validated against the harness's own preset table, never a local list,
+# so the two cannot drift.
+SAMPLING_ARGS=()
+if [[ -n "${SAMPLING:-}" ]]; then
+  mapfile -t _PRESETS < <(python3 "$HARNESS" presets)
+  _ok=0; for _p in "${_PRESETS[@]}"; do [[ "$_p" == "$SAMPLING" ]] && _ok=1; done
+  if [[ "$_ok" != "1" ]]; then
+    echo "FATAL: SAMPLING='$SAMPLING' is not a known preset." >&2
+    printf '  known: %s\n' "${_PRESETS[*]}" >&2
+    exit 1
+  fi
+  SAMPLING_ARGS=(--sampling "$SAMPLING")
+  echo "sampling override: every cell this run uses preset '$SAMPLING', not its role default"
+fi
+
 # --- preflight ---------------------------------------------------------------
 # Every one of these has already caused a wasted or invalid run in this project.
 curl -sf "${OLLAMA_ENDPOINT:-http://localhost:11434}/api/version" >/dev/null \
@@ -147,7 +168,8 @@ for item in "${QUEUE[@]}"; do
 
   echo
   echo "================ $label ================"
-  if python3 "$HARNESS" "$cell" --out "$RUN_DIR" "${REP_ARGS[@]}"; then :; else
+  if python3 "$HARNESS" "$cell" --out "$RUN_DIR" "${REP_ARGS[@]}" \
+       "${SAMPLING_ARGS[@]+"${SAMPLING_ARGS[@]}"}"; then :; else
     echo "cell FAILED: $label" >&2
     FAILED+=("$label")
   fi

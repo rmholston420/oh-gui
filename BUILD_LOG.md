@@ -1522,3 +1522,43 @@ trust-dial stop). No further Path E runs are required for Phase 0.
 - Stop condition: ADR-005 remains Ratified; no decision changed. Pre-registered c13 `precise`
   test still open and still binding.
 - Unrelated: operator's `embed_query_latency.sh` failure is a stale clone, not a bug. `git pull`.
+
+## 2026-08-08 08:40 EDT — harness fix: SAMPLING override; ADR-005 Amendment #2; embedder query latency
+
+- Stage: Phase 0 baseline / Path E.
+- **Defect found and fixed.** `SAMPLING=precise` was silently ignored by
+  `bench/path_e/run_path_e.sh`; sampling came from the cell's hardcoded role. Run
+  `20260808_0824` therefore ran at the planner preset (temp 1.0) and was nearly filed as the
+  pre-registered `precise` test. Root cause and fix in DEBUG_LOG 2026-08-08 08:40 EDT.
+  - `bench_path_e.py`: `--sampling` (choices from `SAMPLING`), threaded to `run_task`; result
+    JSON now records `sampling_preset` + `sampling_override`; banner prints `preset=`; new
+    `presets` subcommand.
+  - `run_path_e.sh`: validates `SAMPLING` against the harness's own preset table, exits 1 on a
+    miss instead of ignoring it.
+  - `bench/tests/test_sampling_override.sh` (new) — 8 assertions, no GPU, PASS.
+- **ADR-005 Amendment #2.** Run `0824` filed as a THIRD planner replicate set, not the
+  pre-registered test. Combined c13 **2/9** vs c12 **6/6** on the gold decision; c13 medians
+  66/58/66, c12 72/72. Verdict unchanged. Pre-registered `precise` test still OPEN, now with a
+  command that works.
+- **New substantive finding.** Across nine c13 draws, score and decision co-vary perfectly: both
+  79s chose Option C, every 54-66 chose Option B. c13 rep 3 wrote the best interface in the
+  15-replicate matrix. Its ceiling beats c12's; its one-in-five hit rate is the disqualifier.
+- **Embedder query latency measured** (`bench/oneoff/embed_query_latency.sh`, CPU,
+  qwen3-embedding:4b): query band 16-64 tok median **150.6 ms**, NOT user-visible. ADR-004 A#2
+  and A#7 stand. Wall time is FLAT 149.8-160.7 ms across 8-256 tokens (1.0x), so **input length
+  is ruled out** as the explanation for the ~12x A#2/A#7 discrepancy - that issue stays OPEN in
+  KNOWN_ISSUES.md with one fewer candidate cause. 512-token row invalid (truncated at num_ctx
+  512; the operator's `NUM_CTX=2048` was a separate shell statement and never reached the
+  script).
+- **Retraction.** My claim earlier this session that the cold gate checks temperature "on the
+  wrong side of warmup" was wrong. `bench_path_e.py:298-303` judges the gate on the pre-warmup
+  reading by deliberate design and records the post-warmup `start=` separately; judging it
+  post-warmup was a bug already fixed. Run `0824` pre-warmup readings 40/42/42 C all correctly
+  passed the 45 C gate. No guard defect.
+- **45 C gate validated:** 3 cells in 280 s, peak 54 C, 0 throttled samples, 197 W max, vs
+  1,544 s / 917 s cooling / 72 C peak for 6 cells at the 36 C calibrated gate. Throughput
+  unchanged, so the cooling bought nothing.
+- Files: `bench/path_e/bench_path_e.py`, `bench/path_e/run_path_e.sh`,
+  `bench/tests/test_sampling_override.sh` (new), `bench/path_e/SCORING-20260808_0824.md` (new),
+  `adrs/ADR-005-...md`, DEBUG_LOG.md, KNOWN_ISSUES.md, SESSION_HANDOFF.md.
+- Stop condition: ADR-005 Ratified, unchanged. `OLLAMA_MAX_LOADED_MODELS` 2 -> 1 still unapplied.

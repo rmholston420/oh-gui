@@ -374,3 +374,66 @@ planner slot reopens as filed.
 
 **Speed note.** c12's 72.94 tok/s draw in run `0738` did not recur (spread this run: 45.60 to
 49.14). It was anomalous, and the median-of-three rule absorbed it as intended.
+
+---
+
+## Amendment #2 — 2026-08-08 — third planner replicate set; pre-registered test NOT yet run
+
+**Status unchanged: Ratified.**
+
+### The pre-registered follow-up did not execute
+
+`REPS=3 SAMPLING=precise bash bench/path_e/run_path_e.sh c13_planner_arch_35bmtp` ran at the
+**planner** preset (temperature 1.0), not `precise` (0.6). `SAMPLING` was not a variable the
+harness read; sampling came from the cell's hardcoded role. See DEBUG_LOG 2026-08-08 08:40 EDT.
+
+This is a defect in **this ADR**, not only in the harness: Amendment #1 and the original
+pre-registration specified a test in prose without verifying that a command existed capable of
+running it. The override is now implemented, validated, and covered by
+`bench/tests/test_sampling_override.sh`. **The pre-registered test remains OPEN and remains
+binding**, and its command is now:
+
+    REPS=3 SAMPLING=precise bash bench/path_e/run_path_e.sh c13_planner_arch_35bmtp
+
+Result JSONs now carry `sampling_preset` and `sampling_override`, so a future reader can verify
+which preset produced any cell without inferring it.
+
+### What run `20260808_0824` actually is
+
+A third replicate set at the planner preset. Scored in `bench/path_e/SCORING-20260808_0824.md`.
+
+| Run | Options chosen | Gold decision | Median |
+|---|---|---:|---:|
+| `0738` | B, B, C | 1/3 | 66 |
+| `0804` | B, B, B | 0/3 | 58 |
+| `0824` | B(+C), B, **C** | 1/3 | 66 |
+| **c13 total** | | **2 / 9** | |
+| **c12 total** | C x6 | **6 / 6** | 72, 72 |
+
+**Nine draws per option now support the planner selection.** No decision changes.
+
+### Strengthened finding: c13's ceiling exceeds c12's; its floor is the problem
+
+Across all nine c13 draws the score and the decision co-vary perfectly. Both 79-point answers
+chose Option C; every 54-66 answer chose Option B. `0824` rep 3 is the best interface in the
+entire fifteen-replicate matrix — frozen dataclasses, an `ActionType` enum including
+`TEXT_INGEST`, `TaintTag` with `propagation_rules`, a `MUST`-phrased caller contract, and the
+matrix's only falsifier that states both a numeric threshold and the evidence required to
+establish it.
+
+So `35b-a3b-mtp` can outwrite `27b`. It does so about one draw in five. **That is precisely why
+it loses the planner slot**: a planner is consumed one draw at a time by a human who cannot see
+the four alternatives. Selecting on peak capability would be selecting on a sample the operator
+will not receive.
+
+**Across all nine draws c13 has never mentioned `OLLAMA_NUM_PARALLEL`** — the setting that
+serialises Option B's classification behind the agent's own generation, and the reason the "0
+additional VRAM" framing it repeats is prohibited by the gold analysis.
+
+### Counter-evidence
+
+c12 is not clean, and Amendment #1 already recorded its two worst arithmetic errors. This run
+adds a symmetrical observation about c13: rep 1 computed `28,685 - 29,698 = -1,013 MiB`,
+recognised the number was impossible, and annotated it *"the system is structurally saturated"*
+rather than recomputing the premise. Noticing an inconsistency and narrating past it is a
+distinct failure mode from not noticing, and a worse one in a planner.

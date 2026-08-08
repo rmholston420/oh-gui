@@ -452,3 +452,46 @@ only the iGPU arm needs re-running.
 **Incidental finding (not the question asked).** Embedding qwen3-embedding:4b on the 5090 via
 Vulkan reached ~6849 tok/s vs ~175 tok/s on CPU. That quantifies the cost of ADR-004 A#2's
 VRAM isolation at roughly 39x embedder throughput, and it is a Vulkan number, not CUDA.
+
+---
+
+## 2026-08-08 08:40 EDT — `SAMPLING=precise` silently ignored; three cells run at the wrong preset
+
+**Symptom.** `REPS=3 SAMPLING=precise bash bench/path_e/run_path_e.sh c13_planner_arch_35bmtp`
+completed normally, printed no warning, and produced three cells whose dump header read
+`sampling={'temperature': 1.0, 'top_p': 0.95, ...}`. Temperature 1.0 is the `planner` preset;
+`precise` is 0.6. The run consumed 280 s of GPU time and was nearly filed as the pre-registered
+`precise`-preset test in ADR-005.
+
+**Affected.** `bench/path_e/run_path_e.sh`, `bench/path_e/bench_path_e.py`, Path E cell c13.
+
+**Root cause.** Sampling was derived exclusively from the cell's hardcoded role:
+`bench_path_e.py:222` did `sampling = dict(SAMPLING[role])`, with `role` unpacked from the
+`CELLS` tuple. No override path existed at any layer — not argparse, not the driver. `bash`
+places an unrecognised leading assignment into the child environment without complaint, so
+nothing in the stack was in a position to object. The deeper fault is procedural: ADR-005
+pre-registered a follow-up test in prose without checking that a command existed which could
+execute it.
+
+**Fix applied.**
+- `bench_path_e.py`: `--sampling` argument with `choices=sorted(SAMPLING)`, threaded through
+  `run_cell` -> `run_task`. The effective preset is written to the result JSON as
+  `sampling_preset`, and the override as `sampling_override`, so no future reader has to infer
+  which preset a cell ran under. The banner line now prints `preset=` alongside `role=` and
+  emits an explicit `SAMPLING OVERRIDE:` line when they differ.
+- `run_path_e.sh`: reads `SAMPLING`, validates it against `python3 $HARNESS presets` (the
+  harness's own table, so the two cannot drift), and exits 1 with the known-preset list on a
+  miss. A knob a caller can plausibly reach for must work or refuse loudly.
+- `bench/path_e/bench_path_e.py presets` subcommand added for that validation.
+- `bench/tests/test_sampling_override.sh` — 8 assertions, no GPU, no model. Includes a
+  vacuousness check asserting `planner` and `precise` temperatures actually differ.
+
+**Files changed.** `bench/path_e/bench_path_e.py`, `bench/path_e/run_path_e.sh`,
+`bench/tests/test_sampling_override.sh` (new).
+
+**Generalisation for future entries.** Any environment variable documented in a header comment
+but not read by the code it appears to configure is this same bug. `NUM_CTX` in
+`bench/oneoff/embed_query_latency.sh` was *also* set on its own line by the operator during this
+session (`NUM_CTX=2048` then a separate command) and therefore never reached the script, which
+ran at its 512 default. That one is shell semantics rather than a harness defect, but the
+observable outcome — a requested parameter silently not applied — is identical.

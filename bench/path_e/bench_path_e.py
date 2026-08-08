@@ -217,9 +217,15 @@ def warmup(model: str, num_ctx: int) -> dict:
 
 
 def run_task(model: str, role: str, task: str, num_ctx: int, think: bool,
-             num_predict: int) -> dict:
+             num_predict: int, sampling_name: str | None = None) -> dict:
     prompt = TASKS[task].read_text()
-    sampling = dict(SAMPLING[role])
+    # sampling_name overrides the cell's role preset. Added 2026-08-08 after run
+    # 20260808_0824: `SAMPLING=precise bash run_path_e.sh c13_...` was accepted by the
+    # shell, ignored by this file, and produced three cells at the planner preset that were
+    # then nearly recorded as the pre-registered precise-preset test. The override is
+    # explicit, validated against SAMPLING's keys, and echoed into the result JSON so no
+    # future reader has to infer which preset a cell actually ran under.
+    sampling = dict(SAMPLING[sampling_name or role])
     payload = {
         "model": model,
         "messages": [{"role": "user", "content": prompt}],
@@ -285,7 +291,8 @@ def run_task(model: str, role: str, task: str, num_ctx: int, think: bool,
 
 
 def run_cell(cell_id: str, out_dir: Path, rep: int | None = None,
-             only_tasks: list[str] | None = None) -> Path:
+             only_tasks: list[str] | None = None,
+             sampling_name: str | None = None) -> Path:
     cell_id_, role, model, tasks, num_ctx, think, num_predict = CELL_BY_ID[cell_id]
     if only_tasks:
         tasks = only_tasks
@@ -308,12 +315,17 @@ def run_cell(cell_id: str, out_dir: Path, rep: int | None = None,
     else:
         print(f"   warmup/load {wu['load_seconds']}s")
     start_gpu = gpu_snapshot()
-    print(f"-- {stem}  model={model} role={role} ctx={num_ctx} think={think} "
+    eff_preset = sampling_name or role
+    if sampling_name:
+        print(f"   SAMPLING OVERRIDE: preset={sampling_name} (cell role is {role})")
+    print(f"-- {stem}  model={model} role={role} preset={eff_preset} "
+          f"ctx={num_ctx} think={think} "
           f"pre-warmup={pre_gpu.get('temp_c','?')}C start={start_gpu.get('temp_c','?')}C")
     results = []
     for task in tasks:
         print(f"   task={task} ... ", end="", flush=True)
-        r = run_task(model, role, task, num_ctx, think, num_predict)
+        r = run_task(model, role, task, num_ctx, think, num_predict,
+                     sampling_name=sampling_name)
         if "error" in r:
             print(f"ERROR {r['error']}")
         else:
@@ -329,7 +341,9 @@ def run_cell(cell_id: str, out_dir: Path, rep: int | None = None,
         "role": role, "model_id": model, "runtime": "ollama",
         "endpoint": f"{ENDPOINT}/api/chat", "num_ctx": num_ctx,
         "think": think, "num_predict": num_predict,
-        "sampling": SAMPLING[role],
+        "sampling": SAMPLING[eff_preset],
+        "sampling_preset": eff_preset,
+        "sampling_override": sampling_name,
         "power_cap_w": os.environ.get("BENCH_POWER_CAP_W", "435"),
         "warmup": wu,
         "gpu_before_warmup": pre_gpu,
@@ -358,6 +372,8 @@ def main() -> None:
                     help="replicate index; writes <cell>_r<N>.json instead of <cell>.json")
     ap.add_argument("--tasks", default=None,
                     help="comma-separated subset of this cell's tasks")
+    ap.add_argument("--sampling", default=None, choices=sorted(SAMPLING),
+                    help="override the cell's role sampling preset (recorded in the JSON)")
     args = ap.parse_args()
 
     # Emitted for run_path_e.sh's preflight, which verifies every one of these resolves on
@@ -365,6 +381,11 @@ def main() -> None:
     if args.cell == "models":
         for m in dict.fromkeys(c[2] for c in CELLS):
             print(m)
+        return
+
+    if args.cell == "presets":
+        for k in sorted(SAMPLING):
+            print(k)
         return
 
     if args.cell == "list":
@@ -388,7 +409,8 @@ def main() -> None:
     out_dir = Path(args.out) if args.out else \
         Path.home() / ".oh-gui" / "bench_path_e" / f"{datetime.now():%Y%m%d_%H%M}_run"
     out_dir.mkdir(parents=True, exist_ok=True)
-    run_cell(args.cell, out_dir, rep=args.rep, only_tasks=only)
+    run_cell(args.cell, out_dir, rep=args.rep, only_tasks=only,
+             sampling_name=args.sampling)
 
 
 if __name__ == "__main__":
