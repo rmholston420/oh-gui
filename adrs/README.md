@@ -45,3 +45,4 @@ old one and mark the old one `Amended · superseded by ADR-###`.
 | Repo layout for code | `apps/gui/` + `services/middleware/`, confirmed 2026-08-08 |
 | ADR-009 | Qwen3.6 sampling parameters and the MTP asymmetry | Proposed — verdict pending Phase 0 matrix |
 | ADR-010 | The baseline must compare MTP against MTP | Proposed — third block not yet run |
+| ADR-011 | Correct the sampling preset at the layer that governs it | Proposed |

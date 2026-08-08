@@ -1,5 +1,23 @@
 # ADR-008 — Phase 0 Baseline Metrics: Method, and Verdict
 
+> **STATUS AMENDMENT (2026-08-08 16:50) — the human-driven pass will not happen.**
+> This ADR's method says "the operator drives the stock app by hand". It never did: all 24 cells
+> collected so far were driven unattended by `drive_task.mjs`. On operator decision, no manual pass
+> will be run at all.
+>
+> Consequence, stated plainly because a reader who sees `null` will otherwise assume zero: three of
+> item 5's five metrics — **time-to-first-review**, **lines-accepted-without-inspection**, and
+> **lost-track incidents** — together with item 6's mental-model metrics, are **permanently
+> unobtainable** for this baseline. They are facts about a person reading a diff and nothing
+> observable from outside distinguishes a read diff from an unread one.
+>
+> What the baseline of record therefore consists of: per-task acceptance against objective gates,
+> turns, files and lines changed, submit-to-first-message and submit-to-idle wall-clock, GPU
+> temperature and power at 1 Hz, resident model and quantization from `ollama ps`, malformed
+> tool-call error counts, and generation throughput from `bench/mtp/`. Item 7 (variant and
+> quantization recorded) is satisfied. Items 5 and 6 are satisfied **in part only**, and
+> `report.py` must not present the null fields as though the run simply produced no incidents.
+
 **Status:** Proposed — method ratified on first use; verdict section is a skeleton pending the run
 **Lock-in phase:** Phase 0 exit
 **Supersedes:** —
