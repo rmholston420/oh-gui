@@ -141,3 +141,26 @@ the ledger.
 
 Every adoption above still requires its own entry in the standard format, an adapter behind a
 formal port, and a contract test. Listing a surface here is not a port.
+
+
+### 2026-08-08 19:05 EDT — candidate statuses revised after the full code review
+
+The table above was written from a docstring-level survey. `docs/forge-oh-code-review.md` replaces
+its judgements. Revisions:
+
+| Surface | Revised status |
+|---|---|
+| `bff/services/loop_guard.py` | **Concept only.** Not the recommended first port. Never wired to an event source; no run scoping; produces no evidence a card could render. Rewrite the detector |
+| `openhands_tools_ext/gpu/hook.py` | **Reference only.** The only true pre-tool hook, but it discards stdin (`:179-185`) and cannot inspect tool arguments. Take the seam, not the file |
+| `bff/services/event_normalize.py` | Still port-early as a behavioral reference. No 1.41 mapping update needed — `openhands/sdk/event/` is byte-identical across 1.40.0/1.41.0. Its gaps are unhandled event kinds |
+| `bff/services/idempotency_ledger.py` | **Design input only.** Not exactly-once; check → execute → mark has a crash window |
+| `bff/services/model_router.py` | **Excluded.** Dual-port topology and F.18/F.19 history that are not ours |
+| `bff/services/inference_backends/` | Port-later. The Protocol is clean only for health inventory; `_common.count_models` raises on list JSON |
+| `bff/services/worktree.py` | Port-later, unchanged. Path-traversal guard is good; requires a `.git` dir so it rejects bare repos |
+| `bff/services/sidecar_producers.py`, `run_compare.py`, `conflict_checker.py`, `mcp_bootstrap.py`, `trajectory_drain.py`, `sidecar.py` | **Excluded.** O(n²) with event loss at 5000; path traversal at `run_compare.py:118-123`; the rest topology-coupled |
+| `bff/routers/bash.py`, `mcp.py`, `plugins.py`, `debug.py` | **Excluded.** Raw execution, arbitrary process/remote registration, arbitrary source install, synthetic event injection |
+| `openhands_tools_ext/selfeval`, `tool_invocation/code_execute` | **Excluded.** Systemd launcher with a live `TypeError` at `harness.py:318-330`; arbitrary Python execution |
+| `bench/_common/nvml_sampler.py` | **New: port-early.** Wire to our 45/80/83 °C gates; change missing-NVML from no-op to fail-closed |
+| `scripts/e2e-run.ts`, `scripts/debug-frontend.ts`, `scripts/forge-status.sh` | **New: port-early.** Playwright instrumentation and read-only local process observability |
+| `src/components/navigation/GpuStrip.tsx`, `GpuChipPopover.tsx`, `src/styles/tokens.css` | **New: port-early** (narrow exception to the `src/` exclusion). React/CSS/Recharts only; tokens need an undefined-variable repair pass first |
+| `scripts/forge-screenshots.sh` | **Excluded.** Commits and pushes to GitHub |

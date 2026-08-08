@@ -1,5 +1,11 @@
 # Forge-OH Port Survey
 
+> **SUPERSEDED 2026-08-08 by `docs/forge-oh-code-review.md`.** This was a docstring-level
+> structural pass. The full line-by-line review contradicts it on five load-bearing points —
+> most importantly the "recommended first port" below (`loop_guard.py`) is **not** a clean first
+> port. See §7 of the code review. Retained unedited as a record of what a survey-depth read
+> got wrong.
+
 **Surveyed:** 2026-08-08 18:37 EDT
 **Donor:** `https://github.com/rmholston420/Forge-OH` — public, MIT (`LICENSE` at root, verified via GitHub API)
 **Pin:** `df73ebed` ("Slice 8.0.5: closeout entry for SMOKE_100 populate", pushed 2026-08-06T22:59:50Z)

@@ -2590,3 +2590,49 @@ document alone.
 - **PORTING_LEDGER / ADR updated:** `PORTING_LEDGER.md` — Forge-OH donor registration
 - **Stop-condition status:** survey complete; no port started. Awaiting operator go-ahead on the
   first port.
+
+## 2026-08-08 19:05 EDT — Read the Forge-OH codebase in full and correct the survey
+
+- **Stage / plugin / port:** Phase 1 · Authorization slice · donor assessment
+- **What changed:** Six parallel reviewers read the Forge-OH donor at pin `df73ebed` end to end —
+  all 38 `bff/services/` files, every non-services file under `bff/`, all 69 files of
+  `openhands_tools_ext`, the `src/` shell/lib/core plus all relevant domain components, every
+  `.sh`/`.py`/`.ts` under `bench`/`ops`/`scripts`, and ADRs 003–029 plus the 2,324-line donor
+  DEBUG_LOG. ~116k lines surveyed, ~27.5k words of findings. Two donor suites were executed
+  (`bench.lib.test_mcnemar`, 6/6; `ops/test_supervisor.sh`, 21/21). No donor source modified.
+
+Consolidated into `docs/forge-oh-code-review.md`, with the six per-area reviews retained verbatim
+under `docs/forge-oh-review/`.
+
+Load-bearing findings:
+
+- **Forge-OH has essentially no authorization.** No auth dependency or middleware anywhere in the
+  BFF; `maxCost`, `toolAllowlist`, `loopGuard`, `systemPrompt`, `maxSteps` are declared in
+  `AgentPreset` and never applied (tools hard-coded at `runs.py:430-435`); approval install fails
+  open (`runs.py:518-560`); `/approve` and `/reject` carry no action ID (`runs.py:1164-1213`).
+- **The SDK hook seam is mapped precisely and is valid for 1.41** — the hook package and
+  `openhands/sdk/event/` are byte-identical between the 1.40.0 and 1.41.0 sdists. A `pre_tool_use`
+  command hook can inspect and deny but **cannot** modify an action, has **no ASK state**, cannot
+  cancel in-flight work, and **fails open** on timeout or error. ASK, expiry, audit and emergency
+  stop must therefore live in our middleware.
+- **`verify/hook.py` has never enforced anything** — it emits `{"decision":"block"}` + exit 0 while
+  the SDK recognizes `"deny"` / exit 2 (`hooks/executor.py:483-510`), and its own tests codify the
+  invalid string.
+
+Five corrections to the 2026-08-08 18:37 survey, which is now marked superseded in place:
+`loop_guard.py` is not a clean first port (never wired to any event source, no run scoping, no
+evidence for a card); `gpu/hook.py` reads and discards stdin so it cannot see tool arguments;
+`event_normalize.py` needs no 1.41 mapping update (the event package is identical) — its gaps are
+missing event kinds; `idempotency_ledger.py` is not exactly-once (crash window between check and
+mark); the donor frontend is Next **16.2.10**, not 15.
+
+- **Files touched:**
+  - `docs/forge-oh-code-review.md` (new, consolidated)
+  - `docs/forge-oh-review/01..06` (new, per-area detail)
+  - `docs/forge-oh-port-survey.md` (supersession banner only; body unedited)
+  - `PORTING_LEDGER.md`, `BUILD_LOG.md`, `SESSION_HANDOFF.md`
+- **Ports / adapters affected:** none — nothing vendored
+- **PORTING_LEDGER / ADR updated:** `PORTING_LEDGER.md` — candidate statuses revised against the
+  full read; no ADR yet
+- **Stop-condition status:** met. Full review complete, no port started, awaiting operator decision
+  on what moves first.
