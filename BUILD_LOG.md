@@ -2348,3 +2348,36 @@ Filed `adrs/ADR-009-qwen3.6-sampling-and-mtp.md` (Proposed), index updated. Four
 proposed, each isolated — changing sampling and MTP together would make both unmeasurable.
 
 **Stop-condition status:** Phase 0 item 3 still OPEN, matrix in flight. ADR-009 does not block it.
+
+## 2026-08-08 16:05 EDT — ADR-010 filed: Phase 0 stays open for MTP parity
+
+Operator: Phase 0 cannot close until the optimised variants are pulled and benchmarked. Correct.
+The running matrix compares `qwen3.6:27b` (no MTP heads) against `qwen3.6:35b-a3b-mtp-q4_K_M`, so
+its tok/s figures understate the 27b by the MTP factor Unsloth documents as ~1.4-2.2x. The quality
+scores already sit inside the tie band at `precise` (27b 64 vs 35b-mtp 62), which means the routing
+decision falls to speed — the one axis this matrix measures unfairly.
+
+Decision: a third 8-cell block on `qwen3.6:27b-mtp-q4_K_M` (18 GB, verified present in the Ollama
+library). Speed comparisons for routing are drawn MTP vs MTP; the plain-27b block is kept because
+27b vs 27b-mtp is the only clean measurement of what MTP is worth on this hardware. `27b-mtp-q8_0`
+(30 GB) rejected on VRAM — no KV budget left against 32 GB.
+
+`run_matrix.sh` and `preflight.sh` already read `OH_GUI_BASELINE_PROFILES`, so no code change.
+Files: `adrs/ADR-010-mtp-parity-in-the-baseline.md`, `adrs/README.md`.
+
+Pull deferred until the running matrix finishes — an 18 GB download writing to disk during a run
+contaminates the wall-times being measured, and the GPU is not free for the third block regardless.
+
+Stop condition: Phase 0 item 3 remains OPEN. Three blocks required, not two.
+
+## 2026-08-08 16:05 EDT — Severity colour in harness output
+
+Operator request. Green as expected, yellow the MODEL did poorly or something is UNKNOWN, red the
+HARNESS or MACHINE is wrong and the cell is not trustworthy. The useful line is whose fault it is,
+not how bad it sounds: a model failing its task is the measurement, so it is yellow; a gate that
+cannot run, a workspace mismatch, or a thermal ceiling breach invalidates the cell, so it is red.
+
+`lib/colors.sh` and `ui/colors.mjs` share the palette. Both honour NO_COLOR and disable themselves
+when stdout is not a TTY, so `tee` to a log file stays clean; `OH_GUI_COLOR=1` forces, `0` disables.
+Applied to preflight's ok/warn/FAIL, the PASS/FAIL banner, and the GPU verdict lines in
+`bench/lib/gpu.sh` (ceiling breach and thermal throttling red, warm yellow, fine green).

@@ -16,6 +16,8 @@
 #   bash bench/baseline/run_baseline.sh t01
 #   bash bench/baseline/run_baseline.sh t01 --dry-run   # no GPU, no Ollama; harness self-test
 set -euo pipefail
+# shellcheck source=lib/colors.sh
+. "$(dirname "${BASH_SOURCE[0]}")/lib/colors.sh"
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TASK="${1:-}"; shift || true

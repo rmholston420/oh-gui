@@ -333,6 +333,15 @@ try: rows=list(csv.DictReader(open(sys.argv[1])))
 except Exception: sys.exit(0)
 rows=[r for r in rows if (r.get("temp_c") or "").strip().isdigit()]
 if not rows: print(" no samples"); sys.exit(0)
+import os as _os, sys as _sys
+# Same palette as lib/colors.sh: red means the MACHINE is wrong and the cell is suspect;
+# yellow means warm-but-valid; green means as expected. Off when piped or NO_COLOR is set.
+_c = _os.environ.get("OH_GUI_COLOR", "auto")
+_ON = _c == "1" or (_c != "0" and not _os.environ.get("NO_COLOR") and _sys.stdout.isatty())
+_G = (lambda x: f"\033[32m{x}\033[0m") if _ON else (lambda x: x)
+_Y = (lambda x: f"\033[33m{x}\033[0m") if _ON else (lambda x: x)
+_R = (lambda x: f"\033[31;1m{x}\033[0m") if _ON else (lambda x: x)
+
 def col(r, k):
     v = (r.get(k) or "").strip()
     try: return float(v)
@@ -363,12 +372,12 @@ if fan and max(fan) > 0:
 elif fan:
     print(" fan     NOT REPORTED by this card (reads 0% while physically spinning) - ignore")
 print(f" sm clk  min {min(s):.0f}MHz avg {sum(s)/len(s):.0f}MHz")
-print(f" time >= {WARN:.0f}C warn: {over_warn}s     >= {MAX:.0f}C ceiling: {over_max}s")
+print((_R if over_max else (_Y if over_warn else _G))(f" time >= {WARN:.0f}C warn: {over_warn}s     >= {MAX:.0f}C ceiling: {over_max}s"))
 print(f" power-capped samples: {len(pcap)} (expected at the cap - benign if constant across cells)")
-print(f" THERMALLY throttled samples: {len(thermal)}")
-if over_max:     print(f" VERDICT: CEILING BREACHED ({max(t):.0f}C). Revert the cap: sudo nvidia-smi -pl 435")
-elif over_warn:  print(f" VERDICT: warm ({max(t):.0f}C) but under the {MAX:.0f}C ceiling. Acceptable; watch it.")
-else:            print(f" VERDICT: thermally fine - peaked {max(t):.0f}C, well under {WARN:.0f}C.")
+print((_R if thermal else _G)(f" THERMALLY throttled samples: {len(thermal)}"))
+if over_max:     print(_R(f" VERDICT: CEILING BREACHED ({max(t):.0f}C). Revert the cap: sudo nvidia-smi -pl 435"))
+elif over_warn:  print(_Y(f" VERDICT: warm ({max(t):.0f}C) but under the {MAX:.0f}C ceiling. Acceptable; watch it."))
+else:            print(_G(f" VERDICT: thermally fine - peaked {max(t):.0f}C, well under {WARN:.0f}C."))
 if thermal: print(" WARNING: THERMAL throttling occurred - tok/s in this run is NOT comparable across cells.")
 print(f" log: {sys.argv[1]}")
 PY

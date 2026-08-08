@@ -10,9 +10,11 @@ VENV="${OH_GUI_BASELINE_VENV:-$(dirname "$FIXTURE")/venv}"
 INGRESS="${OH_GUI_BASELINE_INGRESS:-http://127.0.0.1:8010}"
 PROFILES="${OH_GUI_BASELINE_PROFILES:-qwen3.6-27b,qwen3.6-35b-a3b-mtp-q4_K_M}"
 fail=0
-ok(){ printf '  ok    %s\n' "$1"; }
-bad(){ printf '  FAIL  %s\n' "$1"; fail=1; }
-warn(){ printf '  warn  %s\n' "$1"; }
+# shellcheck source=lib/colors.sh
+. "$(dirname "${BASH_SOURCE[0]}")/lib/colors.sh"
+ok(){   printf '  %sok%s    %s\n' "$C_GREEN"  "$C_OFF" "$1"; }
+warn(){ printf '  %swarn%s  %s\n' "$C_YELLOW" "$C_OFF" "$1"; }
+bad(){  printf '  %sFAIL%s  %s\n' "$C_RED"    "$C_OFF" "$1"; fail=1; }
 
 echo "== fixture =="
 if [ -d "$FIXTURE/.git" ]; then
@@ -111,6 +113,9 @@ else
 fi
 
 echo
-[ "$fail" -eq 0 ] && echo "PREFLIGHT PASS — safe to run run_matrix.sh" \
-  || echo "PREFLIGHT FAILED — fix the above before spending 42 minutes"
+if [ "$fail" -eq 0 ]; then
+  cgreen "PREFLIGHT PASS — safe to run run_matrix.sh"
+else
+  cred "PREFLIGHT FAILED — fix the above before spending 42 minutes"
+fi
 exit "$fail"
