@@ -1,0 +1,52 @@
+You are sequencing the remaining work for Phase 0 of OH-GUI, a single-operator, local-first
+desktop GUI that wraps the OpenHands coding agent on one Linux workstation. Phase 0 ends
+when the project can commit to a model configuration and a set of pinned upstream
+artifacts. No application code has been written yet; the repository currently contains
+specifications, architecture decision records, and benchmarking scripts only.
+
+WHAT IS ALREADY DONE
+- The VRAM and context envelope for all five candidate models is measured and ratified.
+- The embedding model is chosen, runs on CPU, and is immune to GPU eviction.
+- Sampling parameters for each model family are recorded from official model cards.
+
+WHAT REMAINS BEFORE PHASE 0 CAN CLOSE
+
+  R1. Quality benchmark. Score the candidate planner and coder models on real project
+      tasks against a gold-standard answer, and ratify one planner and one coder in a
+      decision record.
+
+  R2. Pin upstream artifacts. Record exact immutable versions of the OpenHands container
+      image digest, four OpenHands Python packages, and the OpenHands TypeScript client.
+      The TypeScript client is published as an ALPHA and its documentation states the API
+      may change significantly between versions without notice.
+
+  R3. Reference checkout. Obtain a read-only checkout of the stock OpenHands frontend to
+      use as a visual and behavioural reference, without it becoming a build dependency.
+
+  R4. First-run wizard. Specify the first-run experience, which must state in the UI where
+      the operator's default trust dial stops, so the operator knows before any agent runs
+      which actions will pause for approval.
+
+CONSTRAINTS
+- One operator, one machine, no cloud, no CI service.
+- The GPU holds exactly one role model at a time.
+- Any decision that reshapes ports, adapters, or the policy plane requires a decision
+  record before implementation, not after.
+- A running build log and debug log must be appended after every completed step.
+
+YOUR TASK
+Produce an executable plan.
+
+1. Order R1-R4, including any sub-steps you think are required. Justify the ordering by
+   dependency, not by convenience. If two items are genuinely independent, say so and say
+   which one should still go first and why.
+2. For each item, state its Definition of Done as a checkable condition, not an intention.
+3. Identify every item that could invalidate work done in an earlier item if sequenced
+   wrongly, and explain the failure mode concretely.
+4. Name the single highest-risk unknown in this phase and give a cheap experiment that
+   would reduce that risk before expensive work depends on it.
+5. State an explicit stop condition: what must be true for you to declare Phase 0 closed
+   and stop working.
+
+Be concise and specific. Use short numbered steps. Do not restate the brief. Do not pad
+with generic project-management advice.

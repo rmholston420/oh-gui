@@ -526,3 +526,47 @@ Entry format:
 - **Stop condition:** Phase 0 exit still NOT met. Remaining: quality bench vs Perplexity
   gold, upstream artifact pins, stock Agent Canvas reference checkout, first-run wizard.
 
+## 2026-08-08 05:35 EDT - Server/GPU tuning pass; flash attention found UNVERIFIED
+
+- **Stage:** Phase 0 (baseline metrics)
+- **Source:** Ollama FAQ (https://github.com/ollama/ollama/blob/main/docs/faq.md) and
+  `envconfig/config.go` (https://raw.githubusercontent.com/ollama/ollama/main/envconfig/config.go).
+
+- **DEFECT IN OUR OWN VERIFICATION.** Every sweep so far printed
+  `== server startup lines mentioning flash attention / kv cache ==  (none found)`.
+  That output was treated as cosmetic. It is not: **flash attention has never actually been
+  confirmed active on this host.** FA materially changes KV memory scaling, so every
+  measured context ceiling rests on an unverified assumption. `bench/ollama_env.sh` v3 adds
+  a `debug` mode (`OLLAMA_DEBUG=1` + a probe request) that captures the real runner flags.
+  Numbers already recorded are internally consistent across three runs and are NOT being
+  withdrawn, but the FA question must be settled before any tok/s figure is trusted.
+
+- **`OLLAMA_MAX_LOADED_MODELS` was the root cause of the eviction race.** Documented default
+  is **3 x GPU count**, i.e. 3 here - which is precisely why the scheduler held the embedder
+  next to a role model and then evicted it. Set to **2**: one GPU role model plus the
+  CPU-resident embedder. Not 1 - the CPU embedder occupies a model slot, so 1 would evict
+  and reload it on every planner<->coder switch. This enforces ADR-004's "planner and coder
+  never co-resident" invariant at the server rather than trusting the router to call
+  `ollama stop`. **Unverified assumption:** that a CPU-placed model counts toward the limit.
+  If it does not, 2 permits two GPU models and the value must drop to 1. Testable directly.
+
+- **`OLLAMA_NUM_PARALLEL` pinned to 1.** Parallel slots divide the context window among
+  them; at the documented default of 1 nothing is currently lost, but pinning removes any
+  dependence on that default holding. Had it been higher, every measured context ceiling
+  would have been wrong by that factor.
+
+- **`bench/gpu_pin.sh` added.** Persistence mode (targets the fixed portion of the measured
+  2.8-6.9 s role-switch cost), plus clock/power/throttle reporting, plus optional clock
+  locking for run-to-run comparability during the quality bench.
+
+- **`bench/ollama_env.sh` bumped to v3, replacing v2 in place** - single path, no competing
+  copy, per the supersede rule.
+
+- **Considered and NOT adopted:** `OLLAMA_LLM_LIBRARY` to force the llama.cpp backend and
+  recover q8_0 KV quantization. If it worked it would roughly double every context ceiling,
+  which is the single highest-value untested lever here - but it swaps the inference engine
+  underneath an already-measured envelope and would invalidate all three sweeps. Logged as a
+  candidate experiment for AFTER the quality bench, not before.
+
+- **Stop condition:** Phase 0 exit still NOT met.
+

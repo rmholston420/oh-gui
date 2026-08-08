@@ -1,0 +1,66 @@
+You are making an architectural decision for OH-GUI, a single-operator, local-first
+desktop application that wraps the OpenHands coding agent. Answer as an architect writing
+a decision record. There is no cloud, no second machine, no other user.
+
+SYSTEM
+Workstation "Colossus": Kubuntu, 24 CPU threads, 124 GB system RAM, one NVIDIA RTX 5090
+(32,607 MiB VRAM, Blackwell SM_120). Models are served by Ollama over HTTP on
+localhost:11434. Desktop idle consumes 650-850 MiB of VRAM and will rise by 2-3 GB once a
+browser and the OH-GUI frontend are running.
+
+ARCHITECTURE ALREADY RATIFIED
+- OH-GUI is a standalone application. OpenHands is a pinned runtime dependency, consumed
+  as a released artifact. We never fork or patch an OpenHands checkout.
+- A Python middleware sits between the GUI and OpenHands and owns the entire policy plane:
+  authorization, prompt-injection screening, action gating, and audit.
+- The system is single-operator. All multi-user and household concepts were removed, but
+  the whole authorization safety plane was deliberately KEPT.
+- Ollama runs with OLLAMA_KEEP_ALIVE=-1, so loaded models never auto-unload. Any component
+  that wants VRAM must explicitly `ollama stop` whatever is resident.
+- The planner model and the coder model are never co-resident. Switching roles costs a
+  measured 2.8-6.9 seconds of load time.
+
+MEASURED VRAM ENVELOPE (three independent runs agree within ~130 MiB)
+
+  Model                          Params        Max 100%-GPU ctx   MiB at max   KV KB/token
+  qwen3.6:27b                    27B dense           131,072         26,140          74.6
+  qwen3.6:35b-a3b                35B A3B MoE         262,144         29,698          21.8
+  qwen3.6:35b-a3b-mtp-q4_K_M     35B A3B + MTP       262,144         29,368          23.3
+  qwen3-coder:30b                30B A3B MoE          65,536         25,194         110.0
+  Devstral-Small-2507 Q4_K_XL    24B dense            65,536         26,160         152.0
+
+  Embedding model, CPU-resident, ~0 MiB VRAM, 161 ms per query embedding.
+
+THE DECISION
+OH-GUI needs a "security analyzer": a component that inspects every proposed agent action
+(shell command, file write, network call, git operation) plus any untrusted text the agent
+has ingested, and classifies the risk before the middleware decides to auto-approve, ask
+the operator, or block. The operator's default trust dial stops on anything classified
+risky.
+
+Three candidate designs are on the table:
+
+  OPTION A - Dedicated GPU model. Run a small always-resident classifier LLM on the GPU
+  alongside the active role model.
+
+  OPTION B - Share the active role model. Send classification requests to whichever
+  planner or coder model happens to be loaded.
+
+  OPTION C - No model. Deterministic rules: allowlists, denylists, path and command
+  pattern matching, taint tracking on ingested untrusted text.
+
+YOUR TASK
+1. Choose one option, or a specific hybrid. State the decision in one enforceable sentence.
+2. Justify it against the measured numbers above. Show the VRAM arithmetic explicitly.
+3. Give the two strongest arguments AGAINST your own choice, and say what would have to
+   change for you to reverse it.
+4. Identify any security property that your choice weakens, and how the design compensates.
+5. Specify the port interface the middleware should depend on, so the decision can be
+   revisited without rewriting callers. Give it as a Python Protocol or ABC with full type
+   annotations, including what the analyzer returns and how the caller is expected to
+   branch on it.
+6. State what must be true for this decision to be considered wrong, i.e. the falsifier.
+
+Constraints on your answer: no cloud services. No second GPU. Do not propose anything that
+requires modifying the OpenHands source. Be concrete and brief; prefer exact numbers, exact
+type signatures, and short justifications over prose.
