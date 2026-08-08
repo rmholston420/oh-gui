@@ -1114,3 +1114,47 @@ that is the sustained floor, every cell burns the full 300 s cooldown timeout an
 proceeds anyway. Awaiting operator decision before the matrix run.
 
 Stop condition: unchanged - ADR-005 still OPEN pending a scored Path E matrix.
+
+## 2026-08-08 06:15 EDT - Path E matrix scored against gold; role verdicts drafted
+
+Stage/phase: Phase 0, ADR-005 model selection.
+Files: bench/path_e/SCORING-20260808_0555.md (new).
+Run: ~/.oh-gui/bench_path_e/20260808_0555_run - 7 cells, 9 task-results, all done=stop,
+no empty answers, no truncation. 435 W, 0 throttled, 80 C peak, 5 s above warn.
+
+Scores (gold-weighted):
+- debug: c02 27b 64 | c04 35b-mtp 62 | c05 35b base 57 | c06 coder30b 38 | c07 devstral 38
+- arch:  c01 27b 75 | c03 35b-mtp 59
+- plan:  c01 27b 73 | c03 35b-mtp 72
+
+Verdicts under ADR-005 rules:
+- Planner: 27b 74.0 vs 35b-mtp 65.5 -> 8.5 apart, outside tie band -> quality selects 27b
+  at ~3.5x the latency.
+- Precise/debug: 27b 64 vs 35b-mtp 62 -> inside 3-point tie band -> speed selects
+  35b-a3b-mtp at 4.3x throughput.
+- MTP vs base: MTP wins both axes (62 vs 57; 308.05 vs 279.01 tok/s, +10.4%). REVERSES the
+  0531 reading that Ollama ignores the MTP head - that was a truncation artifact (both
+  cells capped at exactly 8192 tokens, so the matching rates reflected the shared ceiling).
+- Devstral contingency NOT triggered (38, neither won nor tied within 3).
+
+Negative result worth recording: EVERY cell failed debug question C. Gold ground truth is
+an embedder eviction between the 65536 and 131072 rows, provable from arithmetic present in
+the prompt. All five models offered plausible-sounding memory-allocator explanations and
+none checked the arithmetic. The most discriminating item in the task discriminated nothing.
+
+Confounds limiting ratification (see scoring doc):
+1. Coder role NOT settled - only task run was `debug`, a diagnostic reasoning task, with
+   think=False on the coder cells. No code-generation task exists in the matrix.
+2. Planner verdict rests on n=1 at temperature 1.0; the 8.5-point gap is driven by a single
+   arch sample where c03 chose Option B.
+3. Harness defect: gpu_at_start is recorded AFTER the warmup request, so the cold-start
+   warning fires on every cell and carries no information. Cooldown itself worked.
+4. c01 warmup 0.56 s vs 4-6 s elsewhere - model resident from the interrupted 0545 run.
+
+Also closed this session: transient GPU load investigated and cleared. A python3 client on
+:11434 driving 400 W bursts was the operator's own matrix run (05:55-06:09), not a foreign
+workload. bench/catch_gpu_client.sh watched 150 s post-run and saw nothing; no cron, no
+relevant systemd timers. The 0531 run is uncontaminated.
+
+Stop condition: ADR-005 still OPEN. Planner and coder ratification awaiting operator
+decision on the n=1 and coder-task confounds.
