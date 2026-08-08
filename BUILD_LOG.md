@@ -409,3 +409,32 @@ Entry format:
   24B dense with GQA will be measured, not estimated.
 - **Stop condition:** Phase 0 exit still NOT met.
 
+## 2026-08-08 04:48 EDT - OpenHands LM rejected; All Hands now recommends qwen3.6:35b-a3b
+
+- **Stage:** Phase 0 (baseline metrics)
+- **OpenHands LM 32B v0.1 evaluated and REJECTED:**
+  - Released 2025-03-31, fine-tuned from Qwen2.5-Coder-32B-Instruct via SWE-Gym RL
+    (https://www.openhands.dev/blog/introducing-openhands-lm-32b----a-strong-open-coding-agent-model).
+  - **37.2%** SWE-Bench Verified vs Devstral Small 1.1's **53.6%** - a 16-point deficit.
+  - Built on the exact base this project already rejected (Qwen2.5-Coder-32B, 32K native).
+  - No v0.2 in 17 months; HF page reports **159 downloads last month**. Effectively
+    abandoned (https://huggingface.co/all-hands/openhands-lm-32b-v0.1).
+- **KEY FINDING - All Hands' own current recommendation is `qwen3.6:35b-a3b`.** Their local
+  LLM docs, updated **2026/05/21**, state: "We now recommend Qwen3.6-35B-A3B as the first
+  local model to try with OpenHands"
+  (https://docs.openhands.dev/openhands/usage/llms/local-llms). They document the exact
+  Ollama tag `qwen3.6:35b-a3b`, addressed in OpenHands as `openai/qwen3.6:35b-a3b`, and
+  cite 24 GB VRAM as sufficient for quantized variants.
+- **Consequence:** the model whose context envelope was mis-predicted at 04:20 and
+  corrected at 04:25 is independently the vendor-recommended local model for the exact
+  scaffold OH-GUI wraps (ADR-001). This is convergent evidence, not proof of quality - no
+  SWE-Bench score is published for it on that page, and the quality bench still decides.
+- **Their Ollama guidance:** `OLLAMA_CONTEXT_LENGTH` >= 22000, 32768 recommended, default
+  4096 called "way too small - not even the system prompt will fit." Host is already at
+  65536; compliant.
+- **Bench scope consequence:** `qwen3.6:35b` must be benched on the CODER tasks as well as
+  the planner tasks, since All Hands positions it as the single local model for the whole
+  agent loop. Coder field is now: `qwen3-coder:30b` (incumbent), `devstral:24b`,
+  `qwen3.6:35b`.
+- **Stop condition:** Phase 0 exit still NOT met.
+
