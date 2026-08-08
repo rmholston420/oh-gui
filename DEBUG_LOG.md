@@ -716,3 +716,58 @@ Rule adopted: when reporting a stand-in run, state what it proves and what it do
 breath. A green result presented without its scope reads as stronger evidence than it is, which is
 the same failure as the discarded `accept vocabulary: NONE` line earlier today — a true statement
 about the wrong subject.
+
+## 2026-08-08 13:08 EDT — VITE_WORKING_DIR is a PARENT dir: agent works in a per-conversation subdir
+
+**Symptom:** agent-server log, during conversation creation:
+`FileEditor initialized with cwd: /home/rmholston/.oh-gui/baseline/fixture/12e8256d4b6a4a5e8d9ec96a4f8e0950`
+and the same path for `TerminalExecutor ... working_dir:`.
+
+**Root cause:** `VITE_WORKING_DIR` is not the agent's working directory. It is the PARENT under
+which the app creates one subdirectory per conversation, named by conversation id. The fixture
+seeded at `~/.oh-gui/baseline/fixture` is therefore a sibling of the agent's cwd, not its contents.
+The agent would open an empty directory.
+
+**Consequence if unfixed:** every baseline task fails to find the fixture, produces no diffs, and
+every line count records 0 — a self-consistent baseline of zeros caused entirely by harness setup.
+This is the THIRD such trap in this harness, after the unset `VITE_WORKING_DIR` (10:15 EDT) and the
+`localhost` vs `127.0.0.1` CORS block (12:58 EDT). Note that the earlier `VITE_WORKING_DIR` fix was
+verified only by reading the vite process environ, which confirmed the variable was SET but proved
+nothing about how the app INTERPRETS it. Verifying that a setting was applied is not the same as
+verifying it means what you assumed.
+
+**Found only because** the CORS failure forced a read of the agent-server log. Had the earlier run
+succeeded, the run would have completed and produced zeros that looked like data.
+
+**Fix:** NOT YET APPLIED — pending confirmation of whether the app copies fixture contents into the
+per-conversation subdir or leaves it empty, and whether the subdir is created before or after the
+agent starts. Do not guess; `ls` the directory.
+
+**Status:** OPEN.
+
+## 2026-08-08 13:09 EDT — POST /api/conversations 500, 'Server' object has no attribute 'list_tools'
+
+**Symptom:** `{"detail":"Internal Server Error","exception":"'Server' object has no attribute
+'list_tools'","error_id":"e8e3f1e84d724f80a85f61bcd8cfbf04"}` on conversation creation. Frontend
+sits on the onboarding say-hello slide with no error surfaced to the user.
+
+**What is established:** the failure is LATE in conversation setup. The log shows profile
+activation, secrets, `TaskTrackerExecutor`, `FileEditor`, Chromium detection, `TmuxPanePool` and
+`TerminalExecutor` all initializing successfully, and the exception immediately after. Everything
+preceding MCP initialization succeeded.
+
+**What is NOT established:** the traceback. `api.py:624` logs an error_id without a stack, and
+uvicorn's `Exception in ASGI application` line at `h11_impl.py:421` is followed by nothing in
+`~/.openhands/agent-canvas/logs/agent-canvas.2026-08-08.log`. Direct POST to the backend on 18000
+returns `{"detail":"Unauthorized"}` — needs a session API key, so that path to the stack is closed.
+
+**Versions:** running SDK/agent-server 1.40.1 (confirmed via `/server_info` on both 8010 and
+18000). Latest SDK is 1.41.0 (2026-08-06), whose release notes are four Canvas Extensions PRs.
+Frontend is Agent Canvas v1.12.0 (2026-08-07), which IS the latest release — checked at the
+operator's suggestion; upstream is not ahead of our pin.
+
+**Hypothesis, NOT a conclusion:** version skew between a v1.12.0 frontend and a 1.40.1 backend,
+implicating ADR-008 decision 3 (use the app's own uvx-resolved backend rather than the pinned
+ghcr agent-server v1.41.0 image). Competing explanation: an MCP server configured in the active
+agent profile whose client object is the wrong type. These point at different fixes — pin the
+image vs. disable MCP — so no change until the traceback or the profile contents discriminate.
