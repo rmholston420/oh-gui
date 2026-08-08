@@ -14,8 +14,9 @@ No further planner or coder benching is warranted.
 | Planner | `qwen3.6:27b` | 131,072 | `planner` 1.0/0.95/20 | on | 16,384 |
 | Coder | `qwen3.6:35b-a3b-mtp-q4_K_M` | 131,072 | `precise` 0.6/0.95/20 | on | 16,384 |
 
-Roles do NOT collapse. `OLLAMA_MAX_LOADED_MODELS=1` required (26,140 + 26,390 = 52,530 MiB vs a
-32,607 MiB card).
+Roles do NOT collapse: 26,140 + 26,390 = 52,530 MiB against a 32,607 MiB card, so the router
+MUST call `ollama stop` on the outgoing role model (`OLLAMA_KEEP_ALIVE=-1`, nothing auto-unloads).
+`OLLAMA_MAX_LOADED_MODELS` stays **2** — see Amendment #4; `=1` was retracted, not applied.
 
 ## Completed this session
 
