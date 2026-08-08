@@ -36,5 +36,6 @@ old one and mark the old one `Amended · superseded by ADR-###`.
 | LICENSE for this repo | MIT, added 2026-08-08 with NOTICE for donor attribution |
 | Thermal operating point | 435 W ratified; 600 W rejected at 82 C with throttling (BUILD_LOG 2026-08-08 08:20) |
 | GPU hotspot enforcement | Record-only; measured within +/-1 C of edge, no hidden margin |
+| Desktop VRAM overhead | 657-666 MiB measured with browser open; the ~3,500 MiB estimate is retracted (ADR-004 A#6) |
 | `OLLAMA_FLASH_ATTENTION` | Confirmed no-op on all three axes (VRAM, prefill, decode) |
 | Repo layout for code | `apps/gui/` + `services/middleware/`, confirmed 2026-08-08 |

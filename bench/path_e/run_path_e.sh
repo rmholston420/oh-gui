@@ -47,14 +47,14 @@ if [[ "$CAP" != "435" ]]; then
 fi
 export BENCH_POWER_CAP_W="$CAP"
 
-# The bench must not be measuring the desktop. 2-3 GB of browser changes which cells fit.
+# Record idle VRAM. The operator uses this machine interactively DURING the bench - the
+# browser is how they talk to the scoring model - so closing it is not an option and this
+# is NOT a gate. It is recorded so a cell that fails to fit can be explained afterwards.
+# Measured idle with the normal working desktop up: 657-666 MiB (runs 0531, 0545).
 IDLE_MIB=$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits)
-if [[ "$IDLE_MIB" -gt 2000 ]]; then
-  echo "WARNING: ${IDLE_MIB} MiB of VRAM is already in use before any model loads." >&2
-  echo "  Close the browser and any GPU-accelerated apps - at 131072 context the" >&2
-  echo "  planner cells need nearly all of the card." >&2
-  read -r -p "  Continue anyway? [y/N] " ans
-  [[ "$ans" == "y" || "$ans" == "Y" ]] || exit 1
+if [[ "$IDLE_MIB" -gt 4000 ]]; then
+  echo "NOTE: ${IDLE_MIB} MiB of VRAM already in use - unusually high for this desktop." >&2
+  echo "  The 131072-context planner cells need ~26.4 GB; if one fails to load, this is why." >&2
 fi
 
 # Verify every model tag exists BEFORE running anything. Discovering a missing tag at

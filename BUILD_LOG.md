@@ -1065,3 +1065,21 @@ Diagnosis pending - see DEBUG_LOG.
 - **Re-tighten before trusting timings if a run ever reports thermally throttled samples.**
 - Override per run: `GPU_COLD_C=34 bash bench/path_e/run_path_e.sh`.
 
+## 2026-08-08 10:10 EDT - Browser stays open; ADR-004 A#5 retracted as unsupported
+
+- **Operator constraint (standing):** the browser cannot be closed during benches - it is
+  the channel to the scoring model. Any procedure requiring a quiesced desktop is invalid
+  for this project.
+- `run_path_e.sh`: the idle-VRAM check no longer prompts to close applications and no
+  longer blocks. It records the figure and, above 4000 MiB, notes that a failed load would
+  be explained by it. It is instrumentation, not a gate.
+- **ADR-004 Amendment #6 filed, retracting A#5's premise.** A#5 claimed the working
+  desktop uses ~3,500 MiB and concluded 262,144 context overruns the card by 261 MiB.
+  Measured idle VRAM with the full working desktop and browser up was **657 MiB and 666
+  MiB** across the two Path E runs. The 3,500 MiB figure was unsourced; the 261 MiB
+  overrun was an artefact of it.
+- 262,144 is now recorded as **unmeasured**, not unusable. 131,072 stays the working
+  ceiling on the sounder ground that it is the context the matrix actually exercises.
+- **My error, twice in one session:** correcting a measured value with an assumed one.
+  Desktop VRAM is now captured at the start of every run.
+

@@ -164,6 +164,35 @@ memory that was never freed.
   partially covers this; the planner's 128K config has ~6.4 GB free before the embedding
   model, so the margin is real but not generous.
 
+> **STATUS AMENDMENT #6 (2026-08-08) — Amendment #5's desktop figure was WRONG:**
+> A#5 below rests on the claim that the operator's working desktop consumes ~3,500 MiB of
+> VRAM. **Measurement contradicts it.** Both Path E runs recorded idle VRAM immediately
+> before loading, with the operator's normal working desktop and browser running:
+>
+> | Run | Idle VRAM with desktop + browser up |
+> |---|---:|
+> | `20260808_0531` | **657 MiB** |
+> | `20260808_0545` | **666 MiB** |
+>
+> That is within ~10 MiB of the 650–850 MiB "idle desktop" figure A#5 dismissed as
+> unrepresentative. The ~3,500 MiB number is unsourced and is now retracted.
+>
+> Consequence: **A#5's conclusion is not supported.** It found `35b-a3b-mtp` @262,144 to
+> overrun the card by 261 MiB — a margin computed entirely from the bad 3,500 MiB figure.
+> Recomputed against 666 MiB, that configuration fits with ~2.5 GB to spare.
+>
+> **This does NOT re-ratify 262,144.** It means the question is reopened, not resolved: no
+> cell has ever run at that context, and the operator uses the desktop interactively during
+> benches, so headroom must survive a browser that grows under load. The honest status is
+> *unmeasured*. 131,072 remains the working ceiling because it is the value actually
+> exercised by the Path E matrix — that is now the reason, replacing A#5's arithmetic.
+>
+> Method note, and the second time this exact error has appeared today: A#5 corrected a
+> measurement with an assumption. The original envelope was measured; the 3,500 MiB desktop
+> was assumed. Substituting the latter for the former felt like rigour and was the
+> opposite. Desktop VRAM is now recorded at the top of every Path E run so this figure is
+> never guessed again.
+
 > **STATUS AMENDMENT #5 (2026-08-08) — 262,144 context is UNUSABLE in production:**
 > The envelope in Amendment #4 was measured against an **idle desktop** (650–850 MiB of
 > VRAM in use). The operator's actual working desktop consumes ~3,500 MiB. Re-checked
