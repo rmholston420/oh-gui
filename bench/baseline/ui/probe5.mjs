@@ -26,6 +26,22 @@ const FIXTURE = process.env.OH_GUI_BASELINE_FIXTURE || `${process.env.HOME}/oh-g
 const S = await openSession("probe5");
 const { page, say, shot, el, errs } = S;
 
+// probe5 v1 clicked the picker to "reopen" it and actually toggled it SHUT, then reported the
+// launch controls absent while looking at the home screen. A toggle is not an opener. This checks
+// the destination state and only clicks when the popover is genuinely closed.
+const popoverOpen = async () =>
+  (await has(page, "add-workspaces-button")) || (await has(page, "launch-no-workspace"));
+const openPicker = async () => {
+  for (let i = 0; i < 3; i++) {
+    if (await popoverOpen()) { say(`   picker open (attempt ${i})`); return true; }
+    await page.locator('[data-testid="conversation-panel-new-thread-picker"]').first()
+      .click({ timeout: 10000 }).catch(() => {});
+    await page.waitForTimeout(2000);
+  }
+  say(`   picker WOULD NOT OPEN — anything below about its contents is unreliable`);
+  return false;
+};
+
 const click = async (id, why = "") => {
   if (await has(page, id)) {
     await page.locator(`[data-testid="${id}"]`).first().click({ timeout: 10000 });
@@ -73,26 +89,54 @@ try {
   await page.waitForTimeout(3000);
   await shot("51-workspace-added");
 
-  // ---- what changed in the picker? ----
-  say(`\n===== picker after adding =====`);
-  if (!(await has(page, "folder-browser-modal"))) await click("conversation-panel-new-thread-picker");
-  await page.waitForTimeout(2000);
-  const wsIds = (await ids(page)).filter((x) => /workspace|launch/i.test(x));
-  say(`   workspace-related ids: ${wsIds.join(", ") || "(none)"}`);
-  const popTxt = (await page.locator("body").innerText().catch(() => "")).replace(/\s+/g, " ");
-  say(`   picker mentions "fixture": ${popTxt.includes("fixture") ? "YES" : "no"}`);
-  await shot("52-picker-with-workspace");
-
-  // Launch into the workspace: prefer a control naming the fixture over launch-no-workspace.
-  const launch = wsIds.find((x) => x.includes("fixture"))
-    || (await ids(page)).find((x) => x.startsWith("launch-") && x !== "launch-no-workspace");
-  if (launch) { say(`   launching via ${launch}`); await click(launch); }
-  else {
-    say(`   no fixture-specific launch control found; controls present:`);
-    (await page.$$eval("button", (es) => es.map((e) => `${(e.innerText||"").trim().slice(0,40)} [${e.getAttribute("data-testid")}]`)))
-      .slice(0, 40).forEach((b) => say(`      ${b}`));
-    throw new Error("cannot launch into workspace");
+  // ---- did the server actually record it? ----
+  // Ask the backend rather than the UI. The UI already fooled me once here, and if registration
+  // failed outright I want to know that before interpreting anything on screen.
+  say(`\n===== server state =====`);
+  for (const ep of ["/api/workspaces", "/api/conversations/workspaces", "/api/settings"]) {
+    const r = await page.request.get(`${INGRESS}${ep}`).catch((e) => ({ status: () => `ERR ${e.message}` }));
+    const st = typeof r.status === "function" ? r.status() : "?";
+    let body = ""; try { body = (await r.text()).slice(0, 600); } catch {}
+    const hit = body.includes("oh-gui-baseline") || body.includes("fixture");
+    say(`   ${ep} -> ${st}${hit ? "  [MENTIONS THE FIXTURE]" : ""}`);
+    if (st === 200 && body) say(`      ${body.replace(/\s+/g, " ").slice(0, 400)}`);
   }
+
+  // ---- what the picker shows, once it is provably open ----
+  say(`\n===== picker after adding =====`);
+  const opened = await openPicker();
+  await shot("52-picker-with-workspace");
+  if (opened) {
+    const btns = await page.$$eval("button", (es) => es.map((e) => ({
+      t: (e.innerText || e.getAttribute("aria-label") || "").replace(/\s+/g, " ").trim().slice(0, 50),
+      tid: e.getAttribute("data-testid") })));
+    const inPop = btns.filter((b) => /workspace|launch|fixture|baseline|thread|folder/i.test(
+      `${b.t} ${b.tid || ""}`));
+    say(`   workspace/launch controls (${inPop.length}):`);
+    inPop.forEach((b) => say(`      "${b.t}"  [${b.tid}]`));
+    const popTxt = (await page.locator("body").innerText().catch(() => "")).replace(/\s+/g, " ");
+    say(`   screen mentions "fixture":         ${popTxt.includes("fixture") ? "YES" : "no"}`);
+    say(`   screen mentions "oh-gui-baseline": ${popTxt.includes("oh-gui-baseline") ? "YES" : "no"}`);
+
+    const launch = inPop.map((b) => b.tid).filter(Boolean)
+      .find((x) => /fixture|baseline/i.test(x))
+      || btns.find((b) => /fixture|baseline/i.test(b.t))?.tid
+      || inPop.map((b) => b.tid).find((x) => x && x.startsWith("launch-") && x !== "launch-no-workspace");
+    if (launch) { say(`   launching via ${launch}`); await click(launch); }
+    else {
+      // Fall back to the home screen's own Open Workspace control before giving up — it is a
+      // second, separate route into a workspace and has not been tried.
+      say(`   no launch control names the fixture; trying open-workspace-button instead`);
+      if (await click("open-workspace-button")) {
+        await page.waitForTimeout(2500); await shot("52b-open-workspace");
+        const ws = (await ids(page)).filter((x) => /workspace|folder|fixture|baseline/i.test(x));
+        say(`   after Open Workspace, relevant ids: ${ws.join(", ") || "(none)"}`);
+        const pick = ws.find((x) => /fixture|baseline/i.test(x));
+        if (pick) { say(`   selecting ${pick}`); await click(pick); }
+        else throw new Error("workspace registered but no control selects it");
+      } else throw new Error("cannot launch into workspace");
+    }
+  } else throw new Error("picker would not open");
   await page.waitForTimeout(3000);
   await shot("53-launched");
 

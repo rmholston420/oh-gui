@@ -854,3 +854,22 @@ image vs. disable MCP — so no change until the traceback or the profile conten
   conversation work *in* that directory, or still creates a per-conversation subdirectory beneath
   it as `VITE_WORKING_DIR` did. That difference decides how tasks get re-seeded between runs, so
   it gets a probe rather than an assumption.
+
+## 2026-08-08 13:42 EDT — probe5 reported a control absent while the popover was shut
+
+- **Symptom:** `PROBE5 FAILED: cannot launch into workspace`, with the popover's own controls
+  (`add-workspaces-button`, `launch-no-workspace`) missing from the failure dump entirely.
+- **Root cause: my probe, not the app.** After `folder-browser-use` the modal closed. The next
+  line clicked `conversation-panel-new-thread-picker` to "reopen" the popover — but the popover
+  was already closed, so the click **toggled it shut again**. Every absence reported afterwards
+  was measured against the home screen.
+- **This is the rule I had already written, applied only halfway.** After probe3 I adopted "any
+  detector reporting absence must first prove it was looking at the right screen." I enforced it
+  for screens and not for a popover's open/closed state. A toggle is not an opener.
+- **Fix:** `openPicker()` checks the destination state — is a popover-only control present — and
+  clicks only when genuinely closed, retrying up to three times and saying plainly when it cannot
+  open, so nothing downstream is trusted.
+- **Second fix:** ask the server whether the workspace registered instead of reading it off the
+  UI, since the UI already misled me once here.
+- **Still unknown, and NOT to be reported as a negative result:** whether `folder-browser-use`
+  registered the fixture. The run does not answer that either way.
