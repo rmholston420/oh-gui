@@ -552,3 +552,60 @@ actual enforcement mechanism. `MAX_LOADED_MODELS` is a backstop, and after the p
 know whether it is even that.
 
 No other part of ADR-005 changes. Model selection, contexts, presets and `num_predict` all stand.
+
+---
+
+## Amendment #5 — 2026-08-08 — `OLLAMA_MAX_LOADED_MODELS=2` CONFIRMED correct; `ollama stop` is load-bearing
+
+**No configuration change. The value stays `2`. This closes the question Amendment #4 opened.**
+
+Measured in `bench/oneoff/max_loaded_lru_probe.sh`, run `20260808_0855`.
+
+### What the setting does and does not do
+
+| Claim | Verdict |
+|---|---|
+| `=1` is needed because the CPU embedder does not occupy a slot | **False** — it does (Amdt #4) |
+| `=2` prevents planner/coder co-residency | **Vacuous** — the VRAM ceiling already forbids it |
+| `=2` reserves a slot for the CPU embedder | **False** — see below |
+| `=2` is nonetheless the correct value | **True** — see step 4 |
+
+**The slot limit counts CPU-resident models and reserves nothing for them.** With
+`{embedder(CPU, 0 MiB), planner}` resident and the coder loaded, the embedder was evicted. Freeing
+it released **zero VRAM**, so no VRAM-pressure explanation exists; only the slot limit accounts for
+it.
+
+**Co-residency is physically impossible anyway.** At `num_ctx=4096`, planner **20,364** + coder
+**25,578** = **45,942 MiB** against a **32,607 MiB** card. Weights dominate at every context, so no
+`num_ctx` makes both fit. This ADR's original framing of `MAX_LOADED_MODELS` as what protects the
+card was wrong; the VRAM ceiling is. The setting governs **reload churn**.
+
+### Why `=2` is still correct
+
+Steps 1–3 deliberately performed the sequence this ADR **forbids**: load a second role model while
+the first is still resident. Step 4 performed the required sequence:
+
+```
+{embedder}                     -> load planner  -> {embedder, planner}   (2, at the limit)
+ollama stop qwen3.6:27b        ->                  {embedder}            (1)
+                               -> load coder    -> {embedder, coder}     (2, at the limit)
+```
+
+**The embedder survived.** Residency never exceeds 2, so nothing is evicted and the embedder never
+churns. The churn in step 3 is a symptom of the forbidden sequence, not of the value.
+
+### The requirement this promotes
+
+`OLLAMA_KEEP_ALIVE=-1` means nothing auto-unloads, so **the router MUST call `ollama stop` on the
+outgoing role model before loading the incoming one.** That was already stated here; it is now
+**measured to be the sole enforcement mechanism**, not a tidiness convention.
+
+Failure mode if the router omits it: the embedder is evicted and reloaded. Cost is an embedder
+reload, **not** an OOM — the VRAM ceiling still forbids role co-residency. Graceful degradation, so
+`=2` needs no defensive increase to 3. Raising it to 3 would additionally permit two GPU role models
+by slot policy, relying entirely on the VRAM ceiling to refuse them, in exchange for tolerating a
+router bug that should be fixed instead.
+
+**Consequence for implementation:** the role-switch path needs a test asserting the embedder is
+still resident after a switch. That is the observable that distinguishes a correct router from one
+that has silently stopped calling `ollama stop`.

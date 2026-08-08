@@ -1655,3 +1655,31 @@ trust-dial stop). No further Path E runs are required for Phase 0.
   SESSION_HANDOFF.md.
 - Stop condition: ADR-005 still has no open actions; this is a KNOWN_ISSUES item, not an ADR
   blocker.
+
+## 2026-08-08 08:58 EDT — MAX_LOADED_MODELS=2 CONFIRMED by measurement; ollama stop is load-bearing
+
+- Stage: Phase 0 baseline. ADR-005 Amendment #5. Run `20260808_0855`, artifacts
+  `~/.oh-gui/oneoff/max_loaded_lru/20260808_0855`. **No configuration change.**
+- **The slot limit counts CPU-resident models and reserves nothing.** `{embedder(CPU, 0 MiB),
+  planner}` resident, coder loaded -> embedder evicted. Freeing it released **zero VRAM**, so no
+  VRAM-pressure explanation exists; only the slot limit accounts for it.
+- **`=2` is nonetheless correct, and the churn was my test's sequence, not the value.** Step 4 ran
+  the sequence ADR-005 requires: `{embedder}` -> load planner (2, at the limit) -> `ollama stop`
+  planner (1) -> load coder (2, at the limit). **The embedder survived.** Residency never exceeds
+  the limit on the correct path, so nothing is evicted.
+- **Three claims about this setting are now retired.** `=1` needed because a CPU model holds no slot
+  - false (Amdt #4). `=2` prevents role co-residency - vacuous, the VRAM ceiling does that
+  (20,364 + 25,578 = 45,942 vs 32,607). `=2` reserves a slot for the embedder - false. What the
+  setting governs is reload churn, and on a correct router there is none.
+- **Promoted requirement:** `OLLAMA_KEEP_ALIVE=-1` means nothing auto-unloads, so the router MUST
+  `ollama stop` the outgoing role model. This is now MEASURED as the sole enforcement mechanism, not
+  a tidiness convention. Omitting it costs an embedder reload, **not** an OOM - the VRAM ceiling
+  still refuses co-residency. Graceful degradation, so no defensive raise to 3.
+- **Implementation consequence:** the role-switch path needs a test asserting the embedder is still
+  resident after a switch. That is the observable distinguishing a correct router from one that has
+  silently stopped calling `ollama stop`.
+- Thermal: peak 40 C, 120 W, 0 throttled, 36 s for 7 model loads.
+- Files: `adrs/ADR-005-...md` (Amendment #5), KNOWN_ISSUES.md (entry CLOSED), BUILD_LOG.md,
+  SESSION_HANDOFF.md.
+- Stop condition: ADR-005 Ratified with Amendments #1-#5, **no open actions**. Phase 0 exit still
+  NOT met - three non-bench items remain.

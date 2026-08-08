@@ -83,9 +83,18 @@ fixed overhead; per-token work is invisible below 256 tokens.
   long-input tail matters; it does not affect the query-band verdict.
 - Thermally irrelevant: peak 39 C, 34 W, 0 samples under load.
 
-## 2026-08-08 08:52 EDT — `MAX_LOADED_MODELS=2` eviction order is unmeasured
+## ~~2026-08-08 08:52 EDT — `MAX_LOADED_MODELS=2` eviction order is unmeasured~~ — CLOSED 08:58 EDT
 
-**Status: OPEN. Probe v1 run 20260808_0850 was INVALID; v2 written and unrun.**
+**Status: CLOSED 2026-08-08 08:58 EDT by run `20260808_0855`. No configuration change; `=2` stays.**
+
+> **RESOLUTION.** The slot limit counts CPU-resident models and reserves nothing: with
+> `{embedder(0 MiB), planner}` resident, loading the coder evicted the embedder, and freeing it
+> released zero VRAM, so only the slot limit explains it. **But `=2` is still correct.** Step 4 ran
+> the sequence ADR-005 requires — `ollama stop` the outgoing role model, then load the incoming one
+> — and residency stayed at 2 throughout, so **the embedder survived**. The churn is a symptom of
+> the forbidden load-over-resident sequence, not of the value. `ollama stop` is therefore the sole
+> enforcement mechanism, and its omission costs an embedder reload rather than an OOM, because the
+> VRAM ceiling independently forbids role co-residency. Full reasoning in ADR-005 Amendment #5.
 
 > **UPDATE 2026-08-08 08:56 EDT — one half of this is now SETTLED, the other reframed.**
 >

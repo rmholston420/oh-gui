@@ -34,22 +34,24 @@ MUST call `ollama stop` on the outgoing role model (`OLLAMA_KEEP_ALIVE=-1`, noth
 
 ## Exact next action
 
-    cd ~/dev/oh-gui && git pull && bash bench/oneoff/max_loaded_lru_probe.sh
+**No bench work remains.** Path E is closed and ADR-005 has no open actions. The next action is
+Phase 0 exit item 1 below — pin the upstream artifacts (ADR-001, `docs/specs/02-repo-setup.md`
+item 1). Nothing in the queue needs the GPU.
 
-**Probe v2.** v1 (run `20260808_0850`) was invalid: it omitted `num_gpu:0`, so the embedder loaded
-onto the GPU at 2,754 MiB instead of CPU-resident at 0, which makes slot eviction and VRAM eviction
-indistinguishable. v2 forces CPU placement and hard-fails if step 1 does not report
-`size_vram: 0`.
+## Ollama configuration — SETTLED, do not revisit
 
-The question is now narrower, because v1 settled the larger one: **co-residency is physically
-impossible** (planner 20,364 + coder 25,578 = 45,942 MiB vs a 32,607 MiB card, weights dominating
-at every context), so `MAX_LOADED_MODELS` was never the protection — the VRAM ceiling is. What
-remains is whether `=2` reserves a slot for the CPU embedder, i.e. **reload churn**, not OOM.
-Changes no configuration, restarts nothing.
+`OLLAMA_MAX_LOADED_MODELS` stays **2**, confirmed by measurement (run `20260808_0855`, ADR-005
+Amendment #5). The slot limit counts CPU-resident models and reserves nothing for the embedder, but
+on the required sequence — `ollama stop` outgoing, then load incoming — residency never exceeds 2
+and the embedder survives.
 
-**`OLLAMA_MAX_LOADED_MODELS` stays 2.** The 2 -> 1 change was RETRACTED, not applied — ADR-005
-Amendment #4. A CPU-placed model occupies a model slot (measured, BUILD_LOG 05:50 EDT), so `=1`
-would thrash the embedder on every role switch. ADR-005 now has **no open actions.**
+**The router MUST call `ollama stop` on the outgoing role model.** `OLLAMA_KEEP_ALIVE=-1` means
+nothing auto-unloads, and this is now measured as the sole enforcement mechanism. Omitting it costs
+an embedder reload, not an OOM: planner 20,364 + coder 25,578 = 45,942 MiB against a 32,607 MiB
+card, so role co-residency is physically impossible at any `num_ctx` and the VRAM ceiling refuses it
+independently. **When the role-switch path is built, it needs a test asserting the embedder is still
+resident afterwards** — that is what distinguishes a correct router from one that has quietly
+stopped calling `ollama stop`.
 
 ## Remaining before Phase 0 Definition of Done
 
