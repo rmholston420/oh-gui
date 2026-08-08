@@ -13,7 +13,7 @@
  * Recorded like every session:  bash bench/baseline/ui/watch.sh probe4
  * Run:  cd ~/dev/oh-gui/apps/gui && OH_GUI_HEADED=1 node ../../bench/baseline/ui/probe4.mjs
  */
-import { openSession, ids, has } from "./session.mjs";
+import { openSession, ids, has, ensureConfigured } from "./session.mjs";
 
 const INGRESS = process.env.OH_GUI_BASELINE_INGRESS || "http://127.0.0.1:8010";
 const FIXTURE = `${process.env.HOME}/.oh-gui/baseline/fixture`;
@@ -47,10 +47,9 @@ try {
   await page.goto(INGRESS, { waitUntil: "networkidle", timeout: 60000 });
   await page.waitForTimeout(3000);
   say(`landed: ${page.url()} (${(await ids(page)).length} ids)`);
-  if ((await ids(page)).some((x) => x.startsWith("onboarding-"))) {
-    say(`!! onboarding is showing — probe4 expects a configured app. Run probe3 first.`);
-    throw new Error("onboarding");
-  }
+  // Onboarding completion lives in localStorage, so a fresh context is always a first run.
+  // Drive it rather than refusing; session.mjs persists the state so later runs skip it.
+  await ensureConfigured(page, say, shot);
   await shot("40-landed");
 
   if (!(await has(page, "conversation-panel-new-thread-picker"))) throw new Error("no new-thread picker");

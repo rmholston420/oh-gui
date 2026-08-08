@@ -814,3 +814,21 @@ image vs. disable MCP — so no change until the traceback or the profile conten
   pane is absent, and bound the click with a short timeout plus a caught failure.
 - **Rule:** when a click times out on an element Playwright reports as visible and stable, check
   whether the state it would produce already exists before fighting the overlay.
+
+## 2026-08-08 13:33 EDT — Onboarding wizard reappears on every automated run
+
+- **Symptom:** probe4 landed on `first-run-onboarding-screen` with 85 test ids immediately after
+  probe3 had completed the wizard against the same app instance.
+- **Root cause:** Agent Canvas stores onboarding completion **client-side**. Every Playwright
+  context starts with empty localStorage, so every automated run is a first run. Nothing to do
+  with the server, the profile, or the settings.json rewrite.
+- **A guess of mine this corrects:** when probe3 unexpectedly hit onboarding I said the MCP toggle
+  rewriting settings.json had probably reset the wizard. That was wrong, and it was a guess
+  presented as a likely cause. The real reason is client-side state, which the very next run
+  demonstrated.
+- **Impact if unfixed:** all 16 baseline tasks would re-run the wizard, and its hello step spends
+  a real model call each time — measurable pollution of both timing and VRAM state.
+- **Fix:** `session.mjs` persists `storageState` to `~/.oh-gui/baseline/storage-state.json` after
+  every run and reuses it on the next. `OH_GUI_FRESH_STATE=1` forces a clean profile.
+  `ensureConfigured()` added as the single shared onboarding routine so probes and driver cannot
+  drift apart.
