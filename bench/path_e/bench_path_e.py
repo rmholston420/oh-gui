@@ -140,6 +140,17 @@ CELLS = [
 CELL_BY_ID = {c[0]: c for c in CELLS}
 
 
+class OllamaError(Exception):
+    """An HTTP error from Ollama, carrying the response BODY.
+
+    `str(urllib.error.HTTPError)` is only the status line - "HTTP Error 500: Internal
+    Server Error" - and discards the body, which is where Ollama puts the actual reason
+    (failed KV allocation, bad option, model not found). Run 20260808_0633 recorded a bare
+    500 for c12 and the cause had to be recovered from journald afterwards. Never let an
+    HTTP error reach the JSON without its body.
+    """
+
+
 def http_post(path: str, payload: dict, timeout: int = 3600):
     req = urllib.request.Request(
         f"{ENDPOINT}{path}",
@@ -147,8 +158,19 @@ def http_post(path: str, payload: dict, timeout: int = 3600):
         headers={"Content-Type": "application/json"},
     )
     t0 = time.time()
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        data = json.loads(r.read().decode())
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            data = json.loads(r.read().decode())
+    except urllib.error.HTTPError as e:
+        try:
+            body = e.read().decode("utf-8", "replace").strip()
+        except Exception:
+            body = "<body unreadable>"
+        try:                                   # Ollama sends {"error": "..."}
+            body = json.loads(body).get("error", body)
+        except Exception:
+            pass
+        raise OllamaError(f"HTTP {e.code} from {path}: {body[:2000]}") from None
     return data, time.time() - t0
 
 
@@ -207,7 +229,7 @@ def run_task(model: str, role: str, task: str, num_ctx: int, think: bool,
     }
     try:
         resp, wall = http_post("/api/chat", payload)
-    except (urllib.error.URLError, TimeoutError, OSError) as e:
+    except (OllamaError, urllib.error.URLError, TimeoutError, OSError) as e:
         return {"task": task, "error": f"{type(e).__name__}: {e}"}
 
     msg = resp.get("message", {}) or {}
@@ -329,13 +351,21 @@ def run_cell(cell_id: str, out_dir: Path, rep: int | None = None,
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="Path E quality bench - one cell per call.")
-    ap.add_argument("cell", help="cell id, or 'list' to print the matrix")
+    ap.add_argument("cell", help="cell id, 'list' to print the matrix, "
+                                 "or 'models' to print every model id it needs")
     ap.add_argument("--out", required=False, help="run directory (set by run_path_e.sh)")
     ap.add_argument("--rep", type=int, default=None,
                     help="replicate index; writes <cell>_r<N>.json instead of <cell>.json")
     ap.add_argument("--tasks", default=None,
                     help="comma-separated subset of this cell's tasks")
     args = ap.parse_args()
+
+    # Emitted for run_path_e.sh's preflight, which verifies every one of these resolves on
+    # the serving instance before burning a single cell. Deduplicated but order-stable.
+    if args.cell == "models":
+        for m in dict.fromkeys(c[2] for c in CELLS):
+            print(m)
+        return
 
     if args.cell == "list":
         for c in CELLS:

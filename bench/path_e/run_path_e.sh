@@ -22,6 +22,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 source bench/lib/gpu.sh          # MANDATORY thermal instrumentation
+source bench/lib/ollama.sh       # MANDATORY server identity + configuration guard
 
 HARNESS=bench/path_e/bench_path_e.py
 
@@ -44,6 +45,16 @@ REPS="${REPS:-1}"
 # Every one of these has already caused a wasted or invalid run in this project.
 curl -sf "${OLLAMA_ENDPOINT:-http://localhost:11434}/api/version" >/dev/null \
   || { echo "FATAL: ollama is not responding" >&2; exit 1; }
+
+# Responding is NOT the same as being the right server, correctly configured, reading the
+# right store. On 2026-08-08 a stray user-unit ollama answered every request for five hours
+# while ollama.service crash-looped 1260 times unable to bind; /api/version was healthy
+# throughout and three runs were silently invalidated. The guard writes the serving
+# process's real OLLAMA_* environment into the run directory, so every result set carries
+# the configuration it actually ran under instead of the one it was assumed to run under.
+ollama_guard "$RUN_DIR/ollama_provenance.txt" || exit 1
+mapfile -t MATRIX_MODELS < <(python3 "$HARNESS" models)
+ollama_require_models "${MATRIX_MODELS[@]}" || exit 1
 
 CAP=$(nvidia-smi --query-gpu=power.limit --format=csv,noheader,nounits | cut -d. -f1)
 if [[ "$CAP" != "435" ]]; then

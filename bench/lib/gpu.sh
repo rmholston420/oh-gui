@@ -176,7 +176,10 @@ gpu_watch_start() {
   # happened at 04:46: the cutout fired, said "stopping", and the fa=0 cell ran anyway.
   # TERM/INT must summarise AND exit non-zero.
   trap 'gpu_watch_stop' EXIT
-  trap 'gpu_watch_stop; echo "run terminated by thermal cutout" >&2; exit 1' INT TERM
+  # INT/TERM is almost always the operator pressing Ctrl-C, NOT a thermal breach. Claiming
+  # a cutout on every interrupt trained us to distrust the message; the abort flag is the
+  # only authority on whether the card actually tripped.
+  trap 'gpu_watch_stop; if gpu_aborted; then echo "run ABORTED: thermal cutout at $(cat "$GPU_ABORT_FLAG" 2>/dev/null)C" >&2; else echo "run interrupted by signal (no thermal breach) - partial results kept" >&2; fi; exit 1' INT TERM
 }
 
 # Block until the card is genuinely cold, so every cell of a matrix starts from the same

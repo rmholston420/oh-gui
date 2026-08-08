@@ -121,6 +121,29 @@ for t in bpe.TASKS:
     g = BENCH / "gold" / f"{t}.md"
     (ok if g.exists() else fail)(f"gold exists: {g.relative_to(REPO)}")
 
+# --- layer 5: behavioural suites -------------------------------------------------
+# Layers 1-4 are static: they prove the code parses and the matrix is coherent, which is
+# exactly what a harness that scored a known-good answer 0/30 also did. These suites
+# execute the logic against fixtures whose correct answer is known independently. They are
+# run here so they cannot quietly rot - an unrun test is indistinguishable from no test.
+print()
+print("== layer 5: behavioural suites ==")
+SUITES = [
+    ([sys.executable, str(BENCH / "tests" / "test_score_code.py")], "scorer"),
+    (["bash", str(BENCH / "tests" / "test_gpu_cold_calibrate.sh")], "cold-gate calibration"),
+    (["bash", str(BENCH / "tests" / "test_ollama_guard.sh")], "ollama guard"),
+]
+for cmd, label in SUITES:
+    r = subprocess.run(cmd, cwd=REPO, capture_output=True, text=True)
+    if r.returncode == 0:
+        n = sum(1 for ln in r.stdout.splitlines() if ln.strip().startswith("ok "))
+        ok(f"{label} suite: {n} assertions pass")
+    else:
+        fail(f"{label} suite FAILED")
+        for ln in (r.stdout + r.stderr).splitlines():
+            if "FAIL" in ln or "FAILURE" in ln:
+                print(f"        | {ln.strip()}")
+
 print()
 if failures:
     print(f"{len(failures)} FAILURE(S)")

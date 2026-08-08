@@ -1233,3 +1233,48 @@ lowest-seen, preset skips calibration, dead sensor falls back to 45 C.
 the GPU and runs on Colossus. ADR-005 stays OPEN. Phase 0 exit still blocked on: this
 bench, upstream artifact pins, read-only stock Agent Canvas checkout, first-run wizard
 stating the trust-dial stop.
+
+## 2026-08-08 07:00 EDT — Ollama provenance guard, behavioural test layer, embedder A/B
+
+**Stage.** Phase 0 / Path E bench (ADR-005), still pre-verdict.
+
+**Built.**
+- `bench/lib/ollama.sh` — `ollama_guard` + `ollama_require_models`. Verifies the process
+  answering on :11434 is the one systemd started (user scope or system scope), that all 7
+  required `OLLAMA_*` settings match exactly, and that every matrix model resolves. Records
+  the serving environment to `<run>/ollama_provenance.txt`. See DEBUG_LOG 2026-08-08 06:55.
+- `bench/tests/test_ollama_guard.sh` — 17 assertions, including a reproduction of the
+  2026-08-08 stray (MainPID=0 while a PID holds the port), PID/MainPID mismatch, wrong model
+  store, unset `OLLAMA_MODELS`, and a check that the guard does *not* over-reach on
+  `OLLAMA_CONTEXT_LENGTH` (set per request). Guards that block valid runs get disabled.
+- `bench/validate_harness.py` layer 5 — executes all three behavioural suites (37 assertions)
+  so they cannot rot. Layers 1-4 are static and would have passed the `-I` scorer bug.
+- `bench/path_e/bench_path_e.py models` — emits the deduplicated model ids for preflight.
+- `bench/oneoff/embed_igpu_ab.sh` — one-off, deliberately outside the Path E matrix, on the
+  operator's call. Measures embedder throughput on CPU vs the Raphael iGPU
+  (`OLLAMA_IGPU_ENABLE=1`) using two throwaway instances on :11435 with the 5090 hidden, so
+  the bench server and its resident model are never touched. Reads back the device each arm
+  actually used. Written-down prior: CPU wins (2-CU RDNA2, Ollama reports compute=0.0, vs 12
+  Zen4 cores on the same DDR5). Bears on ADR-004 A#2 and on the embedder eviction that made
+  every round-1 cell fail debug question C.
+
+**Verified, not assumed.**
+- All three suites executed: scorer 11, calibration 9, ollama guard 17 — all pass. The first
+  two had been written earlier but never run.
+- Mutation test: reintroducing `-I` in `score_code.py` fails 8 assertions including
+  "reference passes 30/30". The suite genuinely catches the original defect.
+- Corrected my own wrong assertion mid-work: expected "missing 3 models", actual 4. The code
+  was right; the test was wrong.
+- Removed a dead `ollama_kill_pid` assignment and a temp-file trap that would have been
+  clobbered by `gpu.sh`'s EXIT trap. `RUN_DIR` already exists at preflight, so provenance is
+  written directly into it; my comment claiming otherwise was wrong and is gone.
+
+**Ports/adapters.** None — bench infrastructure only.
+
+**Stop condition.** ADR-005 remains OPEN. Round 2 has NOT run. It is blocked on the operator
+consolidating Ollama onto a single unit that reads `~/.ollama/models`.
+
+**Note for round 2 comparability.** Under the corrected configuration `OLLAMA_GPU_OVERHEAD`
+is 1 GiB where round 1 effectively had 0. ADR-004's 131072-context envelope was established
+without that reserve, so c12/c13 may not fit. If they fail to load, that is a real finding
+about the envelope, not a new bug.

@@ -309,3 +309,81 @@ into a source file*. Before diagnosing a component, verify the harness that is t
 and never commit an explanatory comment that has not been executed as a test.
 
 **Files:** `bench/lib/gpu.sh`
+
+## 2026-08-08 06:55 EDT — Stray user-unit ollama shadowed ollama.service for weeks; three runs void
+
+**Symptom.** `journalctl -u ollama` showed `Error: listen tcp 0.0.0.0:11434: bind: address
+already in use` with `restart counter is at 1260`. `systemctl status ollama` reported
+`disabled` and `activating (auto-restart) (Result: exit-code)`. Meanwhile every bench request
+succeeded and `/api/version` was healthy, so nothing in the harness noticed.
+
+**Affected.** Path E bench (ADR-005) — runs `20260808_0555`, `20260808_0633`, `20260808_0644`.
+Probably also ADR-004's VRAM sweep, since `restart counter is at 1` first appears **Jul 18**.
+
+**Root cause.** A *user*-scope unit at `~/.config/systemd/user/ollama.service`
+(`Restart=always`, `enabled`) started `ollama serve` as PID 3218 at 01:58:32 and held
+127.0.0.1:11434. The system unit could therefore never bind and crash-looped. Confirmed from
+`/proc/3218/environ`, which contained exactly one Ollama variable —
+`OLLAMA_HOST=127.0.0.1:11434` — plus a cgroup path under
+`user@1000.service/app.slice/ollama.service`. Its parent PID 2857 was `systemd --user`.
+The drop-ins in `/etc/systemd/system/ollama.service.d/` were never in effect.
+
+Two independent confirmations, neither requiring assumption:
+- `override.conf` sets `OLLAMA_HOST=0.0.0.0:11434`, but the listener was on `127.0.0.1`.
+- The stray's own startup config dump (Ollama 0.30.7) in the user journal.
+
+**Config actually in effect vs intended:**
+
+| Variable | Stray (actual) | Drop-in (intended) | Confound |
+|---|---|---|---|
+| `OLLAMA_FLASH_ATTENTION` | false | 0 | none — identical |
+| `OLLAMA_NUM_PARALLEL` | 1 | 1 | none — identical |
+| `OLLAMA_KV_CACHE_TYPE` | "" (default f16) | f16 | none — equivalent |
+| `OLLAMA_GPU_OVERHEAD` | 0 | 1073741824 | **yes** — 1 GiB more VRAM was available |
+| `OLLAMA_KEEP_ALIVE` | 5m | -1 | minor — harness unloads explicitly |
+| `OLLAMA_MAX_LOADED_MODELS` | 0 (auto) | 2 | minor |
+| `OLLAMA_MODELS` | `~/.ollama/models` | `/usr/share/ollama/.ollama/models` | **yes** — different store |
+
+The two variables that would have destroyed throughput comparability (flash attention,
+parallelism) were already at intended values by default, so round 1's *rankings* survive and
+the `arch` prompt's `NUM_PARALLEL=1` premise holds. Runs 0633 and 0644 are void for the
+separate reason that both were interrupted.
+
+**Second defect found while fixing the first.** `User=ollama` on the system unit points it at
+`/usr/share/ollama/.ollama/models` (48 GB, 6 models). The full matrix — `qwen3.6:27b`,
+`35b`, `35b-a3b-mtp-q4_K_M`, devstral `UD-Q4_K_XL` — lives in `~/.ollama/models` (116 GB).
+Recovering the service therefore made 4 of 5 required models unresolvable while `ollama list`
+still returned six real models and looked healthy.
+
+**Retracted hypotheses.** (1) I proposed `KEEP_ALIVE=5m` eviction as the cause of the
+transient `c12_r1` HTTP 500. It does not fit: warmup completed 5 s before the request and
+nothing was idle for 5 minutes. The 500 remains **unexplained**. (2) I claimed the capacity
+data and the bench "described two different configurations"; with the Jul 18 evidence both
+were likely measured under the same stray, making them mutually consistent but mislabelled.
+
+**Fix applied.** New `bench/lib/ollama.sh` providing `ollama_guard` (listener PID must equal
+the unit's MainPID, checking user scope then system scope; every entry in
+`OLLAMA_REQUIRED_ENV` present with the exact expected value; writes the serving process's
+real `OLLAMA_*` environment to `<run>/ollama_provenance.txt`) and `ollama_require_models`
+(every matrix model id resolves on the serving instance, exact match so
+`35b-a3b-q4_K_M` is not accepted for `35b`). Both called in `run_path_e.sh` preflight before
+any cell runs. Fails closed, no override flag. `OLLAMA_MODELS` is required to be set
+*explicitly* because an Ollama default never appears in `/proc/environ` and is therefore
+unverifiable — that unverifiability is what hid this.
+
+**Files changed.** `bench/lib/ollama.sh` (new), `bench/tests/test_ollama_guard.sh` (new, 17
+assertions), `bench/path_e/run_path_e.sh`, `bench/path_e/bench_path_e.py` (`models`
+subcommand), `bench/validate_harness.py` (layer 5).
+
+## 2026-08-08 06:58 EDT — Ctrl-C misreported as thermal cutout
+
+**Symptom.** Interrupting a run printed `run terminated by thermal cutout` even with the card
+at 72 C and zero samples above 80 C.
+
+**Root cause.** `gpu.sh` INT/TERM trap asserted a thermal cause unconditionally.
+
+**Fix.** Trap now consults the abort flag, the only authority on whether the card tripped,
+and otherwise prints `run interrupted by signal (no thermal breach)`. A guard that cries wolf
+gets ignored, which is how the 04:46 cutout-then-continue defect went unnoticed.
+
+**Files changed.** `bench/lib/gpu.sh`.
