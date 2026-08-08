@@ -1,8 +1,111 @@
 # ADR-015 — Native-fidelity boundary: OH-GUI exposes only verified native fields, and the upstream code is the source of truth
 
-**Status:** Ratified, with one OPEN sub-question (§ Open question)
+**Status:** Ratified · amended 2026-08-08 (OPEN sub-question resolved — see Status amendment)
 **Lock-in phase:** Phase 0 — binding immediately on every port, surface, and spec amendment
 **Supersedes:** —
+
+## Status amendment — 2026-08-08 19:25 EDT — OPEN question resolved by verification
+
+The open question below is **closed**. It was resolved by opening the shipped 1.41.0 SDK source
+rather than by choosing between the two options I offered, and the verification **overturned my own
+recommendation**. I had proposed adopting DERIVED but excluding the authorization card from it, on
+the reasoning that a misread number is most dangerous where it precedes an irreversible action. That
+split is wrong. The evidence inverts it: the one authorization-card item that is cleanly derivable
+is blast radius, and the two items I would have preserved via a DERIVED tier are not derivable at
+all — they do not exist to be derived.
+
+All citations below are to the shipped artifact, per clause 1.
+
+### Finding 1 — analyzer identity is not native, and is not recoverable
+
+`SecurityAnalyzerBase.security_risk()` returns a bare `SecurityRisk` enum and nothing else
+(`review/_sdk_src/1.41.0/openhands_sdk-1.41.0/openhands/sdk/security/analyzer.py:26`). `SecurityRisk` is a four-value `str, Enum` — `UNKNOWN`,
+`LOW`, `MEDIUM`, `HIGH` — with no carrier for provenance (`review/_sdk_src/1.41.0/openhands_sdk-1.41.0/openhands/sdk/security/risk.py:13-23`).
+
+`EnsembleSecurityAnalyzer.security_risk()` collects each child's verdict into a **local** list and
+returns `max(concrete)` (`review/_sdk_src/1.41.0/openhands_sdk-1.41.0/openhands/sdk/security/ensemble.py:80-101`). `results` is never attached to the
+action, never emitted, never persisted. Which analyzer produced the winning severity is destroyed at
+the return boundary.
+
+This is stronger than "not a native field." It is **not derivable**, because DERIVED requires
+computation solely from named native fields and the input does not survive anywhere downstream. No
+adapter, no middleware, and no amount of recomputation recovers it. A GUI that displayed
+"flagged by: policy-rail" would be manufacturing it.
+
+### Finding 2 — "rationale" does not exist, but three native explainability fields do
+
+There is no rationale field on the analyzer return path. `ActionEvent`, however, natively carries
+`summary: str | None` — an LLM-provided ~10-word description of what the action does, whose field
+description names explainability as its purpose — alongside `thought: Sequence[TextContent]` and
+`reasoning_content: str | None` (`review/_sdk_src/1.41.0/openhands_sdk-1.41.0/openhands/sdk/event/llm_convertible/action.py:26-88`). These are real,
+native, and serve the operator's actual need better than an invented rationale string.
+
+Note also that `ActionEvent.security_risk` is documented as "**The LLM's** assessment of the safety
+risk of this action" (`action.py:66-69`) — it is the LLM-analyzer value, not necessarily the
+ensemble's. Labelling it generically as "risk" would misstate its provenance and violate clause 2.
+
+### Finding 3 — blast radius is legitimately DERIVED, and its inputs are native
+
+`ActionEvent` carries `action: Action | None` (the typed tool action) and `tool_call:
+MessageToolCall` with the LLM's arguments, plus `tool_name` (`action.py:40-56`). Paths, commands and
+hosts are read out of typed native fields on the concrete `Action` subtype. Blast radius is a
+per-tool **projection** of native fields — exactly what the DERIVED tier was drafted for.
+
+### Finding 4 — a zero-sentinel trap in the first DERIVED value we would ship
+
+Context pressure would be computed from `TokenUsage.per_turn_token` and `TokenUsage.context_window`.
+Both are native — and both are declared `default=0` (`review/_sdk_src/1.41.0/openhands_sdk-1.41.0/openhands/sdk/llm/utils/metrics.py:53-58`). A
+native `0` is therefore **indistinguishable from "not reported."** Computed naively, context
+pressure either divides by zero or silently renders 0% pressure when telemetry is merely absent —
+precisely the manufactured-default failure clause 3 exists to prevent, live in the first derived
+value on the list. Condition (c) is sharpened below to cover it.
+
+## Decision — DERIVED is ratified, with five conditions
+
+A third classification alongside NATIVE and ABSENT:
+
+> **DERIVED** — permitted only when it:
+> **(a)** is computed **solely** from named native fields, each individually verified per clause 1;
+> **(b)** is visually and structurally distinguishable from a native reading, never interleaved as
+> though measured;
+> **(c)** becomes `null` when any input native field is `null` **or is a sentinel default that
+> cannot be distinguished from an unreported value** — for numeric upstream fields declared
+> `default=0`, a `0` input yields `null`, never a computed result;
+> **(d)** is listed in the port ledger with its native basis and formula;
+> **(e)** **on the authorization card only:** displays its native inputs inline, at their native
+> field names and values, so the operator can audit the derivation instead of trusting the label.
+
+Condition (e) answers the Principle 8 objection recorded in Rationale. My earlier concern was that
+(b) is a display rule, and display is not enforcement. Condition (e) does not ask the operator to
+trust styling — it puts the native readings on screen next to the derived one. A wrong derivation
+becomes visible rather than merely differently coloured. This is why the authorization card gets
+*stricter* treatment under DERIVED rather than exclusion from it.
+
+## Decision — spec 04 §4.2 is amended
+
+- **"Blast radius: files, paths, network hosts, credentials touched"** — **retained as DERIVED**,
+  per-tool projection over `ActionEvent.action` / `tool_call`, subject to condition (e). One
+  declared formula per tool class; a tool class without a declared projection renders `null`, not an
+  empty blast radius. An empty list and an uncomputed list must not look alike.
+- **"Which analyzer flagged it (pattern/policy-rail/LLM/GraySwan/ensemble)"** — **dropped.** Not
+  native, not derivable (Finding 1). Substituted with what *is* native: `EnsembleSecurityAnalyzer.
+  analyzers` is a model field (`ensemble.py:64-68`), so the card may show which analyzers are
+  **configured**, labelled as configuration and never as attribution.
+- **"plus rationale"** — **dropped as specified**, substituted with the native
+  `ActionEvent.summary`, `thought`, and `reasoning_content` (Finding 2), each labelled as the LLM's
+  own account of the action rather than as an analyzer's justification.
+- The risk reading must be labelled to preserve its native provenance as the **LLM's** assessment
+  (`action.py:66-69`), not as an unattributed verdict.
+
+## Decision — spec 08 telemetry
+
+- **Context pressure** — DERIVED from `per_turn_token` / `context_window`, `null` when either is `0`
+  per condition (c).
+- **tok/s** — unchanged from clause 6: not a GPU field. Native inference-server field or `null`.
+
+Clause 1 is not softened by this amendment. DERIVED is a bounded exception whose every input is
+still subject to clause 1 verification, and the two requirements that could not meet that bar were
+removed from the spec rather than accommodated.
 
 ## Context
 
@@ -119,6 +222,11 @@ not yet ratified:** a third classification alongside NATIVE and ABSENT —
 
 **Decision needed:** adopt the DERIVED tier, or hold clause 1 strictly and amend §4.2 / spec 08 to
 drop what cannot be sourced natively. I have not assumed either.
+
+> **RESOLVED 2026-08-08 19:25 EDT** — see the Status amendment at the top of this ADR. Both, in part: DERIVED is
+> ratified with a fifth condition, and §4.2 is amended to drop analyzer identity and rationale,
+> which verification showed are not merely non-native but unrecoverable.
+
 
 ## Rationale
 

@@ -42,8 +42,10 @@ Add a small lock icon and tooltip on any pending authorization card explaining a
 
 When the conversation enters WAITING_FOR_CONFIRMATION, render a rail-anchored card containing:
 - The exact command/patch/tool call about to execute.
-- The risk level AND which analyzer flagged it (pattern/policy-rail/LLM/GraySwan/ensemble) plus rationale.
-- Blast radius: files, paths, network hosts, credentials touched.
+- The risk level, labelled as **the LLM's** assessment — `ActionEvent.security_risk`, whose native field description reads "The LLM's assessment of the safety risk of this action" (`sdk/event/llm_convertible/action.py:66-69`). Never render it as an unattributed verdict.
+- ~~which analyzer flagged it (pattern/policy-rail/LLM/GraySwan/ensemble) plus rationale~~ — **REMOVED 2026-08-08 by ADR-015 Status amendment.** Not native and **not recoverable**: `SecurityAnalyzerBase.security_risk()` returns a bare four-value enum with no provenance carrier (`sdk/security/analyzer.py:26`, `sdk/security/risk.py:13-23`), and `EnsembleSecurityAnalyzer` collects child verdicts into a *local* list and returns `max(concrete)`, discarding attribution at the return boundary (`sdk/security/ensemble.py:80-101`). Displaying it would be manufacturing it.
+- **Substituted for the above, all native:** the LLM's own account of the action — `ActionEvent.summary` (LLM-provided ~10-word explainability string), `thought`, and `reasoning_content` (`action.py:26-88`) — each labelled as the agent's account, not an analyzer's justification. Optionally the **configured** analyzer set from `EnsembleSecurityAnalyzer.analyzers` (`ensemble.py:64-68`), labelled as configuration, never as attribution.
+- Blast radius: files, paths, network hosts, credentials touched. **Classified DERIVED** under ADR-015: a per-tool projection over the native `ActionEvent.action`, `tool_call`, and `tool_name` (`action.py:40-56`). Subject to all five DERIVED conditions, including **(e)** — the native inputs must be displayed inline at their native field names so the operator can audit the derivation. One declared formula per tool class; a tool class with no declared projection renders `null`, not an empty blast radius. An empty list and an uncomputed list must never look alike.
 - If upstream context is tagged untrusted per 04a-prompt-injection.md, display a distinct badge separate from the risk badge.
 - Three actions: Approve / Reject with reason (free-text required) / Approve and relax for this class.
 - Wire Reject directly to conversation.reject_pending_actions(reason).

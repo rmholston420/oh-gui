@@ -49,5 +49,5 @@ old one and mark the old one `Amended · superseded by ADR-###`.
 | ADR-012 | Default coder model: defer to upstream where our own evidence is silent | Ratified |
 | ADR-013 | A benchmark that cannot reach significance is not evidence: the discrimination floor for Phase 0 | Ratified |
 | ADR-014 | The SDK hook is a deny gate, not a policy plane: where Phase 1 enforcement lives | **Proposed** - gated on executable verification |
-| ADR-015 | Native-fidelity boundary: only verified native fields, upstream code over documentation | Ratified, one OPEN sub-question |
+| ADR-015 | Native-fidelity boundary: only verified native fields, upstream code over documentation | Ratified · amended 2026-08-08 (DERIVED tier ratified; spec 04 §4.2 amended) |
 

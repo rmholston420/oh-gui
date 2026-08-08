@@ -2710,3 +2710,43 @@ alongside pass/fail rather than treating speed as a tiebreak-only field.
 - **Ports / adapters affected:** none
 - **PORTING_LEDGER / ADR updated:** none
 - **Stop-condition status:** deferred by operator; not blocking. ADR-015 DERIVED tier still open.
+
+## 2026-08-08 19:25 EDT — ADR-015 amended: DERIVED tier ratified, spec 04 §4.2 amended
+
+- **Stage / plugin / port:** Phase 0 (ADR-015) · binding on Phase 1 authorization card
+- **What changed:** ADR-015 status amendment, ADR index row, `docs/specs/04-authorization.md` §4.2.
+
+Resolved ADR-015's OPEN sub-question by opening the shipped 1.41.0 SDK source instead of choosing
+between the two options I had offered. **The verification overturned my own recommendation.** I had
+proposed adopting DERIVED while excluding the authorization card from it; the evidence inverts that
+split.
+
+- **Analyzer identity is not derivable, not merely non-native.** `SecurityAnalyzerBase.
+  security_risk()` returns a bare four-value enum with no provenance carrier
+  (`sdk/security/analyzer.py:26`, `sdk/security/risk.py:13-23`), and
+  `EnsembleSecurityAnalyzer.security_risk()` collects child verdicts in a **local** list and returns
+  `max(concrete)`, discarding attribution at the return boundary (`sdk/security/ensemble.py:80-101`).
+  Nothing downstream can recover it. Dropped from the spec.
+- **"Rationale" does not exist**, but `ActionEvent.summary`, `thought` and `reasoning_content` are
+  native and serve the need better (`sdk/event/llm_convertible/action.py:26-88`). Substituted.
+- **Blast radius IS cleanly derivable** — `ActionEvent.action` / `tool_call` / `tool_name` natively
+  carry the arguments (`action.py:40-56`). Retained as DERIVED. It is the one auth-card item my
+  proposed exclusion would have wrongly killed.
+- **Zero-sentinel trap found in the first DERIVED value.** `TokenUsage.per_turn_token` and
+  `context_window` are both `default=0` (`sdk/llm/utils/metrics.py:53-58`), so a native `0` is
+  indistinguishable from unreported. Context pressure would have divided by zero or rendered a
+  confident 0%. Condition (c) now maps sentinel zeros to `null`.
+- **Fifth condition added.** On the authorization card, a DERIVED value must display its native
+  inputs inline at their native field names. This answers the Principle 8 objection with audit
+  rather than styling — the earlier draft's condition (b) was a display rule, and display is not
+  enforcement.
+- Also noted: `ActionEvent.security_risk` is documented as **the LLM's** assessment
+  (`action.py:66-69`); labelling it as an unattributed verdict would violate clause 2.
+
+- **Files touched:** `adrs/ADR-015-native-fidelity-boundary.md`, `adrs/README.md`,
+  `docs/specs/04-authorization.md`, `BUILD_LOG.md`, `SESSION_HANDOFF.md`
+- **Ports / adapters affected:** none — nothing vendored yet
+- **PORTING_LEDGER / ADR updated:** ADR-015 amended; ledger `Native basis` field now also carries
+  DERIVED formulas
+- **Stop-condition status:** met. ADR-015 has no remaining OPEN items. Phase 0 blocking work is
+  unchanged: the ADR-013-compliant task set.
