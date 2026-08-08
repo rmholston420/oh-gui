@@ -32,9 +32,36 @@ GPU_START_C="${GPU_START_C:-80}"       # refuse to begin above this
 
 GPU_WATCH_PID=""; GPU_WATCH_LOG=""; GPU_ABORT_FLAG=""
 
+# --- hotspot -----------------------------------------------------------------
+# nvidia-smi on driver 610.57.04 does NOT expose the hotspot (junction) sensor. It
+# reports only "GPU Current Temp" (edge). LACT reads hotspot over NVML, so when the
+# lactd daemon is available we sample it from there.
+#
+# This matters: at idle the two sensors sit ~1 C apart (33 edge / 32 hotspot), but under
+# sustained load hotspot runs materially hotter than edge. A guard watching only edge is
+# watching the cooler of the two sensors. Hotspot is RECORDED unconditionally; whether it
+# also ABORTS is controlled by GPU_MAX_HOTSPOT_C, unset by default (record-only) pending
+# an operator-supplied limit.
+GPU_LACT_ID="${GPU_LACT_ID:-}"
+GPU_MAX_HOTSPOT_C="${GPU_MAX_HOTSPOT_C:-}"   # empty = record only, do not abort
+
+gpu_lact_init() {
+  command -v lact >/dev/null 2>&1 || { GPU_LACT_ID=""; return 1; }
+  [ -n "$GPU_LACT_ID" ] && return 0
+  GPU_LACT_ID=$(lact cli list-gpus 2>/dev/null | awk -F'[ (]' '/NVIDIA/{print $2; exit}')
+  [ -n "$GPU_LACT_ID" ]
+}
+
+# Hotspot in whole degrees, or empty when unavailable.
+gpu_hotspot() {
+  [ -n "$GPU_LACT_ID" ] || return 0
+  lact cli -g "$GPU_LACT_ID" stats 2>/dev/null \
+    | sed -n 's/.*GPU Hotspot: \([0-9]\+\).*/\1/p' | head -1
+}
+
 gpu_sample() {
-  local q thr
-  q=$(nvidia-smi --query-gpu=temperature.gpu,power.draw,clocks.sm,utilization.gpu \
+  local q thr hs
+  q=$(nvidia-smi --query-gpu=temperature.gpu,power.draw,clocks.sm,utilization.gpu,fan.speed \
         --format=csv,noheader,nounits | tr -d ' ')
   # Parse the value AFTER the colon, not $NF. "Not Active" has $NF == "Active", so the
   # naive parser reported throttling on every sample including idle ones.
@@ -53,7 +80,8 @@ gpu_sample() {
         | awk -F':' '/HW Thermal Slowdown |SW Thermal Slowdown |HW Power Brake /\
                      {v=$2; gsub(/[ \t]/,"",v); if (v=="Active") print "1"}' | head -1)
   thr="${pcap:-0}${thermal:-0}"   # e.g. "10" = power-capped, not thermally throttled
-  echo "${q},${thr}"
+  hs=$(gpu_hotspot)
+  echo "${q},${hs:-},${thr}"
 }
 
 gpu_temp() { nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader,nounits; }
@@ -65,30 +93,46 @@ gpu_unload_all() {
 }
 
 gpu_guard() {
-  local t; t=$(gpu_temp)
+  local t hs; t=$(gpu_temp)
+  gpu_lact_init || true
+  hs=$(gpu_hotspot)
   if [ "$t" -ge "$GPU_START_C" ]; then
     echo "ABORT: GPU is ${t}C, at or above the ${GPU_START_C}C start threshold." >&2
     echo "Let it cool, or lower the cap: sudo nvidia-smi -pl 435" >&2
     exit 1
   fi
   echo "thermal: start=${t}C  warn=${GPU_WARN_C}C  ceiling=${GPU_MAX_C}C  redline=${GPU_REDLINE_C}C  cap=$(nvidia-smi --query-gpu=power.limit --format=csv,noheader,nounits)W"
+  if [ -n "$hs" ]; then
+    echo "        hotspot=${hs}C via lact${GPU_MAX_HOTSPOT_C:+  hotspot ceiling=${GPU_MAX_HOTSPOT_C}C}"
+    [ -z "$GPU_MAX_HOTSPOT_C" ] && echo "        (hotspot RECORDED but does not abort - set GPU_MAX_HOTSPOT_C to enforce)"
+  else
+    echo "        hotspot UNAVAILABLE - edge sensor only. Is lactd running?" >&2
+  fi
 }
 
 gpu_watch_start() {
   GPU_WATCH_LOG="${1:-$HOME/.oh-gui/thermal/$(date +%Y%m%d_%H%M)_$$.csv}"
   GPU_ABORT_FLAG="${GPU_WATCH_LOG%.csv}.ABORT"
   mkdir -p "$(dirname "$GPU_WATCH_LOG")"; rm -f "$GPU_ABORT_FLAG"
-  echo "ts,temp_c,power_w,sm_mhz,util_pct,pcap_thermal" > "$GPU_WATCH_LOG"
+  gpu_lact_init || true
+  echo "ts,temp_c,power_w,sm_mhz,util_pct,fan_pct,hotspot_c,pcap_thermal" > "$GPU_WATCH_LOG"
   local parent=$$
   (
     warned=0
     while true; do
       s=$(gpu_sample); t=${s%%,*}
       echo "$(date +%H:%M:%S),$s" >> "$GPU_WATCH_LOG"
-      if [ "${t:-0}" -ge "$GPU_MAX_C" ]; then
+      hs=$(echo "$s" | cut -d, -f6)
+      breach=""
+      [ "${t:-0}" -ge "$GPU_MAX_C" ] && breach="edge ${t}C >= ${GPU_MAX_C}C"
+      if [ -z "$breach" ] && [ -n "$GPU_MAX_HOTSPOT_C" ] && [ -n "$hs" ] \
+         && [ "$hs" -ge "$GPU_MAX_HOTSPOT_C" ]; then
+        breach="hotspot ${hs}C >= ${GPU_MAX_HOTSPOT_C}C"
+      fi
+      if [ -n "$breach" ]; then
         echo "$t" > "$GPU_ABORT_FLAG"
         echo "" >&2
-        echo "!! THERMAL CUTOUT: ${t}C >= ${GPU_MAX_C}C ceiling. Unloading models and stopping." >&2
+        echo "!! THERMAL CUTOUT: ${breach}. Unloading models and stopping." >&2
         gpu_unload_all
         kill -TERM "$parent" 2>/dev/null
         exit 0
@@ -123,8 +167,14 @@ try: rows=list(csv.DictReader(open(sys.argv[1])))
 except Exception: sys.exit(0)
 rows=[r for r in rows if (r.get("temp_c") or "").strip().isdigit()]
 if not rows: print(" no samples"); sys.exit(0)
+def col(r, k):
+    v = (r.get(k) or "").strip()
+    try: return float(v)
+    except ValueError: return None
 t=[float(r["temp_c"]) for r in rows]; p=[float(r["power_w"]) for r in rows]
 s=[float(r["sm_mhz"]) for r in rows]; u=[float(r["util_pct"]) for r in rows]
+fan=[x for x in (col(r,"fan_pct") for r in rows) if x is not None]
+hot=[x for x in (col(r,"hotspot_c") for r in rows) if x is not None]
 busy=[x for x,v in zip(t,u) if v>50]
 # 1 Hz sampler, so a sample count is a second count.
 over_warn=sum(1 for x in t if x>=WARN)
@@ -138,6 +188,12 @@ thermal = [r for r in rows if flag(r, 1)]
 print(f" samples {len(rows)} ({len(busy)} under load)")
 print(f" temp    max {max(t):.0f}C   avg {sum(t)/len(t):.1f}C" + (f"   under load avg {sum(busy)/len(busy):.1f}C" if busy else ""))
 print(f" power   max {max(p):.0f}W   avg {sum(p)/len(p):.1f}W")
+if hot:
+    print(f" hotspot max {max(hot):.0f}C   avg {sum(hot)/len(hot):.1f}C   (peak delta over edge {max(hot)-max(t):+.0f}C)")
+else:
+    print(" hotspot UNAVAILABLE - edge sensor only")
+if fan:
+    print(f" fan     max {max(fan):.0f}%   avg {sum(fan)/len(fan):.1f}%")
 print(f" sm clk  min {min(s):.0f}MHz avg {sum(s)/len(s):.0f}MHz")
 print(f" time >= {WARN:.0f}C warn: {over_warn}s     >= {MAX:.0f}C ceiling: {over_max}s")
 print(f" power-capped samples: {len(pcap)} (expected at the cap - benign if constant across cells)")

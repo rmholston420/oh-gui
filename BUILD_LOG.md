@@ -778,3 +778,39 @@ Entry format:
 - **Stop condition:** Phase 0 exit still NOT met. Next: ADR-004 amendment #5, then the
   Path E harness.
 
+## 2026-08-08 08:05 EDT - Fan control live; hotspot + fan added to thermal instrumentation
+
+- **Stage:** Phase 0 / R1, bench instrumentation.
+- **LACT fan curve active** on the 5090. `/etc/lact/config.yaml` now carries a `gpus:`
+  entry for `10DE:2B85-1043:89E3-0000:01:00.0` with `fan_control_enabled: true`,
+  `mode: curve`, `interval_ms: 500`, `spindown_delay_ms: 3000`, `change_threshold: 2`,
+  curve `40:0.30 50:0.40 60:0.55 70:0.75 75:0.90 80:1.00`. Confirmed by
+  `Fan Control Mode: Curve` in `lact cli stats`. Schema taken from the upstream
+  reference: https://github.com/ilya-zlobintsev/LACT/blob/master/docs/CONFIG.md
+- **`power_cap` deliberately NOT set in LACT.** LACT re-applies settings every 5 s
+  (`apply_settings_timer: 5`) and would fight `bench/gpu_pin.sh power`. One owner per
+  setting; the bench keeps the power cap.
+- **`bench/lib/gpu.sh` gains two columns.** CSV header is now
+  `ts,temp_c,power_w,sm_mhz,util_pct,fan_pct,hotspot_c,pcap_thermal`.
+  - `fan_pct` from `nvidia-smi --query-gpu=fan.speed` (confirmed working: reports `0 %`).
+  - `hotspot_c` from `lact cli -g <id> stats`, because **nvidia-smi on driver 610.57.04
+    does not expose the junction sensor at all** - `nvidia-smi -q -d TEMPERATURE` reports
+    only `GPU Current Temp`. LACT reads it over NVML.
+- **Why hotspot matters:** every thermal decision so far was made on the EDGE sensor,
+  which is the cooler of the two. At idle they are 1 C apart (33 edge / 32 hotspot); under
+  sustained load they are not. The 435 W "peak 69-70 C" figure is an edge number and the
+  corresponding hotspot is unknown.
+- **Hotspot is RECORD-ONLY for now.** `GPU_MAX_HOTSPOT_C` is unset by default, so it is
+  logged and summarised but does not abort. Enforcing a limit requires an operator figure;
+  flagged for decision rather than guessed.
+- **Hardware limits derived from the card, corroborating the operator's numbers:**
+  `GPU Current Temp 33` + `T.Limit 57` = 90 C max operating; `Slowdown T.Limit Spec -2`
+  => **88 C hardware slowdown**, matching the stated redline. The earlier "cutout at 83 C"
+  was this repo's own software guard firing, NOT the card throttling - a distinction the
+  previous log entries did not make.
+- **Power cap has reset to 600 W.** `power.limit`, `power.default_limit` and
+  `power.max_limit` all read 600.00 W, so 600 W is this card's default and the earlier
+  `nvidia-smi -pl 435` did not persist. Must be settled before any bench cell runs.
+- **Stop condition:** unchanged, Phase 0 exit not met. Blocking decisions: (1) bench power
+  cap 435 vs 600 W, (2) whether hotspot should enforce a ceiling.
+
