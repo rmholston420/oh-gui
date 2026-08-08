@@ -158,3 +158,37 @@ _No entries yet. First debugging action in this repo appends below._
   for runs after `0851974` were never actually emitted. The underlying CSVs are unaffected -
   sampling and the cutout both worked; only the summary renderer failed.
 
+## 2026-08-08 08:22 EDT - LACT fan curve active but fans never spin
+
+- **Symptom:** during a 41 s load reaching 82 C edge, `nvidia-smi --query-gpu=fan.speed`
+  read `0 %` on every one of 36 samples. 12 samples were at or above the 78 C warn
+  threshold. `lact cli stats` reports `Fan Control Mode: Curve` and the curve's 80 C point
+  is `1.00`, so the fans should have been at 100%.
+- **Affected:** host thermal management; `bench/lib/gpu.sh` reporting is correct (it
+  faithfully recorded 0%).
+- **Not yet diagnosed.** Candidate causes, in order of likelihood:
+  1. LACT parses and accepts the NVIDIA fan curve but the NVML fan-control call fails
+     silently, or requires a capability the daemon lacks.
+  2. The fans ARE spinning and `nvidia-smi` misreports speed while an external controller
+     owns the fan. Distinguishable: LACT reports RPM directly, nvidia-smi reports percent.
+  3. The curve is stored but never applied because the config was appended while the
+     daemon was stopped and something about load order skipped it.
+- **Decisive next test** - static mode removes the curve from the equation entirely. If RPM
+  moves, control works and the curve is the problem; if RPM stays 0, LACT cannot drive this
+  card's fans at all:
+  ```bash
+  sudo systemctl stop lactd
+  sudo python3 - <<'EOF'
+  import re, pathlib
+  p = pathlib.Path('/etc/lact/config.yaml'); s = p.read_text()
+  s = s.replace('mode: curve', 'mode: static').replace('static_speed: 1.0', 'static_speed: 0.8')
+  p.write_text(s)
+  EOF
+  sudo systemctl start lactd; sleep 6
+  lact cli -g "$(lact cli list-gpus | awk -F'[ (]' '/NVIDIA/{print $2; exit}')" stats | grep -i fan
+  ```
+- **Note on the earlier '83 C cutout' language:** that event was this repo's own software
+  guard firing at its 83 C ceiling, not the card throttling. The card's hardware slowdown
+  is 88 C, confirmed from `T.Limit 57` at 33 C (= 90 C max operating) minus the -2 C
+  slowdown spec. Earlier entries that implied a hardware cutout were imprecise.
+

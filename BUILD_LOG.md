@@ -814,3 +814,62 @@ Entry format:
 - **Stop condition:** unchanged, Phase 0 exit not met. Blocking decisions: (1) bench power
   cap 435 vs 600 W, (2) whether hotspot should enforce a ceiling.
 
+## 2026-08-08 08:20 EDT - 600 W REJECTED; flash attention CLOSED on all three axes; fans not spinning
+
+- **Stage:** Phase 0 / R1. Run `20260808_0515`, qwen3.6:27b @131072, 27,858-token prompt,
+  256 generated tokens (`done_reason='length'` both cells), cap 600 W, fan curve installed.
+
+### Flash attention - CLOSED, no-op on all three axes
+
+| FA | model_mib | prefill tok/s | eval_tokens | decode tok/s | peak edge C |
+|---:|---:|---:|---:|---:|---:|
+| 1 | 25,509 | 3351.8 | 256 | **69.6** | 80 |
+| 0 | 25,508 | 3303.0 | 256 | **69.4** | 82 |
+
+Decode differs by 0.3%, the axis v2 could not measure validly. Combined with v2's VRAM
+(9 MiB) and prefill (0.09%) results, `OLLAMA_FLASH_ATTENTION` is confirmed inert on this
+runtime. Caveat recorded: this run logged 1 thermally-throttled sample, so its absolute
+tok/s figures are not cross-cell comparable - but the FA verdict rests on the A/B delta
+within the run, and both cells shared the condition.
+
+### Power cap - 435 W RATIFIED for the bench
+
+| Cap | Peak edge | Under-load avg | Prefill tok/s | Time >78 C | Thermal throttle | Outcome |
+|---|---:|---:|---:|---:|---:|---|
+| 435 W | 69-70 C | 66.4 C | 2901-2929 | 0 s | 0 samples | clean |
+| 600 W | **82 C** | 77.4 C | 3303-3352 | 12 s | 1 sample | survived, 1 C from ceiling |
+
+600 W buys ~+13% prefill for +12 C and finishes 1 C under the abort threshold on a
+41-second probe. A seven-cell matrix is a much longer heat soak, and an abort in cell five
+costs more than the prefill gain. `bench/gpu_pin.sh power` now defaults to **435 W**
+(overridable: `bash bench/gpu_pin.sh power 600`).
+
+**600 W is the factory default on this card** - `power.limit`, `power.default_limit` and
+`power.max_limit` all read 600.00 W. The cap does NOT persist across a reboot and must be
+re-applied before every bench session.
+
+Also corrected in `gpu_pin.sh`: the comment claiming the SW-power-capping counter proved
+the card was hitting its cap at idle. That claim was already retracted in-session but the
+stale text was still shipping in the script.
+
+### Hotspot - record-only CONFIRMED by measurement
+
+`hotspot max 81 C` against `edge max 82 C`, a peak delta of **-1 C**. There is no hidden
+junction margin on this card, so the edge sensor the guard has always used is the correct
+one. `GPU_MAX_HOTSPOT_C` stays unset; hotspot is logged for the record. This resolves the
+open question from the 08:05 entry - by measurement rather than by picking a number.
+
+### NEW DEFECT - the fan curve is not driving the fans
+
+`fan max 0% avg 0.0%` across the entire run, including 12 seconds above 78 C and a peak of
+82 C. LACT reports `Fan Control Mode: Curve` and the config parses, but no fan response
+occurred. **The 600 W thermal result above was therefore produced with NO fan assist**, and
+the fan-curve retest that motivated this run did not actually test a fan curve.
+Consequence: the 435 W decision stands on its own merits and is not contingent on fans, but
+the thermal headroom question cannot be revisited until fan control demonstrably works.
+Diagnosis pending - see DEBUG_LOG.
+
+- **Stop condition:** Phase 0 exit not met. Power cap and hotspot questions are now CLOSED.
+  Remaining before the bench: fan control diagnosis (does not block), then the Path E
+  harness and ADR-005.
+
