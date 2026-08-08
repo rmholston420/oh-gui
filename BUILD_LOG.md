@@ -438,3 +438,35 @@ Entry format:
   `qwen3.6:35b`.
 - **Stop condition:** Phase 0 exit still NOT met.
 
+## 2026-08-08 04:55 EDT - Devstral 1.1 sourced from unsloth (verified); MTP retained
+
+- **Stage:** Phase 0 (baseline metrics)
+- **Operator decision:** use Devstral **1.1** (2507), and keep the MTP 35b variant.
+- **Provenance resolved WITHOUT a community re-upload.** Rather than
+  `seamon67/Devstral1.1-2507` or `SimonPu/Devstral-Small`, the GGUF is pulled directly from
+  **`unsloth/Devstral-Small-2507-GGUF`** (https://huggingface.co/unsloth/Devstral-Small-2507-GGUF),
+  **SPDX: Apache-2.0**, derived from `mistralai/Devstral-Small-2507` (also Apache-2.0,
+  safetensors only - no official GGUF). Ollama pulls HF GGUF repos natively, so no
+  unverified namespace is involved.
+- **Quant selected: `UD-Q4_K_XL` (13.55 GB).** Unsloth Dynamic 4-bit. Chosen to match the
+  incumbent's tier (`qwen3-coder:30b` is q4_K_M) so the comparison isolates the MODEL, not
+  the quantization. Verified sizes in that repo:
+
+  | Quant | Size |
+  |---|---:|
+  | Q4_K_M | 13.35 GB |
+  | **UD-Q4_K_XL** | **13.55 GB** |
+  | Q5_K_M | 15.61 GB |
+  | Q6_K | 18.02 GB |
+  | Q8_0 | 23.33 GB |
+
+- **Deferred, not rejected:** Devstral is 24B dense at only ~13.5 GB, so Q6_K (18 GB) and
+  even Q8_0 (23 GB) may fit. Testing every model at its best fitting quant would confound
+  the model comparison, so the matched-tier run happens first; if Devstral wins or lands
+  within the 3-point tie band, it is re-tested at Q6_K before anything is ratified.
+- **`bench/vram_sweep.sh` MODELS is now:** `qwen3.6:27b`, `qwen3.6:35b`,
+  `qwen3.6:35b-a3b-mtp-q4_K_M`, `qwen3-coder:30b`,
+  `hf.co/unsloth/Devstral-Small-2507-GGUF:UD-Q4_K_XL`. `devstral:24b` (1.0) removed - 1.1
+  supersedes it at +6.8 SWE-Bench points.
+- **Stop condition:** Phase 0 exit still NOT met.
+
