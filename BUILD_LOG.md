@@ -1317,3 +1317,35 @@ present`, listener `127.0.0.1:11434 pid=1053182`.
 
 **Stop condition.** ADR-005 still OPEN. Round 2 not yet run; the c08-c11 code cells are the
 next action and the environment is now verified for them.
+
+## 2026-08-08 07:33 EDT — embedder CPU vs iGPU: CPU wins 3.31x; ADR-004 A#2 unchanged
+
+**Stage.** Phase 0, one-off outside the Path E matrix (operator's instruction: "keep it as a
+one-off script outside the path e matrix").
+
+**Result.** `qwen3-embedding:4b`, 64 chunks of ~140 tokens, 5090 excluded from both arms:
+CPU median **58.58s** (1.09 chunks/s, 178 tok/s) vs iGPU **193.97s** (0.33 chunks/s,
+53.7 tok/s). iGPU is **3.31x slower** — far outside the 1.10x band that would have justified a
+second serving instance. Reps 1/2 were 193.97/193.98s; rep 3 interrupted, not needed.
+
+**Verdict.** ADR-004 Amendment #2 stands: embedder on CPU, `qwen3-embedding:4b`, native 2560
+dims. Recorded as Amendment #7. The prediction written into the script header before the run
+(CPU wins) held.
+
+**First attempt invalid, caught by its own assertion.** `CUDA_VISIBLE_DEVICES=""` does not hide
+an NVIDIA GPU from the Vulkan loader; the iGPU arm offloaded 37/37 layers to the 5090 and
+reported a 39x "win". Fixed by restricting the loader with `VK_DRIVER_FILES` to the RADV ICD.
+Corroboration for the valid run: thermal log shows **0 samples under load**, 5090 peaked at
+36C/32W — the card genuinely idled.
+
+**Round 2 code cells also completed** (run `20260808_0705`, all 4 cells, provenance verified,
+peak 72C, 0 throttled samples): c08 qwen3-coder:30b 466 tok @276.3 t/s · c09 devstral 507 tok
+@90.4 · c10 35b-a3b-mtp 9876 tok @119.9 · c11 27b 7719 tok @48.7. c10 loaded at 131072 **with**
+the 1 GiB GPU_OVERHEAD reserve, so the envelope concern raised before the run did not
+materialise. Machine scoring not yet run.
+
+**Files touched.** `bench/oneoff/embed_igpu_ab.sh`, `adrs/ADR-004-vram-context-envelope.md`,
+`DEBUG_LOG.md`.
+
+**Stop condition.** ADR-005 still OPEN — awaiting `score_code.py` on run 20260808_0705 and the
+c12/c13 planner replicates. The embedder question is now CLOSED.

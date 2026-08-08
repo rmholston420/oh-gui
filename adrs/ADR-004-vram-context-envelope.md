@@ -110,6 +110,45 @@ on CPU at native 2560 dims (see Amendment #2; supersedes the initial 0.6b select
 > storage is available as a fallback — but truncation degrades quality below the measured
 > 69.60, and at single-user scale the larger vectors are not a real cost.
 >
+
+> **STATUS AMENDMENT #7 (2026-08-08) — iGPU placement tested and REJECTED; A#2 stands:**
+> The operator raised the iGPU (Ryzen 9 7900X, RDNA2 Raphael) as possibly better than CPU for
+> the embedder. Tested as a one-off outside the Path E matrix
+> (`bench/oneoff/embed_igpu_ab.sh`), 64 chunks of ~140 tokens, `qwen3-embedding:4b`, both arms
+> with the 5090 excluded:
+>
+> | Arm | Device (from server log) | Median wall | Chunks/s | Tok/s |
+> |---|---|---:|---:|---:|
+> | **CPU** | `id=cpu library=cpu` | **58.58s** | 1.09 | 178 |
+> | iGPU | `Vulkan1 ... RADV RAPHAEL_MENDOCINO type=iGPU` | 193.97s | 0.33 | 53.7 |
+>
+> **The iGPU is 3.31x slower.** Well outside the 1.10x band that would have justified a second
+> serving instance, so **Amendment #2 is unchanged: the embedder stays on CPU.** Reps 1 and 2
+> were 193.97s and 193.98s; rep 3 was interrupted and is not needed at that spread. The
+> pre-registered prediction (CPU wins, written into the script header before running) held.
+>
+> Mechanism: the iGPU is a 2-CU part reporting `compute=0.0`, sharing the same DDR5 as 12 Zen 4
+> cores with AVX-512. It has no memory-bandwidth advantage and far less compute.
+>
+> First attempt was **invalid** and its own assertion caught it: `CUDA_VISIBLE_DEVICES=""` does
+> not hide an NVIDIA card from the Vulkan loader, so the "iGPU" arm ran 37/37 layers on the
+> 5090 and reported a 39x win. Pinning now uses `VK_DRIVER_FILES` to the RADV ICD. See
+> DEBUG_LOG 2026-08-08 07:22 EDT.
+>
+> **Incidental, not part of this decision:** the same accident measured the 5090 at ~6,849
+> tok/s via Vulkan versus ~178 on CPU. A#2's VRAM isolation therefore costs roughly **39x**
+> embedder throughput. That is a real trade worth revisiting if retrieval latency ever becomes
+> the bottleneck; it does not change the decision now, because the reason for CPU placement is
+> immunity to eviction, not speed.
+>
+> **Open discrepancy, flagged not resolved:** A#2 recorded 13.7 chunks/s for 4b at `num_ctx
+> 512`, but this run measured 1.09 chunks/s on the same model and hardware — a ~12x gap. The
+> two used different chunk sizes and different request shapes, so they are not directly
+> comparable, and A#2's figure was a per-call latency extrapolation while this one is
+> end-to-end wall time over 64 sequential calls. The decision rule in A#2 compared models
+> against each other under one method, so its ranking is unaffected. Anyone quoting an
+> absolute embedder throughput number should use **this** measurement, not A#2's.
+>
 > Ingest: 13.7 chunks/s indexes 10,000 chunks in ~12 minutes, one-time and off-path.
 
 **3. KV-cache quantization is abandoned on Ollama.** Server env stays
