@@ -160,4 +160,17 @@ git init -q -b main
 git -c user.name="oh-gui-baseline" -c user.email="baseline@localhost" add -A
 git -c user.name="oh-gui-baseline" -c user.email="baseline@localhost" \
     commit -q -m "Seed notes-api baseline fixture"
+# Test venv. Colossus system Python is PEP 668-managed and has no fastapi, so running pytest
+# against it yields a collection ImportError that reads as a test FAILURE. That fabricates a
+# quality signal for every task. The venv lives beside the fixture, not inside it, so the agent
+# never sees it and `git clean -fdx` never deletes it.
+VENV="${OH_GUI_BASELINE_VENV:-$(dirname "$FIXTURE")/venv}"
+if [ ! -x "$VENV/bin/python" ]; then
+  echo "creating test venv at $VENV"
+  python3 -m venv "$VENV"
+fi
+"$VENV/bin/pip" install -q -U pip
+"$VENV/bin/pip" install -q fastapi pytest httpx
+echo "test venv: $("$VENV/bin/python" -c 'import fastapi,pytest; print("fastapi",fastapi.__version__,"pytest",pytest.__version__)')"
+
 echo "fixture seeded at $FIXTURE ($(git rev-parse --short HEAD))"

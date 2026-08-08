@@ -46,6 +46,25 @@ const nowISO = () => new Date().toISOString();
 let outcome = "aborted", failure = null;
 const t = { submitted_s: null, first_message_s: null, idle_s: null };
 let turns = 0, transcript = "", modelObserved = null, cid = null;
+const errorsSeen = [];
+
+const profileLabel = async () => (await page.locator('[data-testid="chat-input-llm-profile"]')
+  .first().innerText().catch(() => "")).replace(/\s+/g, " ").trim();
+
+const selectProfile = async () => {
+  const stem = PROFILE.slice(0, 12);
+  if ((await profileLabel()).includes(stem)) { say(`profile already ${PROFILE}`); return; }
+  await click("chat-input-llm-profile");
+  const optId = `chat-input-llm-profile-option-${PROFILE}`;
+  if (!(await click(optId))) {
+    const avail = (await ids(page)).filter((x) => x.startsWith("chat-input-llm-profile-option-"));
+    throw new Error(`profile "${PROFILE}" not offered. Available: ${avail.join(", ")}`);
+  }
+  await page.waitForTimeout(1500);
+  const label = await profileLabel();
+  if (!label.includes(stem)) throw new Error(`profile did not switch: label "${label}" != "${PROFILE}"`);
+  say(`profile: ${PROFILE} (label "${label}")`);
+};
 
 const click = async (id) => {
   if (!(await has(page, id))) { say(`   MISSING ${id}`); return false; }
@@ -66,26 +85,20 @@ try {
   await page.goto(INGRESS, { waitUntil: "networkidle", timeout: 60000 });
   await page.waitForTimeout(2500);
   await ensureConfigured(page, say, shot);
+  // ---- 3. select the model FIRST, on the home screen.
+  // t01 run 1: launch-workspace creates the conversation on whatever profile is already selected,
+  // so the conversation was born on the 35b and its title generation ran on the 35b before the
+  // switch landed — the ollama sampler caught the 35b resident from 14:00:30 to 14:00:40 during a
+  // 27b cell. On a 2x8 matrix that quietly corrupts both VRAM state and timings. Set the profile
+  // before the conversation exists.
+  await selectProfile();
   for (let i = 0; i < 3 && !(await has(page, "launch-workspace")); i++) {
     await click("conversation-panel-new-thread-picker");
   }
   if (!(await click("launch-workspace"))) throw new Error("could not launch into the workspace");
   await page.waitForTimeout(2500);
-
-  // ---- 3. select the model, then VERIFY the selection took.
-  // Selecting and assuming is how sixteen cells silently run on one model.
-  await click("chat-input-llm-profile");
-  const optId = `chat-input-llm-profile-option-${PROFILE}`;
-  if (!(await click(optId))) {
-    const avail = (await ids(page)).filter((x) => x.startsWith("chat-input-llm-profile-option-"));
-    throw new Error(`profile "${PROFILE}" not offered. Available: ${avail.join(", ")}`);
-  }
-  await page.waitForTimeout(1500);
-  const label = (await page.locator('[data-testid="chat-input-llm-profile"]').first()
-    .innerText().catch(() => "")).replace(/\s+/g, " ").trim();
-  const stem = PROFILE.slice(0, 12);
-  if (!label.includes(stem)) throw new Error(`profile did not switch: label "${label}" != "${PROFILE}"`);
-  say(`profile: ${PROFILE} (label "${label}")`);
+  // Confirm it survived conversation creation rather than assuming it did.
+  await selectProfile();
   await shot("10-configured");
 
   // ---- 4. submit the task card VERBATIM
@@ -112,37 +125,49 @@ try {
 
   // ---- 5. poll to idle, saying out loud what it sees
   const ERR_RE = /error|failed|exception|unauthor|refused|timed out|rate limit|invalid|no such model/i;
-  let stall = 0, lastN = 0;
+  let stall = 0, lastN = 0, idleFor = 0;
   for (let i = 0; i < TIMEOUT_S; i++) {
     await page.waitForTimeout(1000);
     const cur = await ids(page);
     const n = await page.locator('[data-testid="agent-message"]').count().catch(() => 0);
 
     // Heartbeat. A run that prints nothing for thirty minutes is indistinguishable from a hung one.
+    // Every conversation-status-* id is present in the DOM at all times — `-error` was in the
+    // very first sample, one second in, before anything had happened. Presence is not state.
+    // Only visibility is.
+    const running = await page.locator('[data-testid="stop-button"]').first()
+      .isVisible().catch(() => false);
     if (i % 15 === 0) {
-      const status = cur.filter((x) => x.startsWith("conversation-status-")).join(",") || "none";
-      const busy = cur.includes("stop-button") ? "stop-button PRESENT" : "no stop-button";
-      say(`   [${el()}s] status=${status} | ${busy} | agent-messages=${n}`);
+      const vis = [];
+      for (const s of ["working", "active", "check", "error"]) {
+        if (await page.locator(`[data-testid="conversation-status-${s}"]`).first()
+          .isVisible().catch(() => false)) vis.push(s);
+      }
+      say(`   [${el()}s] visible-status=${vis.join(",") || "none"} | ` +
+          `${running ? "RUNNING" : "not running"} | agent-messages=${n}`);
     }
 
-    // Surface an error instead of waiting out the full timeout and calling it a timeout.
-    const body = await page.locator("body").innerText().catch(() => "");
-    const hit = body.split("\n").map((l) => l.trim())
-      .find((l) => l.length > 8 && l.length < 300 && ERR_RE.test(l) && !/error_detail/.test(l));
-    if (hit && !cur.includes("stop-button")) {
-      say(`   ERROR ON SCREEN: ${hit}`);
-      failure = `error on screen: ${hit}`;
-      await shot("98-error");
-      break;
+    // "Agent error" is a TRANSIENT inline event: t01 run 2 hit one, recovered, and finished the
+    // task correctly — and my detector killed the run and stamped it a timeout. Errors are
+    // COUNTED, not fatal. Only the stall detector and idle decide when a run is over.
+    if (i % 5 === 0) {
+      const body = await page.locator("body").innerText().catch(() => "");
+      for (const line of body.split("\n").map((l) => l.trim())) {
+        if (line.length > 6 && line.length < 200 && ERR_RE.test(line)
+            && !/error_detail/.test(line) && !errorsSeen.includes(line)) {
+          errorsSeen.push(line); say(`   [${el()}s] error event (non-fatal, recorded): ${line}`);
+        }
+      }
     }
 
-    // Nothing moving, nothing running: stop early rather than burn the timeout.
-    if (n === lastN && !cur.includes("stop-button")) stall++; else stall = 0;
+    // Nothing moving and nothing running: stop early rather than burn the timeout.
+    if (n === lastN && !running) stall++; else stall = 0;
     lastN = n;
-    if (stall >= 120 && n === 0) {
-      failure = "no agent activity for 120s and nothing running — run never started";
-      say(`   ${failure}`);
-      break;
+    if (stall >= 180) {
+      failure = n === 0
+        ? "no agent activity for 180s and nothing running — run never started"
+        : `stalled: no new message for 180s with nothing running (after ${n} messages)`;
+      say(`   ${failure}`); break;
     }
     if (n > turns) { turns = n; if (t.first_message_s === null) {
       t.first_message_s = Number(el()); say(`${t.first_message_s}s first agent message`);
@@ -150,9 +175,12 @@ try {
       try { modelObserved = execFileSync("ollama", ["ps"], { encoding: "utf8" })
         .split("\n").slice(1).map((l) => l.trim().split(/\s+/)[0]).filter(Boolean).join(","); } catch {}
     } }
-    if (cur.includes("conversation-status-check") && !cur.includes("stop-button") && n > 0) {
-      t.idle_s = Number(el()); say(`${t.idle_s}s idle after ${turns} agent messages`); break;
-    }
+    if (!running && n > 0) {
+      idleFor++;
+      if (idleFor >= 8) {   // 8 consecutive seconds not running — not a gap between tool calls
+        t.idle_s = Number(el()); say(`${t.idle_s}s idle after ${turns} agent messages`); break;
+      }
+    } else idleFor = 0;
   }
   if (t.idle_s === null && !failure) { failure = `timeout after ${TIMEOUT_S}s`; say(`   ${failure}`); }
   if (t.idle_s === null) {
@@ -190,12 +218,23 @@ try {
   } catch (e) { say(`   git read failed: ${e.message}`); }
 
   // Objective check the agent cannot talk its way past.
-  let tests = null;
-  try {
-    execFileSync("python3", ["-m", "pytest", "-q"], { cwd: FIXTURE, encoding: "utf8", timeout: 300000 });
-    tests = "pass";
-  } catch (e) {
-    tests = e.status === undefined ? "not-run" : "fail";
+  // t01 run 2 reported tests=fail when the truth was that system Python 3.14 has no fastapi and
+  // pytest exited 2 on a collection ImportError. Nonzero is not "the agent's code failed". Use the
+  // venv, and distinguish the exit codes instead of collapsing them.
+  let tests = null, testsDetail = "";
+  const venvPy = `${dirname(FIXTURE)}/venv/bin/python`;
+  try { readFileSync(venvPy); } catch { tests = "no-venv"; }
+  if (tests === null) {
+    try {
+      execFileSync(venvPy, ["-m", "pytest", "-q"], { cwd: FIXTURE, encoding: "utf8", timeout: 300000 });
+      tests = "pass";
+    } catch (e) {
+      testsDetail = `${e.stdout || ""}${e.stderr || ""}`.slice(-1500);
+      tests = e.status === 1 ? "fail"
+        : e.status === 5 ? "no-tests"
+        : e.status === undefined ? "not-run"
+        : `harness-error(exit ${e.status})`;   // 2/3/4 = collection or usage error, NOT the agent's fault
+    }
   }
 
   const summary = {
@@ -225,7 +264,8 @@ try {
         ? Number((t.idle_s - t.submitted_s).toFixed(1)) : null,
       files_changed: filesChanged, lines_written: added, lines_removed: removed,
       untracked_files: untracked, numstat,
-      fixture_tests: tests,
+      fixture_tests: tests, fixture_tests_detail: testsDetail || null,
+      error_events_seen: errorsSeen,
       console_errors: [...new Set(errs)].slice(0, 10),
     },
   };

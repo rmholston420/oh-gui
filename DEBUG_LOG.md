@@ -897,3 +897,45 @@ image vs. disable MCP — so no change until the traceback or the profile conten
   - Stall detector: 120 s with no new message and nothing running, abort rather than burn 30 min.
   - Dump url, relevant ids and the body tail on any non-completion.
   - `OH_GUI_KEEP_OPEN=1` holds the browser open 300 s on failure so the screen can be inspected.
+
+## 2026-08-08 14:10 EDT — t01 completed and my driver called it a timeout (three false signals)
+
+Run `20260808_1359_run`. The agent added the DELETE endpoint, wrote two tests, edited 3 files
+(+18 lines) and finished with "Done". The driver recorded `outcome=timeout`, `tests=fail`. Every
+one of those errors was mine.
+
+**1. Conversation status ids are all present at all times.**
+First heartbeat, 1 s in, before anything happened:
+`conversation-status-active,conversation-status-error,conversation-status-check`.
+`conversation-status-error` appeared in EVERY sample of a run that was working correctly. These
+are rendered-but-hidden icons. Idle detection was built on `cur.includes(...)`, i.e. on presence.
+**Presence is not state.** Fixed: `isVisible()` for both `stop-button` and each status icon, and
+idle requires 8 consecutive not-running seconds so a gap between tool calls is not read as done.
+*This is the "assert on the destination state, not the control" rule, broken again by me, in a
+third place.*
+
+**2. "Agent error" is a transient inline event, not a fatal one.** The agent hit one, recovered,
+and completed the task. My error scan aborted the run and reported the symptom as the outcome.
+Fixed: error text is COUNTED into `error_events_seen` and never terminates a run. Only idle and
+the stall detector (now 180 s, and it distinguishes "never started" from "stalled after N
+messages") end a run.
+
+**3. `tests=fail` was fabricated.** pytest ran against system Python 3.14, which has no fastapi,
+so it exited 2 on a collection ImportError — and my classifier treated any nonzero exit as the
+agent's code failing. All 16 cells would have been stamped "tests failed" with the agent's code
+fine. Fixed: `seed_fixture.sh` now builds a venv beside the fixture (not inside it — the agent
+never sees it and `git clean -fdx` cannot delete it) with fastapi, pytest and httpx; exit codes
+are distinguished (1=fail, 5=no-tests, 2/3/4=`harness-error`, missing venv=`no-venv`) so a broken
+harness can never again be reported as a failing agent.
+
+**4. Wrong model resident mid-cell — not my detector, a real ordering bug.** The sampler caught
+`qwen3.6:35b-a3b-mtp-q4_K_M` resident 14:00:30-14:00:40 during a 27b cell, and the transcript
+contains "Switched to profile qwen3.6-27b" INSIDE the conversation. `launch-workspace` creates the
+conversation on whatever profile is already selected, so it was born on the 35b and its title
+generation ran on the 35b before the switch landed. On a 2x8 matrix that corrupts VRAM state and
+timings silently. Fixed: profile is selected on the home screen BEFORE the conversation is
+created, then re-verified inside it.
+
+**Genuinely measured this run (the harness was wrong, the agent was not):** 26.3s submit ->
+61s first agent message -> 3 turns; 3 files, +18/-0. GPU peaked 66C, 0 samples >=80C, 0 thermal
+throttling.
