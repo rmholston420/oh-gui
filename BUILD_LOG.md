@@ -2072,3 +2072,27 @@ any build starts. Recorded here; no spec or ADR edited yet.
 - Tests 12 → 13. Files: `bench/baseline/mark.py`, `bench/baseline/README.md`,
   `bench/baseline/tests/test_baseline_harness.py`, DEBUG_LOG.
 - Stop condition unchanged.
+
+## 2026-08-08 10:23 EDT — Automating the baseline run: stage 1 UI probe
+
+- Stage: Phase 0 exit item 3. Operator asked for the run to be automated rather than driven by hand.
+- **Two of item 5's metrics do not survive automation, and saying so is the point.**
+  "Lines accepted WITHOUT INSPECTION" and "lost track" incidents measure operator behavior. An
+  autonomous accept is not 100% uninspected; it is unmeasured. The driver will record them as null
+  and `report.py` will state that those item-5 fields are unsatisfied by an automated run, rather
+  than emit a 100% that reads like a finding. Item 6 (corrective instructions) is likewise
+  unmeasurable without a human, since there is no operator to form a mental model.
+- Everything else automates cleanly: time-to-first-review, turns, lines accepted (git), GPU
+  temp/power, resident model, stack version.
+- Driving the real UI with Playwright rather than the agent-server REST API, because the spec says
+  "through the unmodified app" and the API path would measure the agent while skipping the thing
+  under test.
+- **Selectors are not guessable and were not guessed.** Stage 1 is `bench/baseline/ui/probe.mjs`, an
+  evidence-gathering pass that reports data-testids, roles, accessible names, editable fields,
+  console errors, and whether the working directory is visible in the page — plus full-page
+  screenshots. The driver gets written against that output.
+- The probe also checks whether the fixture path appears in the page text, so the driver can confirm
+  the agent's working directory from the app's own view rather than from a process env var.
+- Files: `bench/baseline/ui/probe.mjs`. No behavior change to the manual harness, which stays valid.
+- Stop condition unchanged: Phase 0 exit item 3 open until the report exists and ADR-008's verdict
+  is filled. ADR-008 will need an amendment recording which metrics an automated run can carry.
