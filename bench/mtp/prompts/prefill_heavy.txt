@@ -1,0 +1,17 @@
+Below is a description of a system. Read it and answer the single question at the end in no more
+than three sentences.
+
+The Kosmos build follows a kernel-plus-plugin architecture. The kernel owns formal ports; every
+adapter is vendored from a permissively licensed upstream where one exists, and hand-built only
+when a fresh check finds nothing suitable. Each port is logged in a porting ledger recording source
+URL, commit hash, SPDX license, and modification notes. Architectural decisions that reshape ports,
+adapters, plugin scope, governance tiers, or storage backends require a formal ADR carrying context,
+decision, rationale, consequences, and lock-in phase. Reversible code-level choices do not. An
+append-only build log records every completed slice with a timestamp, the stage it belongs to, files
+touched, ports affected, and current stop-condition status. A separate append-only debug log records
+diagnosed defects with symptom, root cause, fix, and files changed, and must be searched before any
+new investigation begins. A session handoff file is overwritten at the end of every session with the
+stage in progress, what was completed, what remains, open questions, and the exact next action.
+
+Question: if a decision both adopts a new OSS component and changes a plugin boundary, which
+artifacts must be updated, and in what order?

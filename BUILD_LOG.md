@@ -2381,3 +2381,40 @@ cannot run, a workspace mismatch, or a thermal ceiling breach invalidates the ce
 when stdout is not a TTY, so `tee` to a log file stays clean; `OH_GUI_COLOR=1` forces, `0` disables.
 Applied to preflight's ok/warn/FAIL, the PASS/FAIL banner, and the GPU verdict lines in
 `bench/lib/gpu.sh` (ceiling breach and thermal throttling red, warm yellow, fine green).
+
+## 2026-08-08 16:15 EDT — tok/s cannot come from the agent loop; separate instrument built
+
+ADR-010 needs tok/s to compare 27b against 27b-mtp. The agent harness cannot supply it. The
+conversation event log records `completion_tokens: 0` and `prompt_tokens: 0` on every call — Ollama
+through litellm is not reporting usage — with only sporadic `reasoning_tokens`. Nothing else in the
+harness counts tokens.
+
+Wall-clock is not a substitute. Time-to-idle in an agent run is dominated by tool calls, file I/O
+and retries after malformed tool-call JSON (measured today, present on nearly every cell). Two
+questions, two instruments:
+
+- the matrix -> does the model DO THE TASK (acceptance)
+- `bench/mtp/` -> how fast does it GENERATE (throughput)
+
+`bench/mtp/bench_mtp.py` drives Ollama's `/api/generate` directly and reads `eval_count` and
+`eval_duration`, which under MTP count ACCEPTED tokens — the real speedup, not a theoretical one.
+Prompts on disk (`short_gen`, `long_gen`, `prefill_heavy`), one JSON per cell, sampling pinned to
+the ADR-009 values so a Modelfile change cannot silently move the baseline, `seed` fixed, models
+unloaded between tags because two 18-23 GB models will not co-reside in 32 GB. GPU discipline per
+standing rule: 45C cold gate before each cell, abort at 83C, temperature recorded per cell.
+
+`bench/mtp/summarize_mtp.py` reports median tok/s and the speedup, and pairs ONLY a plain tag with
+its own MTP variant — dividing 35b by 27b would repeat the exact error ADR-010 exists to prevent.
+5 tests; one caught a real defect where the thermal summary disappeared whenever no plain/MTP pair
+was present, which is the single-model case.
+
+`bench/baseline/compare_blocks.py` puts the matrix blocks side by side, flags the MTP boundary, and
+suppresses cross-boundary speed comparison. It states plainly that nothing in that harness counts
+tokens, so no tok/s figure may be quoted from it.
+
+Colour applied to the driver (`ui/colors.mjs`): workspace confirmed green, unverified yellow,
+mismatch red; recorded model errors yellow; the outcome line via `outcomeLine()` so a harness fault
+reads UNKNOWN in red rather than a plausible-looking `ACCEPTED=no`. 11 tests, including that no
+escape codes survive a pipe. Baseline suite 57, mtp suite 5.
+
+Stop condition: Phase 0 item 3 OPEN. Needs the third matrix block AND the MTP microbench.

@@ -20,6 +20,7 @@ import { openSession, ids, has, ensureConfigured } from "./session.mjs";
 import { gradeCell } from "./grade.mjs";
 import { pointAtModel, bindRestoreToExit } from "./default_profile.mjs";
 import { checkWorkspace } from "./conversation_meta.mjs";
+import { green, yellow, red, outcomeLine } from "./colors.mjs";
 import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -127,9 +128,9 @@ try {
   // model that does nothing both produce an empty git diff, so this cannot be caught afterwards.
   cid = (page.url().match(/conversations\/([0-9a-f-]{36})/) || [])[1] || null;
   ws = checkWorkspace(cid, FIXTURE);
-  if (ws.match === true) say(`workspace confirmed: ${ws.working_dir}`);
-  else if (ws.match === false) throw new Error(`WRONG WORKSPACE — ${ws.reason}`);
-  else say(`workspace UNVERIFIED: ${ws.reason} — results for this cell are not auditable`);
+  if (ws.match === true) say(green(`workspace confirmed: ${ws.working_dir}`));
+  else if (ws.match === false) throw new Error(red(`WRONG WORKSPACE — ${ws.reason}`));
+  else say(yellow(`workspace UNVERIFIED: ${ws.reason} — results for this cell are not auditable`));
 
   await shot("10-configured");
 
@@ -189,7 +190,7 @@ try {
       for (const line of body.split("\n").map((l) => l.trim())) {
         if (line.length > 6 && line.length < 200 && ERR_RE.test(line)
             && !/error_detail/.test(line) && !errorsSeen.includes(line)) {
-          errorsSeen.push(line); say(`   [${el()}s] error event (non-fatal, recorded): ${line}`);
+          errorsSeen.push(line); say(yellow(`   [${el()}s] error event (non-fatal, recorded): ${line}`));
         }
       }
     }
@@ -291,8 +292,13 @@ try {
   };
   writeFileSync(join(OUTDIR, `${TASK}.summary.json`), JSON.stringify(summary, null, 2) + "\n");
   writeFileSync(join(OUTDIR, `${TASK}.transcript.txt`), transcript);
+  // Colour splits on WHOSE FAULT a line is, not how bad it sounds. A model failing its task is
+  // the measurement (yellow). A gate that cannot run, or a cell that changed nothing, means the
+  // number is not a measurement at all (red) — see ui/colors.mjs.
   say(`\noutcome=${outcome} turns=${turns} files=${filesChanged} +${added}/-${removed} ` +
-      `tests=${tests} gate=${gate} ACCEPTED=${g.accepted ? "yes" : "NO"}`);
+      `tests=${tests} gate=${gate} ` +
+      outcomeLine({ accepted: g.accepted, gate, fixtureTests: tests, outcome,
+                    filesChanged }));
   say(`summary: ${join(OUTDIR, `${TASK}.summary.json`)}`);
   if (outcome !== "completed" && process.env.OH_GUI_KEEP_OPEN === "1") {
     say(`\nOH_GUI_KEEP_OPEN=1 — leaving the browser up for 300s so you can look at it yourself.`);

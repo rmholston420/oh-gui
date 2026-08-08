@@ -1,0 +1,5 @@
+Write a complete FastAPI module implementing a notes API with in-memory storage: create, read one,
+read all, update, delete, and a case-insensitive search endpoint. Use Pydantic models for request
+and response bodies, return 404 with a detail message when a note does not exist, and use the
+correct status code for each operation. Then write a pytest suite covering every endpoint including
+both branches of delete and search. Output only code, in two clearly separated files.
