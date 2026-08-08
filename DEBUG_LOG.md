@@ -562,8 +562,10 @@ observable outcome — a requested parameter silently not applied — is identic
   1. `playwright.config.ts` ran `npm run dev` with no `--host`. Vite's default host is `localhost`.
      On a dual-stack machine that resolves to `::1` first, so Vite binds only the IPv6 loopback
      while the config polls `http://127.0.0.1:5173`, which never answers. The sandbox is
-     IPv4-only, which is why it passed there and only there. **This is a hypothesis consistent
-     with all observed evidence but not yet confirmed on Colossus**, because —
+     IPv4-only, which is why it passed there and only there. **Measured on Colossus 2026-08-08
+     09:58 EDT**: with the default host, `ss -lntp | grep 5173` reports exactly one listener,
+     `LISTEN [::1]:5173`, and no `127.0.0.1:5173`. Confirmed, not inferred. It could not be
+     confirmed from the original failure output, because —
   2. Playwright's `webServer` discards the child's stdout/stderr unless told otherwise. Whatever
      Vite said about the failure was thrown away, leaving a bare timeout. The absence of a
      diagnosable error is itself the more serious defect: it is what made cause 1 unfalsifiable.
@@ -580,3 +582,15 @@ observable outcome — a requested parameter silently not applied — is identic
 - Files: `apps/gui/playwright.config.ts`, `apps/gui/e2e/wizard.spec.ts`.
 - Also switched the reporter to `list` + `html` so `npx playwright show-report` has a report to
   open; `playwright-report/` and `test-results/` were already gitignored.
+
+### Confirmation addendum — 2026-08-08 09:58 EDT
+
+The binding fix and the logging fix shipped in one commit, so the green re-run alone could not
+attribute the repair. Measured separately afterwards: `npm run dev` with Vite's default host binds
+`[::1]:5173` only. The IPv4 poll target therefore never had a listener, which is the whole failure.
+Root cause is now measured rather than reasoned, and ADR-007's amendment was updated to match.
+
+Unrelated observation from the same command: `pkill -f vite` reported
+`killing pid 16688 failed: Operation not permitted` — a non-owned process whose command line
+matches `vite`. Harmless here (the dev server, pid 2433892, did exit), but `pkill -f` is broader
+than it looks; prefer `--strictPort`'s own failure or an explicit pid.
