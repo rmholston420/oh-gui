@@ -890,3 +890,37 @@ Diagnosis pending - see DEBUG_LOG.
 - **Stop condition:** Phase 0 exit not met. All thermal questions now CLOSED. Next and only
   remaining instrumentation-side work: `bench/path_e/bench_path_e.py` and ADR-005.
 
+## 2026-08-08 09:30 EDT - Path E harness written; ADR-005 filed OPEN; ADR-004 A#5
+
+- **Stage:** Phase 0 / R1, quality bench. Ports touched: none (bench tooling only).
+- **Clean 435 W baseline captured** (`20260808_0523`): peak 71 C edge, hotspot 71 C
+  (+0 C delta), 0 s above the 78 C warn line, **0 thermally throttled samples**. Compare
+  the 600 W run 3 minutes earlier: 81 C peak, 12 s above warn, 1 throttled sample. The
+  435 W ratification is now backed by a throttle-free run.
+- **LACT now owns the power cap.** `power_cap: 435.0` added to `/etc/lact/config.yaml`.
+  Root cause of the reset: `lactd` re-applies its config on start and every 5 s, and with
+  no `power_cap` set it reverted the card to the 600 W factory default - silently undoing
+  `gpu_pin.sh`. Two owners for one setting is the bug; LACT wins because its value also
+  survives a reboot, which `nvidia-smi -pl` does not. `gpu_pin.sh` is now redundant for
+  power and is retained only for ad-hoc override.
+- **New:** `bench/path_e/bench_path_e.py` (7 cells, one per invocation, never overwrites),
+  `bench/path_e/run_path_e.sh` (thermal guard, preflight, model lifecycle),
+  `bench/path_e/dump_for_scoring.sh`.
+- **Deliberate deviation from the `local-llm-bench` skeleton, documented in-file:** native
+  `/api/chat` instead of `/v1/chat/completions`. The OpenAI-compatible endpoint drops the
+  `options` object, so `num_ctx` would silently fall back to 65536 and every 131072 cell
+  would measure a context it does not claim. Native also returns exact
+  `prompt_eval_*`/`eval_*` counters instead of wall-clock estimates.
+- **Preflights, each one derived from a failure already recorded in this repo:** power cap
+  must read exactly 435 W; idle VRAM > 2000 MiB prompts before continuing; every model tag
+  must exist locally before cell 1 starts; a <64-token result is marked INVALID rather
+  than averaged in; `done_reason == "length"` is surfaced as truncation at scoring time.
+- **ADR-005 filed with status OPEN** - decision criteria and falsifier written BEFORE any
+  results exist, so the verdict cannot be fitted to the numbers.
+- **ADR-004 Amendment #5:** 262,144 context is unusable in production. The envelope was
+  measured against an idle desktop; against the real ~3,500 MiB desktop the 35b MTP build
+  overruns the card by 261 MiB. Planner ceiling is 131,072, which still meets the Qwen3.6
+  card's >=128K guidance. No harness change needed - no cell was planned at 262,144.
+- **Stop condition:** harness is written and statically validated but has NOT been
+  executed. Phase 0 exit remains unmet. Next action is the operator running the matrix.
+

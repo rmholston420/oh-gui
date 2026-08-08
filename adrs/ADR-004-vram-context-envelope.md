@@ -164,6 +164,28 @@ memory that was never freed.
   partially covers this; the planner's 128K config has ~6.4 GB free before the embedding
   model, so the margin is real but not generous.
 
+> **STATUS AMENDMENT #5 (2026-08-08) — 262,144 context is UNUSABLE in production:**
+> The envelope in Amendment #4 was measured against an **idle desktop** (650–850 MiB of
+> VRAM in use). The operator's actual working desktop consumes ~3,500 MiB. Re-checked
+> against that number, the largest context does not fit:
+>
+> | Model @ context | Model MiB | + desktop 3,500 | vs 32,607 total | Verdict |
+> |---|---:|---:|---:|---|
+> | `35b-a3b-mtp-q4_K_M` @262,144 | 29,368 | 32,868 | **261 MiB OVER** | ✗ unusable |
+> | `35b-a3b-mtp-q4_K_M` @131,072 | 26,390 | 29,890 | 2,717 free | ✓ |
+> | `qwen3.6:27b` @131,072 | 26,140 | 29,640 | 2,967 free | ✓ |
+>
+> Consequence: **the planner's real production ceiling is 131,072, not 262,144.** This
+> still satisfies the Qwen3.6 card's ≥128K guidance for preserving thinking capability,
+> so no capability is lost — but the "full 256K with 2,743 MiB free" claim in Amendment
+> #4 is true only on a bare desktop and must not be quoted as a production figure.
+>
+> No harness change is required: no Path E cell was ever planned at 262,144.
+>
+> Method note: an envelope measured under conditions the system will never actually run
+> in is not an envelope. Future sweeps must record concurrent desktop VRAM alongside the
+> model figure, not subtract it away.
+
 > **STATUS AMENDMENT #4 (2026-08-08) — envelope CLOSED, all five candidates measured:**
 >
 > | Model | Params | Max 100%-GPU ctx | MiB at max | KV KB/token |

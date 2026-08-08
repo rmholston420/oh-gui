@@ -1,64 +1,50 @@
-# SESSION HANDOFF
+# Session Handoff
 
-**Updated:** 2026-08-08 03:45 EDT
+**Updated:** 2026-08-08 09:30 EDT
+**Stage:** Phase 0 / R1 - quality bench (Path E). Blocks Phase 0 exit.
 
-## Current stage
+## State: ready to run the bench
 
-Phase 0 - baseline metrics. ADR-001, ADR-003, ADR-004 Ratified. ADR-002 Superseded.
-Spec at v4.3. No application code written yet (both `apps/gui` and
-`services/middleware` are contract READMEs only) - this is intentional.
+All instrumentation questions are closed. The harness is written and statically validated
+but has never been executed against a model.
 
 ## Completed this session
 
-- ADR-003: single-operator deployment; household/multi-user removed from 14 spec files,
-  `15-household-profiles.md` archived, safety plane (04, 04a) retained in full.
-- LICENSE (MIT) + NOTICE added.
-- Model set fixed: `qwen3.6:27b` (planner) + `qwen3-coder:30b` (coder).
-  `qwen3:32b` dropped as superseded.
-- `bench/SAMPLING.md`: official Qwen3.6 sampling params recorded. Ollama's baked defaults
-  are a mix of two modes and match no official recommendation - do not use them.
-- ADR-004: VRAM/context envelope measured and ratified. See BUILD_LOG for the numbers.
+- **LACT NVML fixed** - a Flatpak unit at `/etc/systemd/system/lactd.service` was shadowing
+  the deb unit and could not see host NVIDIA libraries. Disabled and renamed `.flatpak.bak`.
+- **435 W ratified** with a throttle-free run: 71 C peak, 0 s above warn. 600 W rejected
+  (81-82 C, thermal throttling) for ~13% prefill.
+- **LACT owns the power cap** via `power_cap: 435.0` in `/etc/lact/config.yaml`. Survives
+  reboot. Do NOT also set it with `gpu_pin.sh` - one owner per setting.
+- **Fan telemetry is a dead instrument on this card.** Operator confirmed visually that the
+  fans spin; driver 610.57.04 does not expose the tachometer, so every readout says 0%.
+  Never build a guard on `fan_pct`. My earlier "LACT seized the fans" diagnosis was wrong
+  and is retracted in DEBUG_LOG 08:35.
+- **Flash attention: confirmed no-op** on VRAM, prefill and decode, across three runs.
+- **Hotspot: record-only**, measured within +/-1 C of the edge sensor.
+- **ADR-004 Amendment #5** - production context ceiling is 131,072, not 262,144.
+- **ADR-005 filed OPEN** with criteria and falsifier fixed before results exist.
+- **Written:** `bench/path_e/{bench_path_e.py,run_path_e.sh,dump_for_scoring.sh}`.
 
-## Decided envelope
+## Remaining before Definition of Done
 
-| Role | Model | Context | VRAM |
-|---|---|---:|---:|
-| Planner | `qwen3.6:27b` | 131072 | 26113 MiB |
-| Coder | `qwen3-coder:30b` | 65536 | 25167 MiB |
-| Embedding | `qwen3-embedding:0.6b` | **512 (pinned)** | **CPU** (`num_gpu: 0`), ~20 MiB VRAM |
+1. Run the matrix: `bash bench/path_e/run_path_e.sh` (~7 cells).
+2. `bash bench/path_e/dump_for_scoring.sh <run_dir>`, paste the dump back for scoring
+   against `bench/gold/{debug,arch,plan}.md`.
+3. Fill in ADR-005 Decision / Rationale / Consequences; flip status to Ratified.
+4. Remaining Phase 0 exit items: upstream artifact pins, read-only stock Agent Canvas
+   checkout, first-run wizard stating the `ConfirmRisky()` trust-dial stop.
 
-Server env: `OLLAMA_FLASH_ATTENTION=1`, `OLLAMA_KV_CACHE_TYPE=f16`,
-`OLLAMA_GPU_OVERHEAD=1073741824`. q8_0 KV is a confirmed no-op on Ollama's new engine.
+## Open question awaiting the operator
+
+None blocking. ADR-004 A#3 reopened the planner comparison (27b vs 35b); the Path E matrix
+answers it empirically, so no separate decision is needed first.
 
 ## Exact next action
 
 ```bash
-cd ~/dev/oh-gui && git pull
-mkdir -p bench/prompts
+cd ~/dev/oh-gui && git pull && bash bench/path_e/run_path_e.sh
 ```
 
-Then author `bench/prompts/{debug,arch,plan}.txt` from real OH-GUI work. Phase 0's
-remaining blocker is the quality bench; per `local-llm-bench`, Perplexity gold answers are
-generated FIRST, prompts live on disk, `<think>` is stripped before scoring, and both
-`output_tokens` and `wall_seconds` are captured per cell.
-
-Confirms planner@128K and coder@64K each fit co-resident with the embedding model at
-`num_ctx 512`, and measures role-switch latency (the router's cost model depends on it).
-
-## Open questions awaiting answer
-
-1. **Security analyzer VRAM.** No room for a third resident model. Reuse the resident
-   agent model / CPU-resident small model / omit the LLM analyzer from the ensemble?
-   Deferred to the analyzer slice (ADR-004 §5).
-2. **Quality bench not yet run.** `bench/prompts/` does not exist. Needs three real
-   OH-GUI tasks (debug / arch / plan) authored from actual project work, not synthetic.
-
-## Remaining before Phase 0 exit
-
-- [ ] `validate_config.sh` co-residency + switch-cost results
-- [ ] Quality bench vs Perplexity gold standard
-- [ ] Upstream artifact pins: `ghcr.io/openhands/agent-server` digest, pip package
-      versions, `@openhands/typescript-client` version (alpha - API may change without
-      notice)
-- [ ] Read-only stock Agent Canvas reference checkout
-- [ ] First-run wizard stating default trust-dial stop `ConfirmRisky()` in-UI
+Re-apply nothing first - LACT sets the 435 W cap on boot. The driver verifies it and
+refuses to start if the cap is not exactly 435 W.
