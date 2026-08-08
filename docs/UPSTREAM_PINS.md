@@ -85,6 +85,35 @@ checked against it before scaffolding (`colossus-python-env` skill; do not assum
 | `shasum` | `a0f7ea7722035e47897ac2426af3c3d4099ce79c` |
 | Declared deps | `ws ^8.20.0`, `@openrouter/sdk ^0.13.24` |
 
+### Reference-app dev backend pins 1.40.1, not 1.41.0
+
+Distinct from the container image above, and easy to conflate. The image pinned by digest in
+section 1 is what **OH-GUI** will run. When the **reference app** (Agent Canvas v1.12.0) is started
+in dev mode via `npm run dev`, it launches its own backend through `uvx` and pins it from its own
+config:
+
+| Source | Value |
+|---|---|
+| `config/defaults.json` (v1.12.0) | `"versions": { "agentServer": "1.40.1" }` |
+| Consumed by | `scripts/dev-safe.mjs:50` -> `DEFAULT_AGENT_SERVER_VERSION` |
+| Applied at | `dev-safe.mjs:483-500`, pinning `openhands-agent-server`, `openhands-sdk`,
+  `openhands-tools`, `openhands-workspace` to the same version, plus `AGENT_CLIENT_PROTOCOL_CONSTRAINT` |
+| Observed at runtime | `/server_info` on both 8010 and 18000 reports `1.40.1` for version,
+  sdk_version, tools_version and workspace_version |
+
+So the reference app running 1.40.1 is **upstream's intent, not drift**. `uvx` did not resolve
+"latest"; v1.12.0 asks for 1.40.1 by name. Any baseline measured through `npm run dev` is measuring
+the 1.12.0 + 1.40.1 pair.
+
+Overrides, all of which keep the four packages in lockstep (verified by reading
+`buildAgentServerCommand`, not assumed):
+
+- `OH_AGENT_SERVER_VERSION=<x>` — PyPI, pins all four to `<x>`
+- `OH_AGENT_SERVER_GIT_REF=<ref>` — git, all four from the same ref, with `--reinstall` because a
+  branch can carry the same version string as the released wheel and uv would otherwise silently
+  reuse the cache
+- `OH_AGENT_SERVER_LOCAL_PATH=<abs>` — editable installs from a monorepo checkout
+
 ### Version skew — server 1.41.0 vs client 1.37.0
 
 The client is **four minor versions behind** the SDK and server it talks to, and it is not a

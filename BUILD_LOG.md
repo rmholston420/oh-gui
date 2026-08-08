@@ -2163,3 +2163,26 @@ any build starts. Recorded here; no spec or ADR edited yet.
   question is actually answered.
 - Files: `bench/baseline/ui/probe2.mjs`, DEBUG_LOG.
 - Stop condition unchanged.
+
+## 2026-08-08 13:14 EDT — Reference-app backend pin recorded; version-skew hypothesis refuted
+
+- Stage: Phase 0 exit item 3.
+- `config/defaults.json` in Agent Canvas v1.12.0 sets `versions.agentServer = "1.40.1"`, consumed
+  by `dev-safe.mjs` and applied to all four SDK packages in lockstep. The running 1.40.1 backend is
+  **upstream's intent, not uvx drift**.
+- **This refutes the hypothesis I was leading with**, that the 500 came from a v1.12.0 frontend
+  against a stale backend, and it vindicates ADR-008 decision 3 (use the app's own backend). The
+  app is running the pair upstream shipped. No ADR amendment needed on that point.
+- **A claim I made and am retracting:** I said `docs/UPSTREAM_PINS.md` was "wrong" for recording
+  v1.41.0. It is not. That section pins the container image OH-GUI will run per ADR-001 item 2, a
+  different artifact from the reference app's dev backend. I called it wrong before reading it.
+  Added a new section recording the dev-mode pin instead of changing the image pin.
+- Also verified before recommending it: the `OH_AGENT_SERVER_VERSION` override branch pins all four
+  packages to the same version rather than only agent-server, so testing 1.41.0 produces a coherent
+  environment. Read `buildAgentServerCommand` in full rather than assuming symmetry with the
+  default branch.
+- No upstream issue exists for `'Server' object has no attribute 'list_tools'` in either
+  OpenHands/OpenHands or OpenHands/software-agent-sdk. If 1.41.0 fixes it we have a clean
+  reproduction worth filing; if not, we need the traceback.
+- Files: `docs/UPSTREAM_PINS.md`.
+- Stop condition unchanged.
