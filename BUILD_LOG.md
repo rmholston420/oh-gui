@@ -1388,3 +1388,33 @@ note that the two rounds ran under different start temperatures.
 `bench/validate_harness.py`.
 
 **Stop condition.** Unchanged: ADR-005 OPEN pending c12/c13.
+
+## 2026-08-08 08:05 EDT — CORRECTION: the 45C gate did not apply to c12/c13
+
+**Retracts** the "Comparability caveat, recorded for ADR-005" paragraph in the 07:52 entry, as
+it applies to c12/c13.
+
+The 07:52 entry warned that the planner replicates would start up to 45 C while round 1 started
+at 38 C. That did not happen. Run `20260808_0738` began at **07:37:57**, before the 45 C commit
+was pushed at 07:52 and before the operator pulled it. Its own log is the evidence:
+`calibrating cold gate (waiting for idle floor) ...... settled at 33C after 30s` /
+`cold gate: 36C (measured floor 33C + 3C margin)`.
+
+So c12/c13 ran under a **calibrated 36 C** gate against round 1's calibrated 38 C — a 2 C
+difference between two calibrated gates, not the 7 C gap I flagged. **The planner replicates are
+comparable to round 1 and need no start-temperature qualifier.** The caveat still stands for
+every run *after* this one.
+
+I wrote a caveat about a change that was not yet in effect on the run in question. The check I
+skipped was trivial: compare the run's start timestamp against the commit time.
+
+**Justification for the gate change is stronger than argued, from this run's own numbers.**
+Cooling waits totalled 917 s (176+272+217+80+61+111) out of 1,544 s wall — **59% of the run was
+spent waiting for the card to reach 36 C**, for 6 cells that peaked at 72 C with 0 throttled
+samples.
+
+**Anomaly recorded, not explained.** `power max 450W` against a 435 W LACT cap, with 102
+power-capped samples. The 07:05 run showed 437 W. 450 W is 3.4% over cap. Most likely
+explanation is telemetry sampling above the enforcement window rather than a cap breach, but
+that is a hypothesis and no causal claim enters an artifact until executed. Not blocking:
+`THERMALLY throttled samples: 0`.
