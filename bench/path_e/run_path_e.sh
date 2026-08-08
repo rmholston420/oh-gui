@@ -76,6 +76,9 @@ echo "run dir: $RUN_DIR"
 echo "cells:   ${#CELLS[@]}"
 echo "cap:     ${CAP} W   idle VRAM: ${IDLE_MIB} MiB"
 gpu_guard
+# Every cell must start from the same thermal state, including the first one. A 34 C start
+# after an earlier probe is residual heat, not a cold card.
+gpu_cool_wait || true
 gpu_watch_start "$HOME/.oh-gui/thermal/${STAMP}_path_e.csv"
 
 FAILED=()
@@ -97,10 +100,11 @@ for cell in "${CELLS[@]}"; do
 
   # Unload everything before the next cell. KEEP_ALIVE=-1 means nothing expires on its own.
   gpu_unload_all
-  # Let VRAM actually free and the card shed heat before the next load. Role switches were
-  # measured at 2.8-6.9 s; this is deliberately longer so cells start from a similar
-  # thermal state rather than inheriting the previous cell's heat soak.
-  sleep 20
+  # Let VRAM actually free, then wait for the card to be genuinely cold again rather than
+  # sleeping a guessed interval. A fixed sleep does not know how hot the last cell got, so
+  # a long planner cell would hand its heat soak to whatever ran next.
+  sleep 5
+  gpu_cool_wait || true
 done
 
 gpu_watch_stop

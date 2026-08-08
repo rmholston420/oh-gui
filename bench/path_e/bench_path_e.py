@@ -197,7 +197,11 @@ def run_cell(cell_id: str, out_dir: Path) -> Path:
         print(f"REFUSING to overwrite {dest}", file=sys.stderr)
         sys.exit(2)
 
-    print(f"-- {cell_id}  model={model} role={role} ctx={num_ctx} think={think}")
+    # Recorded, not just printed: if a cell started hot the driver's cool-wait timed out,
+    # and that cell's timings are not comparable with the rest of the matrix.
+    start_gpu = gpu_snapshot()
+    print(f"-- {cell_id}  model={model} role={role} ctx={num_ctx} think={think} "
+          f"start={start_gpu.get('temp_c','?')}C")
     results = []
     for task in tasks:
         print(f"   task={task} ... ", end="", flush=True)
@@ -217,6 +221,10 @@ def run_cell(cell_id: str, out_dir: Path) -> Path:
         "think": think, "num_predict": num_predict,
         "sampling": SAMPLING[role],
         "power_cap_w": os.environ.get("BENCH_POWER_CAP_W", "435"),
+        "gpu_at_start": start_gpu,
+        "cold_start_target_c": int(os.environ.get("GPU_COLD_C", "32")),
+        "cold_start_ok": (start_gpu.get("temp_c", 999)
+                          <= int(os.environ.get("GPU_COLD_C", "32"))),
         "ts_utc": datetime.now(timezone.utc).isoformat(),
         "results": results,
     }

@@ -33,6 +33,10 @@ for f in files:
     print(f"# model={d['model_id']}  role={d['role']}  ctx={d['num_ctx']}  "
           f"think={d['think']}  cap={d.get('power_cap_w')}W")
     print(f"# sampling={d['sampling']}")
+    if d.get("cold_start_ok") is False:
+        print(f"# WARNING: cell started at {d.get('gpu_at_start',{}).get('temp_c','?')}C, "
+              f"above the {d.get('cold_start_target_c')}C cold target - "
+              f"timings not comparable with cold-started cells.")
     print('#'*78)
     for r in d["results"]:
         if "error" in r:

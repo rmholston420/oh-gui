@@ -11,6 +11,10 @@
 #   83 C  HARD CEILING               - abort the run
 #   78 C  warn                       - report, keep going
 #   80 C  refuse to start a new run
+#   32 C  COLD threshold - not a safety limit. The card idles at 28-29 C when genuinely
+#         cold (operator, 2026-08-08), so anything above ~32 C means residual heat from a
+#         previous run. Benching from unequal starting temperatures makes later cells
+#         clock down earlier and quietly penalises whatever ran last.
 # The card was previously capped at 435 W for heat reasons; it currently sits at 600 W,
 # so these limits are enforced in software rather than assumed from the power cap.
 #
@@ -20,7 +24,8 @@
 #
 # Usage:
 #   source "$(dirname "$0")/lib/gpu.sh"
-#   gpu_guard          # refuse to start above GPU_START_C
+#   gpu_guard          # refuse to start above GPU_START_C (safety)
+#   gpu_cool_wait      # block until <=GPU_COLD_C (comparability)
 #   gpu_watch_start    # 1 Hz sampler + hard cutout at GPU_MAX_C
 #   ...                # gpu_sample -> "temp,power,sm,util,throttle"
 #   gpu_watch_stop     # summary + verdict
@@ -28,6 +33,8 @@
 GPU_REDLINE_C="${GPU_REDLINE_C:-88}"   # hardware limit, documentation only
 GPU_MAX_C="${GPU_MAX_C:-83}"           # hard ceiling: abort
 GPU_WARN_C="${GPU_WARN_C:-78}"         # warn
+GPU_COLD_C="${GPU_COLD_C:-32}"         # comparability: cold-start target (idle is 28-29 C)
+GPU_COOL_TIMEOUT_S="${GPU_COOL_TIMEOUT_S:-300}"  # give up waiting, warn, continue
 GPU_START_C="${GPU_START_C:-80}"       # refuse to begin above this
 
 GPU_WATCH_PID=""; GPU_WATCH_LOG=""; GPU_ABORT_FLAG=""
@@ -154,6 +161,44 @@ gpu_watch_start() {
   # TERM/INT must summarise AND exit non-zero.
   trap 'gpu_watch_stop' EXIT
   trap 'gpu_watch_stop; echo "run terminated by thermal cutout" >&2; exit 1' INT TERM
+}
+
+# Block until the card is genuinely cold, so every cell of a matrix starts from the same
+# thermal state. This is a COMPARABILITY gate, not a safety one - GPU_START_C handles
+# safety. Without it, cell 1 starts at 29 C and cell 7 at 40 C, and the ordering of the
+# matrix becomes a confound in its own results.
+#
+# On timeout this WARNS and continues rather than aborting: ambient temperature can drift
+# above the target on a hot day, and refusing to run at all would be worse than running
+# with a recorded caveat. The actual start temperature is always printed and recorded.
+#
+#   gpu_cool_wait [target_c] [timeout_s]
+gpu_cool_wait() {
+  local target="${1:-$GPU_COLD_C}" timeout="${2:-$GPU_COOL_TIMEOUT_S}"
+  local t0 t elapsed
+  t0=$(date +%s); t=$(gpu_temp)
+  if [ "$t" -le "$target" ]; then
+    echo "cold: ${t}C (target <=${target}C)"
+    GPU_LAST_START_C="$t"; export GPU_LAST_START_C
+    return 0
+  fi
+  printf 'cooling: %sC -> target <=%sC ' "$t" "$target"
+  while : ; do
+    sleep 5
+    t=$(gpu_temp); elapsed=$(( $(date +%s) - t0 ))
+    printf '.'
+    if [ "$t" -le "$target" ]; then
+      printf ' reached %sC after %ss\n' "$t" "$elapsed"
+      GPU_LAST_START_C="$t"; export GPU_LAST_START_C
+      return 0
+    fi
+    if [ "$elapsed" -ge "$timeout" ]; then
+      printf '\nWARNING: still %sC after %ss (target %sC). Proceeding.\n' "$t" "$elapsed" "$target" >&2
+      echo "  This cell starts hotter than the others - flag it when comparing timings." >&2
+      GPU_LAST_START_C="$t"; export GPU_LAST_START_C
+      return 1
+    fi
+  done
 }
 
 # True if the watcher has tripped. Call between cells of a long matrix.

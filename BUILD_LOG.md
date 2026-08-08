@@ -924,3 +924,29 @@ Diagnosis pending - see DEBUG_LOG.
 - **Stop condition:** harness is written and statically validated but has NOT been
   executed. Phase 0 exit remains unmet. Next action is the operator running the matrix.
 
+## 2026-08-08 09:42 EDT - Cold-start gate added; fixed inter-cell sleep removed
+
+- **Stage:** Phase 0 / R1, bench instrumentation.
+- **Operator correction:** the reported `start=34C` is not a cold card. This 5090 idles at
+  **28-29 C** when genuinely cold, so 34 C was residual heat from the probe three minutes
+  earlier.
+- **Why it matters for the bench:** the matrix runs 7 cells back to back. With a guessed
+  `sleep 20` between them, cell 1 would start near 29 C and cell 7 near 40 C, so the later
+  cells clock down earlier and the *ordering* of the matrix becomes a confound in its own
+  results. A fixed sleep cannot know how hot the previous cell got.
+- **New in `bench/lib/gpu.sh`:** `gpu_cool_wait [target_c] [timeout_s]`, with
+  `GPU_COLD_C=32` (idle 28-29 C plus margin) and `GPU_COOL_TIMEOUT_S=300`. Polls at 5 s.
+- **This is a COMPARABILITY gate, deliberately distinct from the safety limits.**
+  `GPU_START_C=80` still aborts unsafe starts; `GPU_COLD_C` only equalises starting
+  conditions. On timeout it WARNS and proceeds rather than aborting - ambient drift on a
+  hot day should not make the bench unrunnable - and the real start temperature is
+  recorded so the caveat travels with the data.
+- **`run_path_e.sh`:** `sleep 20` removed; `gpu_cool_wait` now runs before the first cell
+  and after every unload.
+- **`bench_path_e.py`:** each cell JSON now carries `gpu_at_start`, `cold_start_target_c`
+  and `cold_start_ok`. `dump_for_scoring.sh` prints a warning banner for any cell where
+  `cold_start_ok` is false, so a hot-started cell cannot be silently compared.
+- **Verified** with a stubbed temperature sensor: both the reached-target path and the
+  timeout path behave as designed.
+- **Stop condition:** unchanged - harness written and validated, not yet executed.
+
