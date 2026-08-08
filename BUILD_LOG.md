@@ -328,3 +328,26 @@ Entry format:
   an explicit decision once measured.
 - **Stop condition:** Phase 0 exit still NOT met.
 
+## 2026-08-08 04:25 EDT - Embedder -> 4b; 35b prediction FALSIFIED
+
+- **Stage:** Phase 0 (baseline metrics)
+- **Embedder matrix (CPU, num_ctx 512, 24 threads):** 0.6b 110.2 ms / 41.3 cps / 1024d;
+  4b 161.0 ms / 13.7 cps / 2560d; 8b 211.7 ms / 7.9 cps / 4096d;
+  nomic 245.3 ms / 4.4 cps. GPU rows for reference: 0.6b 90.2 ms, nomic 22.1 ms.
+- **MRL probe PASSED:** Ollama honours `dimensions`; 4b and 8b both returned exactly 1024
+  when requested (native 2560 / 4096).
+- **DECISION:** embedder upgraded to **`qwen3-embedding:4b`**, CPU, **native 2560 dims**,
+  `num_ctx 512`. Passes the pre-registered rule (161 ms for +4.96 retrieval points).
+  8b rejected: +51 ms for only +1.28 over 4b. ADR-004 Amendment #2.
+- **PREDICTION FALSIFIED - qwen3.6:35b.** BUILD_LOG 04:20 predicted FITS@32K, SPILL@64K,
+  128K impossible. Actual: 100% GPU at **all four** contexts including **262144**
+  (25114 / 25798 / 27063 / 29864 MiB). Derived KV/token: 27b 74.6 KB, coder:30b 110 KB,
+  **35b 21.8 KB**. The prediction generalised from `qwen3-coder:30b` on the grounds that
+  both are A3B MoE; that reasoning was unfounded - KV cost is set by attention config, not
+  MoE topology. Recorded as ADR-004 Amendment #3.
+- **Consequence:** 35b reaches full 256K with 2743 MiB free and costs only 885 MiB more
+  than 27b at 131072, with ~3B active params (expected faster generation). The candidate
+  freeze to 27b + qwen3-coder:30b was decided on the strength of the wrong prediction and
+  is flagged for the operator to reconsider. No model change made unilaterally.
+- **Stop condition:** Phase 0 exit still NOT met.
+

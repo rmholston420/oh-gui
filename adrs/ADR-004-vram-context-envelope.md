@@ -60,7 +60,8 @@ env var is ignored for models running on it rather than erroring
 | Coder | `qwen3-coder:30b` | **65,536** | 128K spills to 97% CPU; no headroom exists to recover it |
 
 **2. The embedding model is pinned to `num_ctx 512`** and always loaded explicitly with
-that option. Never allow it to load at the Ollama default.
+that option. Never allow it to load at the Ollama default. Model: **`qwen3-embedding:4b`**
+on CPU at native 2560 dims (see Amendment #2; supersedes the initial 0.6b selection).
 
 > **STATUS AMENDMENT (2026-08-08) — RATIFIED:** The embedder runs on **CPU**
 > (`num_gpu: 0`), model `qwen3-embedding:0.6b` retained, `num_ctx 512`.
@@ -90,6 +91,26 @@ that option. Never allow it to load at the Ollama default.
 > different tracks and the figure was not apples-to-apples. The direction of the result is
 > well supported, the magnitude was not. Authoritative same-track figures are now recorded
 > in the model-size amendment below.
+
+> **STATUS AMENDMENT #2 (2026-08-08) — embedder upgraded to `qwen3-embedding:4b`:**
+> Measured CPU latency at `num_ctx 512` (24 threads):
+>
+> | Model | dims | single | chunks/s | Retrieval (MTEB-multi) |
+> |---|---:|---:|---:|---:|
+> | 0.6b | 1024 | 110 ms | 41.3 | 64.64 |
+> | **4b** | **2560** | **161 ms** | **13.7** | **69.60** |
+> | 8b | 4096 | 212 ms | 7.9 | 70.88 |
+>
+> Applying the pre-registered decision rule (<150 ms free; 150–400 ms acceptable for a
+> ≥3-point retrieval gain; >400 ms reject): **4b passes** (161 ms for +4.96 points over
+> 0.6b). **8b fails** — it costs another 51 ms for only +1.28 over 4b.
+>
+> Stored at **native 2560 dims**. MRL truncation is confirmed working through Ollama's
+> `dimensions` parameter (4b and 8b both returned exactly 1024 when asked), so 1024-dim
+> storage is available as a fallback — but truncation degrades quality below the measured
+> 69.60, and at single-user scale the larger vectors are not a real cost.
+>
+> Ingest: 13.7 chunks/s indexes 10,000 chunks in ~12 minutes, one-time and off-path.
 
 **3. KV-cache quantization is abandoned on Ollama.** Server env stays
 `OLLAMA_KV_CACHE_TYPE=f16` so the configuration does not misrepresent itself.
@@ -142,6 +163,33 @@ memory that was never freed.
   frontend on the same GPU will consume 2–3 GB. The 1 GiB `OLLAMA_GPU_OVERHEAD` reserve
   partially covers this; the planner's 128K config has ~6.4 GB free before the embedding
   model, so the margin is real but not generous.
+
+> **STATUS AMENDMENT #3 (2026-08-08) — planner selection REOPENED:**
+> `qwen3.6:35b` (= `35b-a3b`, digest `07d35212591f`, MoE ~3B active) was predicted in
+> BUILD_LOG to fit only at 32K and to spill at 64K. **That prediction was wrong.**
+> Measured:
+>
+> | ctx | 27b (dense) | 35b-a3b (MoE) |
+> |---:|---:|---:|
+> | 32,768 | 20,083 | 25,114 |
+> | 65,536 | 22,187 | 25,798 |
+> | 131,072 | 26,178 | 27,063 |
+> | 262,144 | **SPILLED** 86% CPU | **25,864 — 100% GPU** |
+>
+> Derived KV cost per token: 27b **74.6 KB**, qwen3-coder:30b **110 KB**,
+> qwen3.6:35b **21.8 KB**. The prediction assumed 35b would resemble the other A3B MoE
+> (`qwen3-coder:30b`); instead it is ~3.4× cheaper per token than the dense 27b. MoE
+> topology does not predict KV cost — attention configuration does. The earlier reasoning
+> was an unfounded generalisation from a single analogous model.
+>
+> Consequence: `qwen3.6:35b` reaches the **full 256K** context with 2,743 MiB free, and at
+> 131,072 costs only 885 MiB more than the 27b. With ~3B active params it should also
+> generate faster than the dense 27b. It therefore dominates the 27b on capacity and
+> likely on speed; only reasoning quality per token remains open.
+>
+> The operator froze the candidate list to 27b + qwen3-coder:30b *before* this data
+> existed, on the basis of the incorrect prediction. Decision #1 below is left standing
+> pending the operator's call on whether to reopen the planner comparison.
 
 ## Lock-in phase
 
