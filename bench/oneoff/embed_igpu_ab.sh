@@ -77,11 +77,34 @@ run_arm() {                              # run_arm <arm> <igpu_enable>
   # the "cpu" arm would silently be a 5090 arm. Vulkan is therefore enabled ONLY for the iGPU
   # arm, which needs it, and the device actually chosen is asserted after the run either way.
   local vulkan=0
-  [ "$igpu" = "1" ] && vulkan=1
+  local icd=""
+  local vkdev=""
+  if [ "$igpu" = "1" ]; then
+    vulkan=1
+    # Restrict the Vulkan LOADER to the AMD/RADV ICD only. Proven necessary by the 07:16 run:
+    # with both ICDs loadable, ollama enumerated Vulkan0=RTX 5090 and Vulkan1=iGPU, then the
+    # scheduler picked Vulkan0 and offloaded all 37 layers to the 5090 - producing a 39x
+    # "iGPU win" that was really the discrete card. VK_DRIVER_FILES is the modern loader
+    # variable; VK_ICD_FILENAMES is its deprecated alias, set too for older loaders.
+    icd="$(ls /usr/share/vulkan/icd.d/radeon_icd*.json 2>/dev/null | head -1 || true)"
+    if [ -z "$icd" ]; then
+      echo "FATAL: no RADV ICD found under /usr/share/vulkan/icd.d/." >&2
+      echo "  Without it the loader cannot be restricted to the iGPU and this arm would" >&2
+      echo "  silently run on the 5090 again. Install mesa-vulkan-drivers, or skip this arm." >&2
+      echo "  Present ICDs:" >&2
+      ls -1 /usr/share/vulkan/icd.d/ 2>/dev/null | sed 's/^/    /' >&2 || echo "    (none)" >&2
+      return 1
+    fi
+    vkdev=0   # after ICD filtering the iGPU is the only Vulkan device, index 0
+    echo "  vulkan ICD restricted to: $icd"
+  fi
 
   CUDA_VISIBLE_DEVICES="" \
   OLLAMA_IGPU_ENABLE="$igpu" \
   OLLAMA_VULKAN="$vulkan" \
+  VK_DRIVER_FILES="$icd" \
+  VK_ICD_FILENAMES="$icd" \
+  GGML_VK_VISIBLE_DEVICES="$vkdev" \
   OLLAMA_HOST="127.0.0.1:${PORT}" \
   OLLAMA_KEEP_ALIVE=-1 \
   OLLAMA_NUM_PARALLEL=1 \

@@ -415,3 +415,40 @@ the only occurrence.
 **Note.** This is the same *class* of error as the earlier `local win=()` episode, where I
 asserted a bash behaviour without running it and wrote a false comment into `gpu.sh`. The
 difference here is that the claim above was reproduced in a shell before being written down.
+
+## 2026-08-08 07:22 EDT — embedder iGPU arm ran on the RTX 5090; hiding CUDA does not hide Vulkan
+
+**Symptom.** The iGPU arm of `bench/oneoff/embed_igpu_ab.sh` reported 1.52s vs the CPU arm's
+59.62s — a 39x "iGPU win" that is physically implausible for a 2-CU RDNA2 iGPU. The run's own
+assertion caught it and aborted:
+`FATAL: arm igpu selected the DISCRETE GPU - this measurement is invalid.`
+
+**Affected.** `bench/oneoff/embed_igpu_ab.sh` (one-off, outside the Path E matrix). No Path E
+data and no ADR conclusion was touched.
+
+**Root cause.** `CUDA_VISIBLE_DEVICES=""` constrains only the CUDA backend. With
+`OLLAMA_VULKAN=1` the Vulkan loader independently enumerated **both** ICDs, and ollama logged:
+
+```
+inference compute id=0 library=Vulkan name=Vulkan0 description="NVIDIA GeForce RTX 5090" type=discrete
+inference compute id=1 library=Vulkan name=Vulkan1 description="AMD Ryzen 9 7900X ... (RADV RAPHAEL_MENDOCINO)" type=iGPU
+selecting single GPU for llama-server model main_gpu=0 id=0 library=Vulkan name=Vulkan0 ... RTX 5090
+load_tensors: offloaded 37/37 layers to GPU
+```
+
+The scheduler preferred the discrete card, so the "iGPU" arm was a 5090 arm with all 37 layers
+resident. `OLLAMA_IGPU_ENABLE=1` enables iGPU *consideration*; it does not pin to it, and
+ollama has no per-request device pinning.
+
+**Fix.** The iGPU arm now restricts the Vulkan **loader** to the RADV ICD via
+`VK_DRIVER_FILES` (+ deprecated alias `VK_ICD_FILENAMES`) resolved from
+`/usr/share/vulkan/icd.d/radeon_icd*.json`, plus `GGML_VK_VISIBLE_DEVICES=0`. The ICD is
+resolved by glob and the arm aborts if absent rather than falling back. The CPU arm keeps
+`OLLAMA_VULKAN=0`, and its device was confirmed as `library=cpu` in the same run.
+
+**Note.** The 07:16 CPU arm remains **valid** — `inference compute id=cpu library=cpu` — so
+only the iGPU arm needs re-running.
+
+**Incidental finding (not the question asked).** Embedding qwen3-embedding:4b on the 5090 via
+Vulkan reached ~6849 tok/s vs ~175 tok/s on CPU. That quantifies the cost of ADR-004 A#2's
+VRAM isolation at roughly 39x embedder throughput, and it is a Vulkan number, not CUDA.
