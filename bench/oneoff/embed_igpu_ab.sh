@@ -64,9 +64,17 @@ run_arm() {                              # run_arm <arm> <igpu_enable>
 
   # Discrete GPU hidden from BOTH arms. Without this the 5090 would serve the model and the
   # comparison would measure nothing at all.
+  #
+  # CUDA_VISIBLE_DEVICES="" alone is NOT sufficient: NVIDIA cards also expose a Vulkan device,
+  # so with OLLAMA_VULKAN=1 the 5090 could still be selected through the Vulkan backend and
+  # the "cpu" arm would silently be a 5090 arm. Vulkan is therefore enabled ONLY for the iGPU
+  # arm, which needs it, and the device actually chosen is asserted after the run either way.
+  local vulkan=0
+  [ "$igpu" = "1" ] && vulkan=1
+
   CUDA_VISIBLE_DEVICES="" \
   OLLAMA_IGPU_ENABLE="$igpu" \
-  OLLAMA_VULKAN=1 \
+  OLLAMA_VULKAN="$vulkan" \
   OLLAMA_HOST="127.0.0.1:${PORT}" \
   OLLAMA_KEEP_ALIVE=-1 \
   OLLAMA_NUM_PARALLEL=1 \
@@ -131,6 +139,21 @@ PY
   echo "  device selected by this arm:"
   grep -iE "inference compute|dropping integrated|offloaded|library=" "$log" \
     | sed 's/^/    /' | tail -5 || echo "    (nothing matched in log)"
+
+  # Assert, do not merely display. A silent fallback to the discrete card would produce
+  # entirely plausible numbers and a wrong verdict - which is the failure mode this project
+  # has hit repeatedly today. Fail loudly instead.
+  if grep -qiE "inference compute.*(NVIDIA|RTX|CUDA)" "$log"; then
+    echo "FATAL: arm ${arm} selected the DISCRETE GPU - this measurement is invalid." >&2
+    grep -iE "inference compute" "$log" | sed 's/^/    /' >&2
+    kill "$pid" 2>/dev/null || true
+    return 1
+  fi
+  if [ "$arm" = "igpu" ] && ! grep -qiE "inference compute.*(Vulkan|RADV|Raphael)" "$log"; then
+    echo "WARNING: the igpu arm does NOT appear to have used the iGPU. It likely fell back to" >&2
+    echo "  CPU, in which case this arm duplicates the cpu arm and the comparison is void." >&2
+    grep -iE "inference compute|dropping integrated|igpu" "$log" | sed 's/^/    /' >&2
+  fi
 
   curl -sf -X POST "http://127.0.0.1:${PORT}/api/generate" \
     -d "{\"model\":\"${MODEL}\",\"keep_alive\":0}" >/dev/null 2>&1 || true
