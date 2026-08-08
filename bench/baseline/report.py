@@ -13,6 +13,10 @@ from __future__ import annotations
 
 import argparse
 import csv
+import sys
+from pathlib import Path as _P
+sys.path.insert(0, str(_P(__file__).resolve().parent))
+from conversation_errors import harvest
 import json
 import statistics
 from datetime import datetime
@@ -47,6 +51,16 @@ def load_thermal(path: Path) -> dict:
     }
 
 
+
+def _tool_errs(r):
+    """From the app's event log. `?` means the record could not be read — never silently 0."""
+    h = r.get("agent_error_events") or {}
+    n = h.get("agent_errors")
+    if n is None:
+        return "?"
+    f = h.get("fatal") or 0
+    return f"{n}" if not f else f"{n} ({f} fatal)"
+
 def fmt(v, suffix: str = "") -> str:
     if v is None:
         return "—"
@@ -70,6 +84,13 @@ def main() -> int:
     for p in summaries:
         s = json.loads(p.read_text())
         s["thermal"] = load_thermal(args.run_dir / f"{s['task']}.thermal.csv")
+        # Harvested at report time, not run time, so it works retroactively on runs already
+        # finished — the events are on disk keyed by the conversation id each cell recorded.
+        if not s.get("agent_error_events"):
+            try:
+                s["agent_error_events"] = harvest(s.get("conversation_id"))
+            except Exception as e:
+                s["agent_error_events"] = {"agent_errors": None, "note": f"harvest failed: {e}"}
         models = args.run_dir / f"{s['task']}.ollama_ps.tsv"
         s["models_observed"] = sorted(
             {
@@ -164,7 +185,7 @@ def main() -> int:
     # passing.
     L.append("## What was actually measured (automated run)")
     L.append("")
-    L.append("| Task | ACCEPTED | Gate | Regression | Turns | Files | +Lines | 1st msg | To idle | Peak °C | Errors |")
+    L.append("| Task | ACCEPTED | Gate | Regression | Turns | Files | +Lines | 1st msg | To idle | Peak °C | Tool errs |")
     L.append("|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|")
     for r in rows:
         a = r.get("automated") or {}
@@ -176,9 +197,29 @@ def main() -> int:
             f"{fmt(r.get('total_turns'))} | {fmt(a.get('files_changed'))} | "
             f"{fmt(a.get('lines_written'))} | {fmt(a.get('submit_to_first_message_s'), ' s')} | "
             f"{fmt(a.get('submit_to_idle_s'), ' s')} | {fmt(t.get('temp_max_c'))} | "
-            f"{fmt(a.get('error_events_seen'))} |"
+            f"{_tool_errs(r)} |"
         )
     L.append("")
+    errs = [(r["task"], ((r.get("agent_error_events") or {}).get("agent_errors")))
+            for r in rows]
+    known = [(t, n) for t, n in errs if n is not None]
+    if known:
+        tot = sum(n for _, n in known)
+        hit = [t for t, n in known if n]
+        unknown = [t for t, n in errs if n is None]
+        if tot:
+            L.append(f"**{tot} agent tool-call errors across {len(hit)} of {len(known)} cells "
+                     f"({', '.join(hit)}).** Read from the conversation event log, not the screen. "
+                     f"These are overwhelmingly `Arguments: unparseable JSON` — the model emitting "
+                     f"malformed tool-call JSON, which the agent retries. They consume turns and "
+                     f"can end a run early, so turn counts and timings include this cost. It is a "
+                     f"property of the model on this runtime, not a harness fault.")
+            L.append("")
+        if unknown:
+            L.append(f"Tool-error counts unavailable for: {', '.join(unknown)} — conversation "
+                     f"record unreadable. Unknown, not zero.")
+            L.append("")
+
     zero_work = [r["task"] for r in rows
                  if (r.get("automated") or {}).get("files_changed") == 0]
     if zero_work:

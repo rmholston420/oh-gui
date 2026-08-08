@@ -1132,3 +1132,34 @@ Lint clean, 39 tests passing.
 **Lesson:** *an automated edit that reports success only proves the tool ran.* Every scripted edit
 now asserts its anchor matches exactly once, and the harness lints for unused imports because
 dead-but-present code reads exactly like working code in a diff.
+
+## 2026-08-08 15:56 EDT — The recurring "Agent error" is real, and it is the model
+
+Every cell of matrix 3 logs an `Agent error` ~36s after submit. The profile swap is confirmed
+working (`openai/devstral-small-2:24b -> ollama_chat/qwen3.6:27b`, and `-error` has left the status
+banner), so this was never devstral. The conversation event log gives the actual text:
+
+    "error": "Error validating tool 'file_editor': Extra data: line 1 column 88 (char 87).
+              Arguments: unparseable JSON"
+    "classification": {"kind":"agent_action","retryable":true,"user_action":"retry"}
+
+Qwen3.6 emitting malformed tool-call JSON through Ollama. Retryable; the agent recovers. Present on
+10 of 11 conversations touched in the last 25 minutes, 1-5 occurrences each.
+
+**This is data, not noise.** It is a property of the model on this runtime, which is precisely what
+the baseline exists to measure. It also explains t01 differing between runs — 4 turns/+19/accepted
+versus 2 turns/+17/tests fail on identical inputs. Retries consume turns and can end a run early, so
+turn counts and timings carry this cost and the report must say so.
+
+**Method note.** I asserted "the app didn't error, my detector did" off a diagnostic that had run
+`ls -dt | head -1` — whichever conversation was newest at that second, not the one that logged the
+error, and possibly one with no error yet. Wrong sample, confident conclusion. Withdrawn within the
+minute, but it should not have been said. *A detector that reads the rendered page is reading the
+author's summary of the run, not the run;* the event log is the record.
+
+**Added:** `conversation_errors.py` harvests `AgentErrorEvent` counts per cell from the event log,
+split retryable/fatal and grouped by tool, with three sample messages. Harvest happens at REPORT
+time keyed by the conversation id each cell already records, so it applies retroactively to the run
+now in flight — no interruption needed. Unreadable record yields `?`, never 0; a readable record
+with no errors yields 0. `report.py` gains a `Tool errs` column and a caveat paragraph. 7 new tests,
+suite at 46.
