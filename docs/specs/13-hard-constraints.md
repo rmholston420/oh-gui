@@ -82,3 +82,24 @@
 - [ ] The authorization safety plane is intact: trust dial, authorization cards, capability manifest, emergency stop, `execute_tool()` bypass closure, untrusted-content quarantine, and audit log all ship in Phase 1. Removing multi-user must not weaken any of these.
 - [ ] Below 900px the surface is read-only with no exception path. Approve/reject/relax require >=900px.
 - [ ] Vibe and Pro lenses remain a semantic-zoom pair for one operator; every Phase 1-5 exit criterion is still demonstrated in both.
+
+## v4.4 additions (ADR-015 - native-fidelity boundary)
+
+- [ ] Every field the GUI exposes traces to a verified native field of the supplying system, with
+      the artifact path and line/schema location recorded. Documentation is not verification.
+- [ ] Where upstream code and upstream documentation disagree, the code is implemented and the
+      disagreement is logged.
+- [ ] No adapter merges two native states into one, splits one into two, reinterprets an enum, or
+      changes a unit without recording the conversion.
+- [ ] Unhandled native event kinds are surfaced as unhandled, never folded into a neighbouring kind
+      or silently dropped.
+- [ ] A missing native signal renders as `null`. No default value is manufactured - least of all a
+      favorable one.
+- [ ] No input control ships unless a test fails when its consumer is absent. No orphaned settings.
+- [ ] DTOs for the Agent Server are generated from the upstream OpenAPI document and diffed, never
+      hand-written.
+- [ ] Non-OpenHands data (NVML, nvidia-smi, Ollama) uses that system's native field names. tok/s is
+      never computed from GPU telemetry.
+- [ ] No OH-GUI surface re-implements upstream semantics it could read; display mirrors are deleted,
+      not tested.
+- [ ] Every `PORTING_LEDGER.md` entry carrying OpenHands data records its Native basis.

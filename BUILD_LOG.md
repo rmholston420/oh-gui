@@ -2636,3 +2636,50 @@ mark); the donor frontend is Next **16.2.10**, not 15.
   full read; no ADR yet
 - **Stop-condition status:** met. Full review complete, no port started, awaiting operator decision
   on what moves first.
+
+## 2026-08-08 19:55 EDT — ADR-013, ADR-014, ADR-015 filed; Phase 0 re-established as the blocking phase
+
+- **Stage / plugin / port:** Phase 0 (ADR-013, ADR-015) · Phase 1 (ADR-014, proposed)
+- **What changed:** three ADRs, a v4.4 hard-constraints block, and two ledger revisions. No code.
+
+**Sequencing correction, recorded against my own prior recommendation.** I previously offered the
+operator a choice between the Phase 1 event/audit spine and the GPU telemetry strip. Both were
+wrong: `docs/specs/11-dev-plan.md` shows **Phase 0 has not exited** — the baseline metrics report
+and the first-run wizard are outstanding — and the operator's standing position is that Phase 0
+cannot close until the optimized models are pulled and benchmarked. Starting Phase 1 would have
+skipped a phase in a vertical-slice plan.
+
+**ADR-013 — benchmark discrimination floor (Ratified).** Executing the donor's own
+`bench/lib/mcnemar.py` `_midp_two_sided` over the discordant range shows **>=5 discordant pairs,
+all flipping one way, are required to reach p < 0.05** (4 pairs floors at 0.0625). The six Phase 0
+blocks produced ~2. The harness was therefore **incapable of a significant verdict for any model at
+any quality gap before it was ever run** — a stronger and checkable claim than the n=1 diagnosis
+already in `KNOWN_ISSUES.md`, and one that repetitions alone do not fix. Sets seven pre-run clauses:
+attainable discordance, 50-70% acceptance band, McNemar as the test, full replicate retention with a
+pre-registered fold rule, null-not-zero, tool-call failures as `resolved=None`, and non-publication
+of violating runs.
+
+**ADR-014 — authorization enforcement seam (Proposed, gated).** The SDK `pre_tool_use` hook can
+inspect and deny but cannot modify an action, has no native ASK, cannot cancel in-flight work, and
+**fails open**. Every one of spec 04 §4.2's four requirements is in that "No" column. Decision: one
+thin hook, fail-closed by our wrapper, ASK synthesized by blocking, all state middleware-side.
+Deliberately **not ratified** — four executable checks must pass on Colossus first, because ADR-001
+Amendment #1 had to retract four claims taken from prose rather than artifacts.
+
+**ADR-015 — native-fidelity boundary (Ratified; one OPEN sub-question).** Files the operator's
+standing instruction as an invariant: expose only verified native fields, translate without changing
+meaning, trust upstream code over upstream docs. Grounded in three failures already in this repo —
+ADR-001 Amdt #1's four retracted prose-sourced claims, the donor's five orphaned `AgentPreset`
+fields, and `trajectory/hook.py` manufacturing `SUCCESS` for a verdict-less stop. **OPEN:** spec 04
+§4.2 blast-radius and analyzer-identity, and spec 08's derived telemetry, may not be native fields;
+a DERIVED tier is proposed but deliberately not ratified. Awaiting operator decision.
+
+- **Files touched:** `adrs/ADR-013…`, `adrs/ADR-014…`, `adrs/ADR-015…`, `adrs/README.md`,
+  `docs/specs/13-hard-constraints.md` (v4.4 block), `PORTING_LEDGER.md`, `BUILD_LOG.md`,
+  `SESSION_HANDOFF.md`
+- **Ports / adapters affected:** none — still nothing vendored
+- **PORTING_LEDGER / ADR updated:** ledger gains a required `Native basis` field; `agent_presets`
+  and `trajectory/hook.py` excluded by rule; `mcnemar.py`, `nvml_sampler.py` and the per-trial
+  manifest design promoted to port-early **for Phase 0**
+- **Stop-condition status:** met for the review-and-decide task. Blocked on two operator answers
+  (ADR-015 DERIVED tier; vLLM-vs-Ollama runtime axis).

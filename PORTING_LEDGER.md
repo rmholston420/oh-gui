@@ -164,3 +164,34 @@ its judgements. Revisions:
 | `scripts/e2e-run.ts`, `scripts/debug-frontend.ts`, `scripts/forge-status.sh` | **New: port-early.** Playwright instrumentation and read-only local process observability |
 | `src/components/navigation/GpuStrip.tsx`, `GpuChipPopover.tsx`, `src/styles/tokens.css` | **New: port-early** (narrow exception to the `src/` exclusion). React/CSS/Recharts only; tokens need an undefined-variable repair pass first |
 | `scripts/forge-screenshots.sh` | **Excluded.** Commits and pushes to GitHub |
+
+---
+
+## 2026-08-08 19:40 EDT — ADR-015: `Native basis` is now a required entry field
+
+Per [ADR-015](adrs/ADR-015-native-fidelity-boundary.md) clause 8, every entry for a component that
+carries OpenHands (or NVML / Ollama / agent-server) data must record, per exposed field, the
+artifact and the path + line or schema location it was verified against. **Documentation is not
+verification; the shipped code is.** Entries above that carry such data are owed a backfill before
+their port proceeds.
+
+Additional status changes from ADR-015:
+
+| Surface | Status |
+|---|---|
+| `bff/services/agent_presets.py` + any preset UI | **Excluded.** `maxCost`, `toolAllowlist`, `loopGuard`, `systemPrompt`, `maxSteps` are declared and never applied (tools hard-coded `runs.py:430-435`) — the canonical no-input-without-a-consumer violation |
+| `openhands_tools_ext/trajectory/hook.py` | **Excluded by rule.** Manufactures `SUCCESS` for a verdict-less stop (`:157-196`) |
+| `bff/services/event_normalize.py` | Port-early as reference, now requiring a native round-trip test per event kind and explicit surfacing of the five unhandled kinds |
+| Hand-written agent-server DTOs in the donor routers | **Excluded.** Regenerate from the upstream OpenAPI document |
+
+## 2026-08-08 19:40 EDT — ADR-013: three items promoted to port-early for Phase 0
+
+The review filed these under Phase-1-facing work. [ADR-013](adrs/ADR-013-benchmark-discrimination-floor.md)
+makes them Phase 0 blockers instead, because Phase 0 cannot exit without a benchmark capable of
+reaching significance.
+
+| Surface | Donor path | Status |
+|---|---|---|
+| Paired mid-p McNemar test | `bench/lib/mcnemar.py` | **Port-early** (was port-later). MIT. Suite executed 6/6 during review. Inherit and state its two limits: drops `resolved=None`; one outcome per task, so it does not consume repetitions |
+| NVML background sampler | `bench/_common/nvml_sampler.py` | **Port-early.** Modifications required before use: missing-NVML must **fail closed** rather than degrade to a silent no-op returning zeros (ADR-013 clause 5, ADR-015 clause 3 — unmeasured is `null`, not `0.0`); wire the 45 C cold / 80 C warn / 83 C stop gates; keep native NVML field names |
+| Immutable per-trial manifest | SWE Path A design | **Port-early as design.** Every replicate retained; the donor's final-of-three retention is the specific defect being avoided; fold rule pre-registered in the manifest |
