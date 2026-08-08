@@ -1,0 +1,100 @@
+You are writing production code for a benchmarking harness on a single-user Linux
+workstation ("Colossus": Kubuntu, one RTX 5090, driver 610.57.04). The harness records GPU
+telemetry once per second during long local-model benchmark runs and must decide, after
+the fact, whether a timing measurement is trustworthy.
+
+Write a single self-contained Python 3.11+ module. Standard library only — no numpy, no
+pandas, no third-party packages. Include type hints.
+
+Implement EXACTLY these two functions, with these exact names and signatures.
+
+------------------------------------------------------------------------------
+FUNCTION 1
+------------------------------------------------------------------------------
+
+    def parse_perf_flags(text: str) -> dict[str, bool]:
+
+`text` is the stdout of `nvidia-smi -q -d PERFORMANCE`. Return a mapping from each clock
+event reason to whether it is currently active.
+
+Real output from this machine:
+
+    ==============NVSMI LOG==============
+
+    Timestamp                                 : Sat Aug  8 06:05:11 2026
+    Driver Version                            : 610.57.04
+    CUDA Version                              : 13.0
+
+    Attached GPUs                             : 1
+    GPU 00000000:01:00.0
+        Performance State                     : P0
+        Clocks Event Reasons
+            Idle                              : Not Active
+            Applications Clocks Setting       : Not Active
+            SW Power Cap                      : Active
+            HW Slowdown                       : Not Active
+                HW Thermal Slowdown           : Not Active
+                HW Power Brake Slowdown       : Not Active
+            Sync Boost                        : Not Active
+            SW Thermal Slowdown               : Not Active
+            Display Clock Setting             : Not Active
+
+Contract:
+
+- Keys are the reason labels normalised to lowercase with runs of whitespace collapsed to
+  single underscores. `SW Power Cap` becomes `sw_power_cap`; `HW Thermal Slowdown`
+  becomes `hw_thermal_slowdown`.
+- Values are `True` for `Active` and `False` for `Not Active`.
+- Only parse reasons inside the clock-event-reasons block. `Performance State`,
+  `Driver Version`, `Timestamp` and anything else outside that block must NOT appear in
+  the result. The block header line has no colon on it.
+- Nesting depth is not fixed. `HW Thermal Slowdown` is indented one level deeper than
+  `HW Slowdown` and both must appear as top-level keys in the returned flat dict.
+- Older drivers label the block `Clocks Throttle Reasons` instead of
+  `Clocks Event Reasons`. Both must work.
+- Do not hardcode a whitelist of known reason names. A future driver may add reasons, and
+  they must appear in the output without a code change.
+- A value of `N/A` (some virtualised and some laptop GPUs report this) maps to `False`.
+- Any value that is neither `Active`, `Not Active`, nor `N/A` must raise `ValueError`.
+- If no clock-event-reasons block is present at all, return an empty dict. Do not raise.
+- Input may use `\r\n` line endings.
+
+------------------------------------------------------------------------------
+FUNCTION 2
+------------------------------------------------------------------------------
+
+    def decode_flag(field: str | None) -> tuple[bool, bool]:
+
+The harness stores the two flags that matter as a compact two-character string in a CSV
+column named `pcap_thermal`. Character 0 is the software power cap; character 1 is
+thermal slowdown. `"10"` means power-capped but not thermally throttled.
+
+Return `(power_capped, thermally_throttled)`.
+
+These distinctions are load-bearing for the harness, so the semantics matter:
+
+- A software power cap is EXPECTED whenever the card sits at its configured limit. It is
+  benign for cross-cell comparison provided the cap is identical for every cell.
+- Thermal slowdown INVALIDATES cross-cell timing comparison, because it depends on how hot
+  the card happened to be at that moment.
+
+Contract:
+
+- `"00"`, `"01"`, `"10"`, `"11"` decode as expected.
+- `None`, `""`, and a whitespace-only string all decode as `(False, False)`.
+- A short field is padded on the right with zeros: `"1"` is `(True, False)`.
+- A field longer than two characters is truncated to its first two characters.
+- Surrounding whitespace is stripped before parsing.
+- Any character other than `0` or `1` in either of the first two positions raises
+  `ValueError`.
+
+------------------------------------------------------------------------------
+WHAT TO PRODUCE
+------------------------------------------------------------------------------
+
+Return the complete module as ONE Python code block. It will be imported and executed
+directly against a test suite you cannot see, so it must be runnable exactly as written —
+no placeholders, no `...`, no `TODO`, no prose interleaved inside the code block.
+
+After the code block, in no more than 150 words, state which specific edge case in this
+brief is most likely to be got wrong by a careless implementation, and why.

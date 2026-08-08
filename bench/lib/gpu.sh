@@ -11,18 +11,24 @@
 #   83 C  HARD CEILING               - abort the run
 #   80 C  warn                       - report, keep going (report-only, never aborts)
 #   80 C  refuse to start a new run
-#   45 C  COLD threshold - not a safety limit. Benching from unequal starting temperatures
-#         makes later cells clock down earlier and quietly penalises whatever ran last.
-#         The card reaches 28-29 C at true idle, but with the desktop running it settles
-#         set to 45 C (operator, 2026-08-08) because the wait, not the precision, is the
-#         binding cost: after a 16k-token cell the card takes minutes to fall below the
-#         mid-30s, and 7 cells of that dominates the run. 40 C is a compromise - cells may
-#         start anywhere in a wide band rather than a ~1 C one, so at this value the gate
-#         is a loose backstop against a badly heat-soaked start, NOT a real equaliser. That is acceptable ONLY because no cell in this matrix has
-#         thermally throttled: peak was 77 C against a 78 C warn line. If a future run
-#         throttles, tighten this before trusting any timing comparison.
-# The card was previously capped at 435 W for heat reasons; it currently sits at 600 W,
-# so these limits are enforced in software rather than assumed from the power cap.
+#   COLD threshold - not a safety limit. Benching from unequal starting temperatures makes
+#         later cells clock down earlier and quietly penalises whatever ran last. This is
+#         now MEASURED per run by gpu_cold_calibrate rather than hardcoded: the gate is the
+#         observed idle floor plus GPU_COLD_MARGIN_C (default 3).
+#
+#         The previous fixed 45 C was marginal to the point of being decorative. Idle
+#         troughs in runs 0531/0545/0555 measured 45-46 C with the operator's normal
+#         desktop up, so the gate sat AT the floor: it either passed instantly or waited
+#         out its timeout on an ambient degree of drift, and could not distinguish a cold
+#         card from a heat-soaked one. A floor-relative gate adapts to ambient and to
+#         whatever else the desktop is doing, which on a single-user workstation that
+#         cannot be quiesced (the operator needs the browser to talk to the scoring model)
+#         is the only version of this gate that means anything.
+#
+#         Set GPU_COLD_C explicitly in the environment to skip calibration.
+# The card is capped at 435 W by LACT (power_cap in /etc/lact/config.yaml), and
+# run_path_e.sh refuses to start at any other cap. These limits are still enforced in
+# software rather than inferred from the cap: a cap bounds power, not temperature.
 #
 # This does not merely record temperature - it ABORTS. The watcher runs in the
 # background, and on breaching the ceiling it unloads every resident model and signals
@@ -39,7 +45,11 @@
 GPU_REDLINE_C="${GPU_REDLINE_C:-88}"   # hardware limit, documentation only
 GPU_MAX_C="${GPU_MAX_C:-83}"           # hard ceiling: abort
 GPU_WARN_C="${GPU_WARN_C:-80}"         # warn (report-only; the abort is GPU_MAX_C)
-GPU_COLD_C="${GPU_COLD_C:-45}"         # comparability: cold-start target (see header)
+GPU_COLD_C="${GPU_COLD_C:-}"           # empty = calibrate per run (see gpu_cold_calibrate)
+GPU_COLD_FALLBACK_C="${GPU_COLD_FALLBACK_C:-45}"  # used only if calibration fails
+GPU_COLD_MARGIN_C="${GPU_COLD_MARGIN_C:-3}"       # gate = measured idle floor + this
+GPU_CALIB_MIN_S="${GPU_CALIB_MIN_S:-30}"          # shortest acceptable observation window
+GPU_CALIB_TIMEOUT_S="${GPU_CALIB_TIMEOUT_S:-600}" # give up, use the best floor seen
 GPU_COOL_TIMEOUT_S="${GPU_COOL_TIMEOUT_S:-300}"  # give up waiting, warn, continue
 GPU_START_C="${GPU_START_C:-80}"       # refuse to begin above this
 
@@ -180,7 +190,7 @@ gpu_watch_start() {
 #
 #   gpu_cool_wait [target_c] [timeout_s]
 gpu_cool_wait() {
-  local target="${1:-$GPU_COLD_C}" timeout="${2:-$GPU_COOL_TIMEOUT_S}"
+  local target="${1:-${GPU_COLD_C:-$GPU_COLD_FALLBACK_C}}" timeout="${2:-$GPU_COOL_TIMEOUT_S}"
   local t0 t elapsed
   t0=$(date +%s); t=$(gpu_temp)
   if [ "$t" -le "$target" ]; then
@@ -204,6 +214,77 @@ gpu_cool_wait() {
       GPU_LAST_START_C="$t"; export GPU_LAST_START_C
       return 1
     fi
+  done
+}
+
+# Measure the card's actual idle floor, then set GPU_COLD_C to floor + GPU_COLD_MARGIN_C.
+#
+# Sampling a fixed window is not enough: at run start the card may still be shedding heat
+# from an earlier probe, and the minimum of a falling curve is just "wherever it had got
+# to", which would set the gate too high and let every subsequent cell through instantly.
+# So this waits for the curve to FLATTEN - a 30 s window whose spread is <=1 C - and only
+# then takes the floor. On an already-cold card that costs the 30 s minimum window.
+#
+# Idempotent: if GPU_COLD_C is already set in the environment, this returns immediately
+# and leaves it alone.
+#
+#   gpu_cold_calibrate
+gpu_cold_calibrate() {
+  if [ -n "$GPU_COLD_C" ]; then
+    echo "cold gate: ${GPU_COLD_C}C (preset, calibration skipped)"
+    return 0
+  fi
+
+  local t0 elapsed t floor=999 spread wmin wmax
+  local -a win=()      # explicit -a; the window length test depends on this being an array
+  t0=$(date +%s)
+  printf 'calibrating cold gate (waiting for idle floor) '
+
+  while : ; do
+    t=$(gpu_temp)
+    case "$t" in ''|*[!0-9]*) t="" ;; esac
+    if [ -n "$t" ]; then
+      [ "$t" -lt "$floor" ] && floor="$t"
+      win+=("$t")
+      # keep a 6-sample / 30 s trailing window
+      [ "${#win[@]}" -gt 6 ] && win=("${win[@]:1}")
+    fi
+    elapsed=$(( $(date +%s) - t0 ))
+
+    if [ "${#win[@]}" -eq 6 ] && [ "$elapsed" -ge "$GPU_CALIB_MIN_S" ]; then
+      wmin=999; wmax=0
+      for v in "${win[@]}"; do
+        [ "$v" -lt "$wmin" ] && wmin="$v"
+        [ "$v" -gt "$wmax" ] && wmax="$v"
+      done
+      spread=$(( wmax - wmin ))
+      if [ "$spread" -le 1 ]; then
+        GPU_COLD_C=$(( wmin + GPU_COLD_MARGIN_C ))
+        printf ' settled at %sC after %ss\n' "$wmin" "$elapsed"
+        echo "cold gate: ${GPU_COLD_C}C (measured floor ${wmin}C + ${GPU_COLD_MARGIN_C}C margin)"
+        export GPU_COLD_C GPU_COLD_FLOOR_C="$wmin"
+        return 0
+      fi
+    fi
+
+    if [ "$elapsed" -ge "$GPU_CALIB_TIMEOUT_S" ]; then
+      if [ "$floor" -lt 999 ]; then
+        GPU_COLD_C=$(( floor + GPU_COLD_MARGIN_C ))
+        printf '\nWARNING: never settled in %ss; using lowest observed %sC.\n' "$elapsed" "$floor" >&2
+        echo "  Something is keeping the card busy. Cell start temperatures will vary more" >&2
+        echo "  than usual - check cold_start_ok per cell before comparing timings." >&2
+      else
+        GPU_COLD_C="$GPU_COLD_FALLBACK_C"
+        printf '\nWARNING: calibration read no valid temperature; falling back to %sC.\n' \
+          "$GPU_COLD_C" >&2
+      fi
+      echo "cold gate: ${GPU_COLD_C}C"
+      export GPU_COLD_C GPU_COLD_FLOOR_C="$floor"
+      return 1
+    fi
+
+    printf '.'
+    sleep 5
   done
 }
 

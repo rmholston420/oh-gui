@@ -47,6 +47,7 @@ TASKS = {
     "debug": PROMPT_DIR / "debug.txt",
     "arch": PROMPT_DIR / "arch.txt",
     "plan": PROMPT_DIR / "plan.txt",
+    "code": PROMPT_DIR / "code.txt",
 }
 
 # Per-role sampling. See bench/SAMPLING.md.
@@ -101,6 +102,39 @@ CELLS = [
     ("c07_coder_ollama_devstral",        "devstral",
      "hf.co/unsloth/Devstral-Small-2507-GGUF:UD-Q4_K_XL",
      ["debug"],         65536, False, 4096),
+
+    # --- code-generation cells (added 2026-08-08) ------------------------------------
+    # Run 20260808_0555 scored the coder specialists on `debug` and could say nothing
+    # about them: `debug` is a diagnostic reasoning task, the coder cells ran with
+    # think=False, and they emitted 1148-1575 tokens against 8905-10620 for the thinking
+    # cells. That is a task mismatch being read as a capability gap. Nothing in that
+    # matrix asked any model to WRITE code. These cells fix that, and are machine-scored
+    # against bench/gold/code_tests.py rather than judged.
+    #
+    # num_predict is 8192 for the non-thinking cells, not the 4096 used by c06/c07: this
+    # task requires a ~50-line module PLUS a closing commentary, and a truncated module
+    # scores 0 on the test suite. A budget that can invalidate a cell is not a saving.
+    ("c08_code_ollama_qwen3coder30b",     "coder",    "qwen3-coder:30b",
+     ["code"],          65536, False,  8192),
+    ("c09_code_ollama_devstral",          "devstral",
+     "hf.co/unsloth/Devstral-Small-2507-GGUF:UD-Q4_K_XL",
+     ["code"],          65536, False,  8192),
+    # The thinking models must be measured on the same code task, or "the specialist is
+    # worse" remains unfalsifiable. `precise` is the Qwen3.6 thinking coding preset.
+    ("c10_code_ollama_qwen36_35bmtp",     "precise",  "qwen3.6:35b-a3b-mtp-q4_K_M",
+     ["code"],         131072, True,  16384),
+    ("c11_code_ollama_qwen36_27b",        "precise",  "qwen3.6:27b",
+     ["code"],         131072, True,  16384),
+
+    # --- planner replicate cells (added 2026-08-08) ----------------------------------
+    # The planner verdict from run 20260808_0555 (27b 74.0 vs 35b-mtp 65.5) rests on a
+    # SINGLE arch sample at temperature 1.0 / top_p 0.95, and the whole 8.5-point gap
+    # comes from c03 choosing Option B in that one draw. At that sampling temperature one
+    # draw is not evidence. Run each of these three times with --rep and take the median.
+    ("c12_planner_arch_27b",              "planner",  "qwen3.6:27b",
+     ["arch"],         131072, True,  16384),
+    ("c13_planner_arch_35bmtp",           "planner",  "qwen3.6:35b-a3b-mtp-q4_K_M",
+     ["arch"],         131072, True,  16384),
 ]
 
 CELL_BY_ID = {c[0]: c for c in CELLS}
@@ -228,23 +262,32 @@ def run_task(model: str, role: str, task: str, num_ctx: int, think: bool,
     }
 
 
-def run_cell(cell_id: str, out_dir: Path) -> Path:
+def run_cell(cell_id: str, out_dir: Path, rep: int | None = None,
+             only_tasks: list[str] | None = None) -> Path:
     cell_id_, role, model, tasks, num_ctx, think, num_predict = CELL_BY_ID[cell_id]
-    dest = out_dir / f"{cell_id}.json"
+    if only_tasks:
+        tasks = only_tasks
+    stem = cell_id if rep is None else f"{cell_id}_r{rep}"
+    dest = out_dir / f"{stem}.json"
     if dest.exists():
         print(f"REFUSING to overwrite {dest}", file=sys.stderr)
         sys.exit(2)
 
-    # Recorded, not just printed: if a cell started hot the driver's cool-wait timed out,
-    # and that cell's timings are not comparable with the rest of the matrix.
+    # Sampled BEFORE warmup. The old code recorded start temperature only after the
+    # warmup request, which itself heats the card, so `cold_start_ok` was false on every
+    # cell of run 20260808_0555 and the warning it produced carried no information. The
+    # cooldown had in fact worked - the run log showed 45 C reached before each cell.
+    # Both are now recorded: the gate is judged on the pre-warmup reading, and the
+    # post-warmup reading is kept because it is the temperature the timed work started at.
+    pre_gpu = gpu_snapshot()
     wu = warmup(model, num_ctx)
     if not wu["ok"]:
         print(f"   WARMUP FAILED: {wu['error']}")
     else:
         print(f"   warmup/load {wu['load_seconds']}s")
     start_gpu = gpu_snapshot()
-    print(f"-- {cell_id}  model={model} role={role} ctx={num_ctx} think={think} "
-          f"start={start_gpu.get('temp_c','?')}C")
+    print(f"-- {stem}  model={model} role={role} ctx={num_ctx} think={think} "
+          f"pre-warmup={pre_gpu.get('temp_c','?')}C start={start_gpu.get('temp_c','?')}C")
     results = []
     for task in tasks:
         print(f"   task={task} ... ", end="", flush=True)
@@ -258,17 +301,24 @@ def run_cell(cell_id: str, out_dir: Path) -> Path:
                   f"{r['gpu_at_finish'].get('temp_c','?')}C{flag}")
         results.append(r)
 
+    cold_target = int(os.environ.get("GPU_COLD_C", "45"))
     rec = {
-        "cell_id": cell_id, "role": role, "model_id": model, "runtime": "ollama",
+        "cell_id": cell_id, "rep": rep,
+        "role": role, "model_id": model, "runtime": "ollama",
         "endpoint": f"{ENDPOINT}/api/chat", "num_ctx": num_ctx,
         "think": think, "num_predict": num_predict,
         "sampling": SAMPLING[role],
         "power_cap_w": os.environ.get("BENCH_POWER_CAP_W", "435"),
         "warmup": wu,
+        "gpu_before_warmup": pre_gpu,
         "gpu_at_start": start_gpu,
-        "cold_start_target_c": int(os.environ.get("GPU_COLD_C", "45")),
-        "cold_start_ok": (start_gpu.get("temp_c", 999)
-                          <= int(os.environ.get("GPU_COLD_C", "45"))),
+        "cold_start_target_c": cold_target,
+        # Judged on the PRE-warmup reading - see the comment at the top of run_cell.
+        "cold_start_ok": pre_gpu.get("temp_c", 999) <= cold_target,
+        "warmup_temp_rise_c": (
+            start_gpu.get("temp_c") - pre_gpu.get("temp_c")
+            if isinstance(start_gpu.get("temp_c"), int)
+            and isinstance(pre_gpu.get("temp_c"), int) else None),
         "ts_utc": datetime.now(timezone.utc).isoformat(),
         "results": results,
     }
@@ -281,25 +331,34 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="Path E quality bench - one cell per call.")
     ap.add_argument("cell", help="cell id, or 'list' to print the matrix")
     ap.add_argument("--out", required=False, help="run directory (set by run_path_e.sh)")
+    ap.add_argument("--rep", type=int, default=None,
+                    help="replicate index; writes <cell>_r<N>.json instead of <cell>.json")
+    ap.add_argument("--tasks", default=None,
+                    help="comma-separated subset of this cell's tasks")
     args = ap.parse_args()
 
     if args.cell == "list":
         for c in CELLS:
-            print(f"{c[0]:38s} role={c[1]:9s} ctx={c[4]:<7d} think={str(c[5]):5s} "
-                  f"tasks={','.join(c[3])}  {c[2]}")
+            print(f"{c[0]:34s} role={c[1]:9s} ctx={c[4]:<7d} think={str(c[5]):5s} "
+                  f"tasks={','.join(c[3]):11s} {c[2]}")
         return
 
     if args.cell not in CELL_BY_ID:
         sys.exit(f"unknown cell: {args.cell}")
 
-    for task in CELL_BY_ID[args.cell][3]:
+    only = [t.strip() for t in args.tasks.split(",")] if args.tasks else None
+    if only:
+        unknown = [t for t in only if t not in CELL_BY_ID[args.cell][3]]
+        if unknown:
+            sys.exit(f"cell {args.cell} does not define task(s): {', '.join(unknown)}")
+    for task in (only or CELL_BY_ID[args.cell][3]):
         if not TASKS[task].exists():
             sys.exit(f"missing prompt file: {TASKS[task]}")
 
     out_dir = Path(args.out) if args.out else \
         Path.home() / ".oh-gui" / "bench_path_e" / f"{datetime.now():%Y%m%d_%H%M}_run"
     out_dir.mkdir(parents=True, exist_ok=True)
-    run_cell(args.cell, out_dir)
+    run_cell(args.cell, out_dir, rep=args.rep, only_tasks=only)
 
 
 if __name__ == "__main__":

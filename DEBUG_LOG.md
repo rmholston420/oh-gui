@@ -223,3 +223,89 @@ _No entries yet. First debugging action in this repo appends below._
   earlier throttle-parser bug was the same shape - every sample flagged as throttled, which
   was a parser reading `$NF` of "Not Active", not a card in permanent throttle.
 
+## 2026-08-08 06:44 EDT — Reference solution scores 0/30 under its own scorer
+
+**Symptom**
+```
+c99_perfect   0/30   0   123.4  FAILURES
+              failed: code_tests
+```
+`bench/path_e/score_code.py` scored the *known-good* reference solution
+(`bench/gold/reference/code_reference.py`, independently verified 30/30) at zero. The
+failure name was the module `code_tests`, not any individual test method.
+
+**Affected:** Phase 0 · `bench/path_e/score_code.py` · ADR-005 round 2 scoring.
+
+**Root cause**
+The suite was executed as `python3 -I -m unittest code_tests`. `-I` (isolated mode)
+implies `-E` and `-s`, and *also removes the script/working directory from `sys.path`*.
+The candidate module and the test module both live in the temp directory, so neither was
+importable. `unittest` reports an import failure as a single `ERROR: code_tests`, which
+the parser counted as one ordinary failure against 30 collected tests.
+
+Had this shipped, every cell in round 2 would have scored 0 on the 60 machine points and
+the coder verdict would have been decided entirely by the 40 judged points — while
+looking like a legitimate result.
+
+**Fix**
+- Replaced `-I` with `-s` plus an explicitly constructed environment whose `PYTHONPATH`
+  is exactly the temp directory. Isolation from user site-packages is retained; the
+  inherited environment is still scrubbed rather than passed through.
+- Added a distinct `IMPORT_ERROR` status: an `ERROR:` line naming `code_tests` or
+  `candidate` rather than a test method is now reported as an import failure with the
+  exception text, instead of being silently folded into the failure count.
+- Added a source comment recording why `-I` must not be reintroduced.
+
+**Detection**
+Found by running the scorer against four fixtures before trusting it: the reference
+solution (expect 60/60), a naive `endswith("Active")` implementation (expect partial), and
+a prose-only answer (expect NO_CODE_BLOCK). Post-fix: 30/30, 13/30, 0/30 respectively —
+and the naive version fails `test_not_active_is_false`, confirming the intended trap
+discriminates. **A scorer that has not been run against a known-good input is not a
+scorer.**
+
+**Files:** `bench/path_e/score_code.py`
+
+---
+
+## 2026-08-08 06:45 EDT — Calibration test "failure" was a subshell counter, not a bash array bug
+
+**Symptom**
+`gpu_cold_calibrate` under a stubbed sensor returned `gate = first_sample + 3` in every
+scenario. Against a falling sequence `70 66 62 58 54 50 47 45 44 44...` it reported
+`settled at 70C` and set the gate to 73 C, apparently ignoring the 6-sample/30 s window.
+
+**Affected:** Phase 0 · `bench/lib/gpu.sh` · cold-gate calibration.
+
+**Root cause — TWO, and the first diagnosis was wrong**
+
+*Incorrect diagnosis (recorded deliberately):* I concluded `local win=()` does not create
+an array in bash, leaving a string `"()"` so that `${#win[@]}` is 1 and the window test
+passes on the first reading — and patched `gpu.sh` with a comment asserting this. **This
+is false.** `bash -c 'f() { local w=(); w+=(a); w+=(b); echo ${#w[@]}; }; f'` prints `2`
+on bash 5.3.9. The comment was removed.
+
+*Actual root cause:* the fault was in the test fixture, not in `gpu.sh`. The fixture kept
+its sample index in a shell variable incremented inside `gpu_temp`, but the caller invokes
+it as `t=$(gpu_temp)` — a command substitution, which runs in a **subshell**. The
+increment never propagated to the parent, so every call returned `SEQ[0]`. The window
+correctly saw six identical readings, correctly computed spread 0, and correctly declared
+the curve settled. The function was right the whole time.
+
+**Fix**
+Fixture keeps its counter in a file (`/tmp/ci`) so it survives the subshell. `local -a`
+was kept in `gpu.sh` as an explicitness improvement, with a comment stating only that the
+window test depends on `win` being an array — not the false claim about `local w=()`.
+
+With the corrected fixture, all six scenarios pass: falling curve settles at the true
+floor of 44 after 60 s (gate 47) rather than at the first reading; already-cold flat gives
+44/41; 1 C jitter is tolerated; sawtooth warns "never settled" and uses lowest-seen + 3;
+a preset `GPU_COLD_C` skips calibration; a dead sensor falls back to 45 C.
+
+**Lesson — third instance this session.** Twice before, an exotic explanation was reached
+for ahead of the obvious one (LACT pinning fans at 0%; a foreign GPU client on :11434 that
+turned out to be our own bench). Here the same reflex produced a *false statement written
+into a source file*. Before diagnosing a component, verify the harness that is testing it,
+and never commit an explanatory comment that has not been executed as a test.
+
+**Files:** `bench/lib/gpu.sh`

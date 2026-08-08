@@ -1158,3 +1158,78 @@ relevant systemd timers. The 0531 run is uncontaminated.
 
 Stop condition: ADR-005 still OPEN. Planner and coder ratification awaiting operator
 decision on the n=1 and coder-task confounds.
+
+## 2026-08-08 06:42 EDT — Path E round 2: code task, planner replicates, calibrated cold gate
+
+**Stage/component:** Phase 0 · benchmarking · ADR-005
+**Ports/adapters:** none (bench harness only)
+
+Round 1 (`20260808_0555`) was scored but the verdict withheld — three confounds, all
+recorded as an amendment block at the head of ADR-005. This slice fixes all three.
+
+**1. The coder role was never actually tested.** The only coder-facing task was `debug`,
+which is diagnostic reading, not code generation, and the coder cells ran with thinking
+off at ~1.1-1.6k tokens against 8.9-10.6k for the planners. Added:
+
+- `bench/prompts/code.txt` — two functions, `parse_perf_flags` and `decode_flag`, both
+  derived from real defects this repo shipped (the awk `$NF` "Not Active" collision; the
+  missing length check before indexing position 1). Neither trap is hinted at.
+- `bench/gold/code_tests.py` — 30 stdlib `unittest` cases, no third-party deps.
+- `bench/gold/reference/code_reference.py` — reference solution, verified 30/30.
+- `bench/gold/code.md` — rubric: tests 60, commentary 15, contract 15, quality 10.
+- `bench/path_e/score_code.py` — executes candidate code in a temp dir with a scrubbed
+  environment and a timeout, and reports the machine-scored 60.
+- Cells c08-c11 (`code` on qwen3-coder:30b, Devstral, 35b-mtp, 27b).
+
+**2. The planner verdict was n=1** at temperature 1.0. Added cells c12/c13 and a `REPS`
+loop that interleaves replicates (c12,c13,c12,c13,...) rather than batching them, so
+replicate number is not confounded with thermal state. Verdict becomes the median of 3.
+
+**3. `gpu_at_start` was recorded after warmup**, so the cold-start warning fired on every
+cell and carried no information. The harness now records pre-warmup temperature, and the
+fixed 45 C gate is replaced by `gpu_cold_calibrate`: poll until the idle curve flattens
+(6-sample / 30 s window, spread <= 1 C), then set the gate to floor + 3 C. Falls back to
+45 C if the sensor never returns a valid reading; warns and uses lowest-seen + margin if
+the curve never settles within 600 s. `run_path_e.sh` now unloads all models *before*
+calibrating, so the floor is not measured on a hot card.
+
+**Validation — `bench/validate_harness.py` (new), all layers passing.** Three layers
+because each has caught something the others missed: `bash -n`; byte-compiling the Python
+heredocs embedded in the shell scripts (`bash -n` does not look inside a quoted heredoc);
+and content assertions, including that the unload precedes calibration and that every
+cell's prompt and gold file exist.
+
+**Two defects this validation actually caught, both in code written this session:**
+
+- `score_code.py` ran the suite under `python3 -I`. That flag also strips the working
+  directory from `sys.path`, so `candidate` and `code_tests` were unimportable and the
+  *known-good reference solution scored 0/30* with a misleading FAILURES status. Found
+  only by running the scorer against the reference and three strawman fixtures rather
+  than assuming it worked. Now uses `-s` with an explicit PYTHONPATH, and reports
+  `IMPORT_ERROR` distinctly from ordinary test failures. Strawman check: a naive
+  `endswith("Active")` implementation now scores 13/30 and fails `test_not_active_is_false`
+  — the trap discriminates.
+- `gpu_cold_calibrate` was tested against a stubbed sensor across six scenarios. The first
+  three test runs all reported the gate as first-sample + 3. I attributed this to
+  `local win=()` not creating an array and patched the source with a comment saying so.
+  **That explanation was fabricated** — `local w=()` creates an array correctly in bash
+  5.3.9, verified directly. The real fault was in my test fixture: `t=$(gpu_temp)` runs in
+  a subshell, so the fixture's sample counter never advanced and every reading returned
+  the same value. The false comment was removed from `gpu.sh`. Recorded here because it is
+  the third instance this session of reaching for an exotic explanation before the obvious
+  one, and the second of writing a claim into an artifact before verifying it.
+
+With a corrected fixture all six scenarios pass: falling curve settles at the true floor
+(not the first reading), already-cold flat, 1 C jitter tolerated, sawtooth warns and uses
+lowest-seen, preset skips calibration, dead sensor falls back to 45 C.
+
+**Files:** `bench/prompts/code.txt`, `bench/gold/code.md`, `bench/gold/code_tests.py`,
+`bench/gold/reference/code_reference.py`, `bench/path_e/score_code.py`,
+`bench/validate_harness.py` (all new); `bench/path_e/bench_path_e.py`,
+`bench/lib/gpu.sh`, `bench/path_e/run_path_e.sh`,
+`adrs/ADR-005-planner-and-coder-model-selection.md`, `adrs/README.md` (edited).
+
+**Stop condition:** harness validated and committed. Round 2 has NOT been run — it needs
+the GPU and runs on Colossus. ADR-005 stays OPEN. Phase 0 exit still blocked on: this
+bench, upstream artifact pins, read-only stock Agent Canvas checkout, first-run wizard
+stating the trust-dial stop.

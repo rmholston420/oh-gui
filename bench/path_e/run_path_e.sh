@@ -10,6 +10,12 @@
 #   bash bench/path_e/run_path_e.sh c01_planner_ollama_qwen36_27b c06_coder_ollama_qwen3coder30b
 #   bash bench/path_e/run_path_e.sh list       # print the matrix and exit
 #
+#   REPS=3 bash bench/path_e/run_path_e.sh c12_planner_arch_27b c13_planner_arch_35bmtp
+#     Runs each named cell REPS times, interleaved (r1 of every cell, then r2, ...) rather
+#     than back to back. Interleaving matters: three consecutive runs of one model share
+#     that model's heat soak and its resident weights, so a block design would confound
+#     replicate variance with position in the run. Results land in <cell>_r<N>.json.
+#
 # Ollama runs with OLLAMA_KEEP_ALIVE=-1, so models NEVER auto-unload. Every cell therefore
 # explicitly stops its model afterwards; otherwise cell 2 would run with cell 1 still
 # resident and the second model would be squeezed or spilled to CPU.
@@ -30,6 +36,9 @@ if [[ $# -gt 0 ]]; then
 else
   mapfile -t CELLS < <(python3 "$HARNESS" list | awk '{print $1}')
 fi
+
+REPS="${REPS:-1}"
+[[ "$REPS" =~ ^[1-9][0-9]*$ ]] || { echo "FATAL: REPS must be a positive integer" >&2; exit 1; }
 
 # --- preflight ---------------------------------------------------------------
 # Every one of these has already caused a wasted or invalid run in this project.
@@ -73,16 +82,50 @@ if [[ ${#MISSING[@]} -gt 0 ]]; then
 fi
 
 echo "run dir: $RUN_DIR"
-echo "cells:   ${#CELLS[@]}"
+echo "cells:   ${#CELLS[@]}   reps: ${REPS}   total: $(( ${#CELLS[@]} * REPS ))"
 echo "cap:     ${CAP} W   idle VRAM: ${IDLE_MIB} MiB"
 gpu_guard
+
+# Unload BEFORE the first cell, not only between cells. With OLLAMA_KEEP_ALIVE=-1 an
+# interrupted earlier run leaves its models resident forever: run 20260808_0555 began with
+# 26,196 MiB already allocated from the aborted 0545 run, so c01 reported a 0.56 s
+# warmup/load against 4-6 s for every other cell. Decode and prefill were unaffected
+# (both are measured after warmup), but the load figure was meaningless and the first cell
+# had less free VRAM than the matrix assumed.
+echo "unloading any resident models before cell 1 ..."
+gpu_unload_all
+sleep 5
+RESIDENT=$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits)
+echo "  VRAM after unload: ${RESIDENT} MiB (idle baseline was ${IDLE_MIB} MiB)"
+if [[ "$RESIDENT" -gt 4000 ]]; then
+  echo "WARNING: ${RESIDENT} MiB still resident after unloading every model Ollama lists." >&2
+  echo "  Something outside Ollama holds VRAM. The planner cells need ~26.4 GB." >&2
+  echo "  Check: nvidia-smi --query-compute-apps=pid,used_memory --format=csv" >&2
+fi
+
+# Measure the idle floor and set the cold gate relative to it. Must run AFTER the unload
+# above, or the floor would be measured on a card still holding a previous run's heat.
+gpu_cold_calibrate || true
+
 # Every cell must start from the same thermal state, including the first one. A 34 C start
 # after an earlier probe is residual heat, not a cold card.
 gpu_cool_wait || true
 gpu_watch_start "$HOME/.oh-gui/thermal/${STAMP}_path_e.csv"
 
+# Interleaved replicate order: r1 of every cell, then r2 of every cell, and so on.
+QUEUE=()
+for ((rep=1; rep<=REPS; rep++)); do
+  for cell in "${CELLS[@]}"; do QUEUE+=("${cell}:${rep}"); done
+done
+
 FAILED=()
-for cell in "${CELLS[@]}"; do
+for item in "${QUEUE[@]}"; do
+  cell="${item%:*}"; rep="${item##*:}"
+  if [[ "$REPS" -gt 1 ]]; then
+    REP_ARGS=(--rep "$rep"); label="${cell} (rep ${rep}/${REPS})"
+  else
+    REP_ARGS=(); label="$cell"
+  fi
   # The watcher signals the parent on a thermal breach, but a breach detected between
   # cells must also stop the matrix. Not checking this is exactly the defect that let a
   # cutout announce itself and then run the next cell anyway (DEBUG_LOG 2026-08-08 06:55).
@@ -92,10 +135,10 @@ for cell in "${CELLS[@]}"; do
   fi
 
   echo
-  echo "================ $cell ================"
-  if python3 "$HARNESS" "$cell" --out "$RUN_DIR"; then :; else
-    echo "cell FAILED: $cell" >&2
-    FAILED+=("$cell")
+  echo "================ $label ================"
+  if python3 "$HARNESS" "$cell" --out "$RUN_DIR" "${REP_ARGS[@]}"; then :; else
+    echo "cell FAILED: $label" >&2
+    FAILED+=("$label")
   fi
 
   # Unload everything before the next cell. KEEP_ALIVE=-1 means nothing expires on its own.
