@@ -598,3 +598,29 @@ Entry format:
 - **Persistence mode is ON** (targets the fixed portion of the 2.8-6.9 s role-switch cost).
 - **Stop condition:** Phase 0 exit still NOT met.
 
+## 2026-08-08 06:00 EDT - Correcting my own power-cap claim; thermal instrumentation added
+
+- **Stage:** Phase 0 (baseline metrics)
+- **CORRECTION - I misread the throttle data.** At 05:35 I wrote that the card "was already
+  hitting its cap at idle," citing `SW Power Capping: 854,692 us`. That is a **cumulative
+  counter since driver initialisation**, not a current state. The live reading in the same
+  output was `SW Power Cap: Not Active`, and it stayed `Not Active` in the 04:35 run too,
+  with the counter frozen at the identical 854,692 us across both runs - proving it had not
+  incremented and was accumulated earlier under load. The claim overstated the evidence.
+- **Operator context:** the 435 W cap was set deliberately because the card previously ran
+  too hot. That is a stronger reason than my inference was.
+- **REVISED RECOMMENDATION - revert to 435 W for the quality bench.** This supersedes the
+  05:35 suggestion to raise it. Reasoning: the bench is an A/B across cells, and its
+  validity depends on every cell seeing identical conditions. A 600 W cap on a card with a
+  known thermal history risks throttling partway through the matrix, which silently makes
+  tok/s incomparable between the cells that ran cool and the cells that ran hot. A constant
+  435 W is the more reproducible instrument even though it is the slower one. Peak
+  throughput at 600 W is a separate question worth answering AFTER a valid bench, not during.
+- **`bench/thermal_watch.sh` added.** Samples temperature, power, clocks, utilisation and
+  live throttle state once per second; on ctrl-C prints max/avg and an explicit verdict, and
+  warns that tok/s is invalid if any throttling occurred. Run alongside every timed bench.
+- **`bench/fa_probe.sh` v2** replaces v1, which crashed before measuring anything
+  (see DEBUG_LOG 05:58). Also now records temp/power/clock per cell, so thermal state is
+  captured in the data rather than assumed.
+- **Stop condition:** Phase 0 exit still NOT met.
+
