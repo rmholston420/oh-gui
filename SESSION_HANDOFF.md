@@ -24,12 +24,14 @@
 ## Open questions / awaiting operator answer
 1. **ADR-015 DERIVED tier** — adopt it, or hold clause 1 strictly and amend spec 04 §4.2 and
    spec 08 to drop blast radius, analyzer identity, and derived telemetry?
-2. **vLLM vs Ollama.** Operator states vLLM performs much better. The donor's artifacts split:
-   vLLM wins decisively on **quality/capability** and sustained-load stability, and **loses on raw
-   throughput** — the canonical vLLM coder c01 runs 79-121 tok/s (ADR-013 line 311) against Ollama
-   cells at 230-300 tok/s (F.19-pre raw JSON). Adopting vLLM is a deliberate quality-for-speed
-   trade, not a free win. Confirm before it becomes a bench axis or an OH-GUI runtime assumption.
+2. ~~vLLM vs Ollama~~ — **DEFERRED by operator 2026-08-08 19:13 EDT**: "we will need to re-run
+   proper benchmarks later to make a valid comparison." See `KNOWN_ISSUES.md`. Pre-registered
+   constraint: no like-for-like A/B exists (vLLM's GGUF path is experimental/under-optimized;
+   INT4-AutoRound/NVFP4/AWQ have no Ollama path), so the rerun must be scoped as a **stack**
+   comparison, not a runtime comparison.
 3. Reclaim the 154 GB under the masked apt Docker daemon and the 137 GB SWE-bench repo cache?
 
 ## Exact next action
-Operator answers Q1 and Q2. Then: write the ADR-013-compliant task set before any GPU time is spent.
+Operator answers Q1 (ADR-015 DERIVED tier). Then: write the ADR-013-compliant task set before
+any GPU time is spent — it is the prerequisite for both the Phase 0 baseline report and the
+deferred stack comparison.

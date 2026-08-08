@@ -2683,3 +2683,30 @@ a DERIVED tier is proposed but deliberately not ratified. Awaiting operator deci
   manifest design promoted to port-early **for Phase 0**
 - **Stop-condition status:** met for the review-and-decide task. Blocked on two operator answers
   (ADR-015 DERIVED tier; vLLM-vs-Ollama runtime axis).
+
+## 2026-08-08 19:15 EDT — Runtime comparison deferred; recorded as not achievable like-for-like
+
+- **Stage / plugin / port:** Phase 0 · benchmark measurement spine
+- **What changed:** `KNOWN_ISSUES.md` gains a deferred-decision entry. No code, no ADR.
+
+Operator accepted that the donor evidence does not support "vLLM performs much better than Ollama"
+as stated, and deferred: "we will need to re-run proper benchmarks later to make a valid
+comparison." Recorded rather than acted on.
+
+One constraint found while scoping that rerun, and pre-registered now so it is not discovered
+mid-bench: **the two runtimes cannot serve identical weights in any shippable configuration.**
+vLLM's GGUF loader is documented upstream as highly experimental, under-optimized and single-file
+only, so a same-weights bench would measure vLLM's worst path; and INT4 AutoRound / NVFP4 /
+AWQ-Marlin — the formats behind every defensible winner in the donor's Path E/F — have no Ollama
+path. A controlled runtime comparison is therefore only possible on a configuration neither runtime
+would ship. The rerun must be framed as a **stack** comparison (best Ollama-servable vs best
+vLLM-servable) and its claim worded accordingly.
+
+Also noted for the rerun: the two axes disagree in the donor data (Ollama leads on tok/s, vLLM leads
+on quality and sustained-load stability), so the harness must capture throughput and latency
+alongside pass/fail rather than treating speed as a tiebreak-only field.
+
+- **Files touched:** `KNOWN_ISSUES.md`, `BUILD_LOG.md`, `SESSION_HANDOFF.md`
+- **Ports / adapters affected:** none
+- **PORTING_LEDGER / ADR updated:** none
+- **Stop-condition status:** deferred by operator; not blocking. ADR-015 DERIVED tier still open.

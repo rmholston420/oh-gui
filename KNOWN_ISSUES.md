@@ -269,3 +269,31 @@ could not, and carries a falsifiable revisit trigger that depends on this work e
 
 **Do not** quote acceptance rates from the six Phase 0 blocks as evidence that one local model is
 better than another. They are a baseline of record for the app, not a model ranking.
+
+### 2026-08-08 — Runtime comparison (vLLM vs Ollama) is deferred and cannot be run like-for-like
+
+- **Blocks:** no current phase. Deferred by operator decision 2026-08-08 19:13 EDT — "we will need
+  to re-run proper benchmarks later to make a valid comparison." Must be resolved before any OH-GUI
+  runtime assumption is hard-coded.
+- **Symptom:** the donor's F.19-pre matrix confounds runtime with quantization in every cell — no
+  pair holds the model fixed across runtimes — so it cannot isolate a runtime effect in either
+  direction. Raw tok/s favors Ollama (230-300 vs vLLM 117-391, and the canonical vLLM coder c01 sits
+  at 79-121); quality and capability favor vLLM decisively.
+- **Why a clean A/B is not available:** the two runtimes cannot serve the same weights in any
+  configuration we would ship.
+    - vLLM's GGUF path is documented upstream as "highly experimental and under-optimized … might be
+      incompatible with other features," and single-file only
+      (https://docs.vllm.ai/en/stable/features/quantization/gguf/). Benching vLLM on GGUF measures
+      vLLM's worst-supported loader and would understate it.
+    - The formats that produced every defensible winner — INT4 AutoRound, NVFP4, AWQ-Marlin — have
+      no Ollama path at all, so there is nothing to compare against.
+  Holding the model fixed is therefore only possible on a configuration neither runtime would ship.
+- **Consequence for the rerun:** pre-register it as a **stack** comparison, not a runtime
+  comparison — "best Ollama-servable configuration vs best vLLM-servable configuration" — and state
+  the claim in those terms. A result phrased as "vLLM is faster/better than Ollama" would not be
+  supported by any design available to us.
+- **Attempted fixes:** none; measurement deferred.
+- **Next investigation:** write the ADR-013-compliant task set first (>=5 attainable discordant
+  pairs, 50-70% acceptance band, replicates retained, fold rule pre-registered), then define the two
+  stacks. Capture tok/s and latency alongside pass/fail, since the axes disagree and both matter.
+- **Related DEBUG_LOG search terms:** vllm, ollama, gguf, tok/s, runtime, quantization, confound
