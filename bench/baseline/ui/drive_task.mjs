@@ -21,7 +21,7 @@ import { gradeCell } from "./grade.mjs";
 import { pointAtModel, bindRestoreToExit } from "./default_profile.mjs";
 import { checkWorkspace } from "./conversation_meta.mjs";
 import { execFileSync } from "node:child_process";
-import { readFileSync, readdirSync, writeFileSync, copyFileSync, rmSync, existsSync } from "node:fs";
+import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -53,6 +53,17 @@ let outcome = "aborted", failure = null;
 // auxiliary machinery. Repoint it at this cell's model, with restoration that survives Ctrl-C.
 // See ui/default_profile.mjs — it is a separate module because it mutates the operator's config.
 bindRestoreToExit();
+{
+  // Must happen BEFORE the conversation exists: the app reads the default profile for title
+  // generation as soon as the first message lands. Run 2 of t01 still logged a non-fatal
+  // "Agent error" at 55s because this call was missing entirely — the import was present and
+  // never invoked, which node --check and no-undef both accept without complaint.
+  const dp = pointAtModel(PROFILE);
+  if (dp.recovered) say("recovered a default-profile backup left by an interrupted run");
+  say(dp.changed
+    ? `default profile: ${dp.from} -> ${dp.to} (restored on exit)`
+    : `default profile already ${dp.to ?? "unreadable"}`);
+}
 const t = { submitted_s: null, first_message_s: null, idle_s: null };
 let turns = 0, transcript = "", modelObserved = null, cid = null;
 // match:null = UNKNOWN. Unknown is not a pass; it is recorded as such in the summary.
@@ -152,7 +163,6 @@ try {
   let stall = 0, lastN = 0, idleFor = 0;
   for (let i = 0; i < TIMEOUT_S; i++) {
     await page.waitForTimeout(1000);
-    const cur = await ids(page);
     const n = await page.locator('[data-testid="agent-message"]').count().catch(() => 0);
 
     // Heartbeat. A run that prints nothing for thirty minutes is indistinguishable from a hung one.

@@ -16,5 +16,11 @@ export default [{
       setInterval: "readonly", clearInterval: "readonly",
     },
   },
-  rules: { "no-undef": "error" },
+  rules: {
+    "no-undef": "error",
+    // An import that is never called is the same defect as an identifier that does not exist:
+    // both mean the code I believed was running is not. pointAtModel sat imported-and-unused
+    // through a matrix run because an automated edit anchored on text I had not re-read.
+    "no-unused-vars": ["error", { args: "none", varsIgnorePattern: "^_" }],
+  },
 }];

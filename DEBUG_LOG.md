@@ -1099,3 +1099,36 @@ Suite is 39 passing (was 31, was 13 this morning). New: `tests/test_workspace_ch
 
 **Lesson:** *the harness must verify it is measuring the same thing the agent is acting on* — an
 environment variable naming a directory is not evidence that anyone used it.
+
+## 2026-08-08 15:44 EDT — The default-profile fix was never called; matrix run 2 killed at t02
+
+Run 2 started clean: preflight PASS, `workspace confirmed: /home/rmholston/oh-gui-baseline/fixture`
+on t01, ACCEPTED=yes, peak 73C. But the `default profile: ... -> ...` line never printed, and t01
+logged the same non-fatal `Agent error` at 55s as run 1. Killed at t02, two minutes in.
+
+**Cause:** `pointAtModel` was imported into `drive_task.mjs` and **never invoked**. The scripted
+edit that was supposed to insert the call anchored on `await ensureConfigured(page);` while the real
+call is `ensureConfigured(page, say, shot)`. `str.replace` on a miss is a silent no-op, so the call
+never landed. A later edit removing the older `pointDefaultAtCellModel()` line also matched nothing,
+which is why grepping for that name came back empty and I read it as "old code fully removed" when
+the truth was "neither edit applied".
+
+**Third instance of one bug today** — `gate`, `ws`, now `pointAtModel` — all from anchoring an
+automated edit on text I had not re-read, all invisible to `node --check`. `no-undef` caught the
+second; it cannot see an import that is merely unused.
+
+**Fixed:**
+- The call is in, before conversation creation (the app reads the default profile for title
+  generation the moment the first message lands). Anchor asserted to match exactly once before
+  editing — a no-op replace now raises instead of passing quietly.
+- `no-unused-vars` added to the eslint gate. It found three more dead imports and, at line 166, an
+  `await ids(page)` doing a full DOM scan every second whose result was discarded: 1800 wasted
+  round-trips per cell, ~29k across a matrix. Removed.
+- Removing it, I also cut `ids` from the import while it was still used twice elsewhere. The gate
+  failed on the spot. It is working.
+
+Lint clean, 39 tests passing.
+
+**Lesson:** *an automated edit that reports success only proves the tool ran.* Every scripted edit
+now asserts its anchor matches exactly once, and the harness lints for unused imports because
+dead-but-present code reads exactly like working code in a diff.
