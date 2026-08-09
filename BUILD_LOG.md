@@ -3853,3 +3853,14 @@ The applied diff is now printed for every mutant.
 - **Ports / adapters affected:** none
 - **PORTING_LEDGER / ADR updated:** —
 - **Stop-condition status:** met for the live-verification slice. The approval path, the Canvas event port and the lens shell are now all exercised against the live server.
+
+## 2026-08-09 03:39 EDT — watched-run viewport pinned to the measured 3440x1309
+
+- **Stage / plugin / port:** Phase 1 · apps/gui · e2e harness
+- **What changed:** watched runs now default to a fixed 3440x1309 viewport instead of `--start-maximized`. The number is measured, not chosen: a maximized headed run on Colossus printed `[viewport] 3440x1309`, which also fixes Chrome's UI chrome at 131px rather than the 140px previously guessed. Maximizing remains available via `WATCH_MAXIMIZE=1`, and `WATCH_WIDTH`/`WATCH_HEIGHT` still force any size.
+- **Why pinned:** maximizing delegates the size to the window manager. Where there is none it silently yields 800x600, which falls under spec 03's 900px read-only cutoff and would disable every control the live tests click. A measured constant cannot do that.
+- **Verification:** launched a real browser through all four paths and read back `window.innerWidth/innerHeight` — default watch 3440x1309, override 1200x900, `WATCH_MAXIMIZE=1` 800x600 (no window manager in the sandbox, as expected), unwatched 1280x720.
+- **Files touched:** `apps/gui/playwright.config.ts`
+- **Ports / adapters affected:** none
+- **PORTING_LEDGER / ADR updated:** —
+- **Stop-condition status:** met

@@ -15,15 +15,25 @@ const URL = `http://${HOST}:${PORT}`;
 //
 // Set WATCH_WIDTH and WATCH_HEIGHT to force an exact size — useful for reproducing a specific
 // breakpoint, e.g. WATCH_WIDTH=1200 to sit in spec 03's three-region band.
-const FIXED_WIDTH = process.env.WATCH_WIDTH ? Number(process.env.WATCH_WIDTH) : null;
-const FIXED_HEIGHT = process.env.WATCH_HEIGHT ? Number(process.env.WATCH_HEIGHT) : null;
-const HAS_FIXED_SIZE = FIXED_WIDTH !== null && FIXED_HEIGHT !== null;
-/** Chrome's tab strip, omnibox and the automation banner sit above the viewport. */
-const CHROME_UI_HEIGHT = 140;
+// Measured on Colossus's ultrawide by printing `window.innerWidth/innerHeight` from a maximized
+// headed run (2026-08-09): 3440x1309. Pinned as the default so the size is a known constant rather
+// than whatever the window manager happens to do — maximizing silently yields 800x600 where there
+// is no window manager, which lands under spec 03's 900px read-only cutoff.
+const FIXED_WIDTH = Number(process.env.WATCH_WIDTH ?? 3440);
+const FIXED_HEIGHT = Number(process.env.WATCH_HEIGHT ?? 1309);
+/**
+ * Chrome's tab strip, omnibox and automation banner sit above the viewport. 131px is measured, not
+ * estimated: the maximized window on a 1440px-tall display reported a 1309px viewport. Overshooting
+ * here pushes the window taller than the screen and hides the bottom of the page.
+ */
+const CHROME_UI_HEIGHT = 131;
 
-const watchArgs = HAS_FIXED_SIZE
-  ? [`--window-size=${FIXED_WIDTH},${FIXED_HEIGHT + CHROME_UI_HEIGHT}`]
-  : ['--start-maximized'];
+/** `WATCH_MAXIMIZE=1` defers to the window manager instead of the measured default. */
+const MAXIMIZE = process.env.WATCH_MAXIMIZE === '1';
+
+const watchArgs = MAXIMIZE
+  ? ['--start-maximized']
+  : [`--window-size=${FIXED_WIDTH},${FIXED_HEIGHT + CHROME_UI_HEIGHT}`];
 
 /**
  * Spec 03 puts the four-region Pro layout above 1600px. Watching at Playwright's default 1280 would
@@ -38,7 +48,7 @@ const watchArgs = HAS_FIXED_SIZE
 function chromiumUse() {
   const base = { ...devices['Desktop Chrome'] };
   if (!process.env.WATCH) return base;
-  if (HAS_FIXED_SIZE) return { ...base, viewport: { width: FIXED_WIDTH, height: FIXED_HEIGHT } };
+  if (!MAXIMIZE) return { ...base, viewport: { width: FIXED_WIDTH, height: FIXED_HEIGHT } };
   delete (base as { deviceScaleFactor?: number }).deviceScaleFactor;
   return { ...base, viewport: null };
 }
