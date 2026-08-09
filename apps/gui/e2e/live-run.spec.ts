@@ -182,8 +182,10 @@ test.describe('@live real conversation against agent-server', () => {
     await page.getByTestId('approve').first().click();
 
     // The composer only exists once a conversation does. Steering a run that was never started is
-    // the failure this guard exists for.
-    const composer = page.getByRole('region', { name: 'Steer the run' });
+    // the failure this guard exists for. It is a <form>, so its role is `form`, not `region` —
+    // the unit tests queried it by label text and never exercised the role, which is precisely
+    // why this only surfaced live.
+    const composer = page.getByRole('form', { name: 'Steer the run' });
     await expect(composer).toBeVisible({ timeout: 60_000 });
 
     const rows = page.getByTestId('event-row');

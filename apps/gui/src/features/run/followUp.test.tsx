@@ -144,6 +144,9 @@ describe('follow-up steering', () => {
     await user.type(screen.getByLabelText('Goal'), 'Build the thing.');
     await user.click(screen.getByRole('button', { name: 'Start' }));
 
+    // Role, not just label: an accessible name on the wrong role is invisible to any consumer
+    // querying by role, and that failure is silent in a label-based query.
+    expect(screen.getByRole('form', { name: 'Steer the run' })).toBeInTheDocument();
     const box = await screen.findByLabelText<HTMLTextAreaElement>('Follow-up instruction');
     await user.type(box, 'prefer the existing adapter');
     await user.click(screen.getByRole('button', { name: 'Send follow-up' }));
