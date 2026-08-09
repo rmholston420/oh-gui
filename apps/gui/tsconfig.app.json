@@ -9,5 +9,9 @@
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo"
   },
   "include": ["src"],
+  // `src/__tests__` is excluded here and checked by tsconfig.node.json instead:
+  // tests there legitimately read fixtures through `node:fs`, while shipped
+  // browser code still must not. Tests living beside their source are still
+  // checked here, so this does not weaken the browser-purity guarantee.
   "exclude": ["src/__tests__"]
 }

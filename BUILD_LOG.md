@@ -4059,3 +4059,54 @@ The applied diff is now printed for every mutant.
   with a window gap is 1704px, 4px above the 1700px breakpoint, so the tier flips on a trivial
   resize.
 - **Stop-condition status:** layout work stops here; pivoting to the self-coding loop per operator.
+## 2026-08-09 05:07 EDT — GUI-local untrusted badge and reject verification
+
+- **Stage / plugin / port:** Phase 1 · authorization surface
+- **What changed:** Added an explicitly GUI-local untrusted-content provenance badge with distinct unavailable/uncomputed/empty/influenced states; added unit and non-live browser coverage. Verified existing Reject wiring carries the trimmed reason through the pinned SDK-equivalent confirmation endpoint.
+- **Files touched:** apps/gui/src/features/authorization/{AuthorizationCard.tsx,UntrustedContentBadge.tsx,untrusted-content.ts,untrusted-content.test.ts,authorization-card-provenance.test.tsx}; apps/gui/e2e/authorization-provenance.spec.ts
+- **Verification:** 200 Vitest tests passed; 45 non-live Playwright tests passed; six intentional mutants were caught. `npm run gate` build remains blocked by out-of-scope src/shell/breakpoint-arithmetic.test.ts Node-type errors.
+- **Stop-condition status:** Blocked — full gate is not green; non-live Playwright is green.
+## 2026-08-09 04:57 EDT — Implemented self-contained authorization audit log; full-suite validation blocked by unowned concurrent failures
+
+- **Stage / plugin / port:** Phase 1 · authorization audit log
+- **What changed:** Added immutable append-only audit-log domain model, native/GUI-local projection, session-expiring relaxation count, export panel, unit/component tests, non-live panel e2e, and mutation checks. Module remains unwired by scope.
+- **Files touched:** apps/gui/src/features/audit-log/audit-log.ts; apps/gui/src/features/audit-log/AuditLogPanel.tsx; apps/gui/src/features/audit-log/audit-log.test.ts; apps/gui/src/features/audit-log/AuditLogPanel.test.tsx; apps/gui/e2e/audit-log.spec.ts
+- **Verification:** Focused 16 Vitest + 3 Playwright tests passed; 9/9 mutants caught. Full gate: 201 Vitest passed but tsc failed in unowned shell test. Full non-live Playwright: 39 passed / 3 unowned breakpoint-overflow failures.
+- **Stop-condition status:** Blocked — required full suites are not fully green; no app-shell wiring performed.
+
+## 2026-08-09 05:26 EDT — Unblocked the gate my own test broke
+
+- **Stage / plugin / port:** Phase 1 · tooling · no port
+- **Symptom:** `tsc -b` failed with TS2591 on `node:fs`/`node:url`/`node:path` in
+  `src/shell/breakpoint-arithmetic.test.ts`, blocking `npm run gate` for a subagent working on an
+  unrelated path.
+- **Root cause:** `tsconfig.app.json` deliberately omits Node types so browser code cannot import
+  them, and it includes `src` whole. My test read `Shell.css` from disk from inside `src`. A first
+  attempt to add an `exclude` for test globs was silently discarded: the file already had an
+  `exclude` key, and the later duplicate won.
+- **Fix applied:** moved the suite to the pre-existing `src/__tests__/` directory, which
+  `tsconfig.app.json` already excludes and `tsconfig.node.json` already checks with Node types.
+  Merged the duplicate `exclude` keys and documented why the directory is excluded. A `?raw` import
+  was tried first and rejected: the runner stubs CSS to an empty string, so every assertion would
+  have passed vacuously — a silent false green, which is worse than the build error.
+- **Files touched:** `apps/gui/tsconfig.app.json`, `apps/gui/src/__tests__/breakpoint-arithmetic.test.ts`
+- **Verification:** `tsc -b` clean; 204 unit tests / 29 files; 49 browser tests; build succeeds.
+- **Stop-condition status:** gate restored.
+
+## 2026-08-09 05:30 EDT — `git add -u` swept a subagent's in-flight edit into an unrelated commit
+
+- **Stage / plugin / port:** Phase 1 · repo hygiene · no port
+- **Symptom:** commit `9a24da0` ("ADR-031 rev 2") contains a 20-line change to
+  `AuthorizationCard.tsx` that belongs to the untrusted-badge work and is unmentioned in its
+  message. That change imports `UntrustedContentBadge`, which `9a24da0` does not add, so **that
+  commit does not build in isolation**. `d0c32c6` inherits the same broken state.
+- **Root cause:** I used `git add -u` while a subagent was concurrently writing to the tree.
+  `add -u` stages every modified tracked file, not the ones I reasoned about. The standing rule
+  against `git add -A` exists for exactly this reason and `add -u` is the same hazard.
+- **Fix applied:** committed the badge forward in this commit so `main` builds again. History is
+  not rewritten — it is already pushed, and a broken intermediate commit is honest whereas a
+  rewrite would hide that a concurrent-agent workflow produced it.
+- **Rule adopted:** when subagents are running, stage only explicit paths. Never `add -u`, never
+  `add -A`, and check `git status --short` against an expected file list before every commit.
+- **Files touched:** BUILD_LOG.md (this entry); the badge files land in this commit.
+- **Stop-condition status:** `main` builds; bisecting across `9a24da0..d0c32c6` will not.

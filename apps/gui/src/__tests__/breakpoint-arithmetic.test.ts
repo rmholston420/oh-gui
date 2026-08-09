@@ -11,8 +11,10 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 
+// Read through `node:fs` rather than Vite's `?raw`, because the test runner
+// stubs CSS imports to an empty string and the assertions would vacuously pass.
 const HERE = dirname(fileURLToPath(import.meta.url));
-const CSS = readFileSync(join(HERE, "Shell.css"), "utf8");
+const CSS = readFileSync(join(HERE, "..", "shell", "Shell.css"), "utf8");
 
 /** Minimums declared by REQ-03-007 and REQ-03-009. */
 const RAIL_MIN_PX = 280;
