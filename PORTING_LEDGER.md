@@ -393,3 +393,66 @@ chain, and §4.2 is about the account, so the conclusion leads.
 - **ADR:** — (recorded in `docs/specs/16-stack-layers.md`)
 - **Reversal:** ADR, and would require a licence review.
 - **Logged:** 2026-08-09 01:36 EDT
+
+# Canvas conversation-event rendering — PORTED
+
+- **Source URL:** https://www.npmjs.com/package/@openhands/agent-canvas/v/1.12.0
+- **Canonical upstream:** https://github.com/OpenHands/OpenHands
+- **npm version:** `@openhands/agent-canvas` 1.12.0
+- **Tarball SHA-256:** `fa110b20f400efe74d8888122e9db1c91e4b892776d2e248c40074113acf39ab` (`/tmp/canvas112/c.tgz`)
+- **SPDX license:** MIT
+- **Kosmos location:** `apps/gui/src/features/events/`
+- **Ports crossed:** none — GUI-local projection
+- **ADR basis:** ADR-015, ADR-023, ADR-025, ADR-026 D1.3
+- **Recovery:** `/tmp/extract_canvas_sources.py` read each `dist/**/*.js.map` `sourcesContent` entry into `/tmp/canvas-src/` before adaptation. The GUI source does not import from the donor tree.
+- **Logged:** 2026-08-09 03:19 EDT
+
+## Donor sources read
+
+| Donor source | OH-GUI target |
+|---|---|
+| `components/conversation-events/chat/event-content-helpers/should-render-event.ts` | `event-content-helpers/should-render-event.ts` |
+| `components/conversation-events/chat/event-content-helpers/get-action-event-title.ts` | `event-content-helpers/get-action-event-title.ts` |
+| `components/conversation-events/chat/event-content-helpers/get-action-content.ts` | `event-content-helpers/get-action-content.ts` |
+| `components/conversation-events/chat/event-content-helpers/get-observation-content.ts` | `event-content-helpers/get-observation-content.ts` |
+| `components/conversation-events/chat/group-events.ts` | `chat/group-events.ts` |
+| `components/conversation-events/chat/event-message-components/error-event-message.tsx` | `event-message-components/error-event-message.tsx` |
+| `components/conversation-events/chat/event-message-components/finish-event-message.tsx` | `event-message-components/finish-event-message.tsx` |
+| `components/conversation-events/chat/event-message-components/collapsible-thinking.tsx` | `event-message-components/collapsible-thinking.tsx` |
+
+## Modifications
+
+| Area | Source-level adaptation |
+|---|---|
+| Wire projection | Added `event-types.ts`: read-only structural checks only, with ADR-023 `normalizeActionKind` before every event/action/observation kind comparison. |
+| Visibility | Preserves every event bearing a native discriminator. Only an absent discriminator returns `false`; unknown kinds are deliberately available to an UNHANDLED renderer. |
+| Action title/content | Uses only `ActionEvent.summary`, `action`, and `tool_name`; handles native `action: null`; uses exact `FinishAction.message` / `ThinkAction.thought`; known non-special actions preserve their raw native JSON. |
+| Observation content | Uses native observation JSON or exact user-rejection reason. Does not synthesize success, no-output, or error text. Unknown observation classes receive an UNHANDLED marker and raw JSON. |
+| Event grouping | Replaced Canvas's UI-normalized consecutive-card collapse with durable-log pairing by `ObservationEvent.action_id` / `UserRejectObservation.action_id`; duplicates, reverse-order, and orphans remain independent. |
+| Message components | Replaced Canvas-owned ChatMessage/ErrorMessage/Markdown dependencies with local React primitives; raw text is rendered in a preformatted text element. The finish card reads only the verified finish message and error card only the verified error string. |
+| Dependency posture | No import from `/tmp/canvas112`, `/tmp/canvas-src`, or `@openhands/agent-canvas`; donor remains evidence only as ADR-026 D1.3 requires. |
+| Tests | Added 27 real-object Vitest assertions and eight deliberate source mutants (M1–M8), all killed. |
+
+## Native basis (SDK source is authoritative)
+
+| Rendering surface / field | SDK source basis |
+|---|---|
+| Event discriminator and `id` for record identity/pairing | `openhands/sdk/utils/models.py:197-200` (`kind` computed discriminator); `openhands/sdk/event/base.py:20-32` (`Event`, `id`, `source`) |
+| `ActionEvent.action`, including native non-executable `null`; `tool_name` | `openhands/sdk/event/llm_convertible/action.py:24-46` |
+| `ActionEvent.summary` | `openhands/sdk/event/llm_convertible/action.py:77-88` |
+| `ActionEvent.reasoning_content` / thinking blocks, supplied by caller to CollapsibleThinking | `openhands/sdk/event/llm_convertible/action.py:29-36` |
+| `FinishAction.message` | `openhands/sdk/tool/builtins/finish.py:21-22` |
+| `ThinkAction.thought` | `openhands/sdk/tool/builtins/think.py:21-24` |
+| `ObservationEvent.observation` and `action_id` | `openhands/sdk/event/llm_convertible/observation.py:32-45` |
+| `UserRejectObservation.rejection_reason`, `rejection_source`, and `action_id` | `openhands/sdk/event/llm_convertible/observation.py:86-107` |
+| `AgentErrorEvent.error` | `openhands/sdk/event/llm_convertible/observation.py:138-150` |
+| Generic observation payload stays structurally opaque/raw rather than reading unverified tool-specific fields | `openhands/sdk/tool/schema.py:357-372` |
+
+## Donor defects found
+
+| Defect | Donor evidence | Disposition |
+|---|---|---|
+| Bare `kind` equality/switches are dead against mangled wire discriminators. | Requested helpers compare raw `event.action.kind` or `event.observation.kind`: `should-render-event.ts:65-84,96`; `get-action-event-title.ts:37-145`; `get-action-content.ts:160-267`; `get-observation-content.ts:359-435`; `group-events.ts:23-38`. Related renderer/helper paths do likewise: `event-thought-helpers.ts:98,107`; `event-message.tsx:218,230`. | **Fixed in port:** every relevant comparison calls `normalizeWireKind`, which delegates to ADR-023 `normalizeActionKind`. |
+| Nullable native `ActionEvent.action` is dereferenced and/or rejected, silently losing a valid non-executable event. | `should-render-event.ts:63-69`; `get-action-event-title.ts:37`; `get-action-content.ts:218-220`; `group-events.ts:23-25`. SDK confirms `Action | None` at `action.py:40-43`. | **Fixed in port:** visibility preserves the event; title describes native non-executable state; content stays `null`. |
+| Optional wire discriminators cause silent content loss when donors filter only `type === "text"` or `type === "thinking"`. | Requested `should-render-event.ts:28-36`; requested `get-observation-content.ts:34-40,70-73` and other filters; related `event-thought-helpers.ts:15-19,33-37`. Installed generated client declares `TextContent.type?`, `ThinkingBlock.type?`, and `RedactedThinkingBlock.type?` at `agent-server-schema.d.ts:11411,11514,9183`. | **Fixed by adaptation:** the port does not discriminate individual content blocks. It preserves the verified opaque native action/observation payload as JSON. The unrelated donor thought helper was not ported. |
+| Missing native outcome is converted to fabricated success. | `get-observation-result.ts:37-45` returns `success` when terminal exit/error state is absent, and `:67-68` defaults every unrecognised observation to `success`. | **Not ported:** no result-status helper or fallback success state was copied; missing native signal returns `null` and unknown kinds are UNHANDLED. |

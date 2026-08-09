@@ -1,8 +1,8 @@
 /*
  * docs/specs/03-layout.md §§3.0–3.2 and docs/specs/07-visual-design.md §7.2.
- * The largest desktop mode keeps the center stage at a 60% minimum; side
- * ranges make the 1600px lower boundary overflow by 20px rather than silently
- * shrinking below the specified center-stage minimum.
+ * The largest desktop mode keeps the center stage at a 60% minimum; the
+ * specified side ranges make a small overflow at the 1600px lower boundary
+ * preferable to silently shrinking the center stage below that requirement.
  */
 .oh-shell {
   box-sizing: border-box;

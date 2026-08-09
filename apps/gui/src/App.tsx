@@ -3,6 +3,7 @@ import AuthorizationCard, {
 } from './features/authorization/AuthorizationCard';
 import FirstRunWizard from './features/first-run/FirstRunWizard';
 import RunView from './features/run/RunView';
+import Shell from './shell/Shell';
 
 /**
  * There is no router yet — the shell (docs/specs/03-layout.md section 3.1) is not built. Until it
@@ -96,5 +97,14 @@ export default function App() {
     );
   }
 
-  return <RunView />;
+  // The lens is presentation over one mounted surface (spec 03 §3.0). `RunView` is mounted once
+  // and is not remounted, refetched, or re-routed when the lens toggles — that is the constraint,
+  // not an optimisation.
+  return (
+    <Shell
+      commandBarContent={<span className="font-mono text-xs text-slate-400">agent-server · 127.0.0.1:8000</span>}
+    >
+      <RunView />
+    </Shell>
+  );
 }

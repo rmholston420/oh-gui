@@ -48,7 +48,6 @@ export function Shell({
   const lens = controlledLens ?? storedLens.lens;
   const isReadOnlyViewport = useViewportGate();
   const isPro = lens === 'pro';
-  const hasLeftRail = leftRail !== undefined;
 
   const setLens = useCallback(
     (nextLens: Lens) => {
@@ -98,7 +97,7 @@ export function Shell({
       )}
 
       <div className="oh-shell__workspace">
-        {isPro && hasLeftRail && (
+        {isPro && (
           <aside className="oh-shell__left-rail" aria-label="Navigation">
             <div className="oh-shell__rail-heading">
               <span>Workspace navigation</span>
@@ -118,7 +117,7 @@ export function Shell({
 
         <main className="oh-shell__center-stage">{content}</main>
 
-        {isPro && rightColumn !== undefined && (
+        {isPro && (
           <aside className="oh-shell__right-column" aria-label="Conversation">
             {rightColumn}
           </aside>

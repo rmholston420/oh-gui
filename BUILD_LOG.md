@@ -3800,3 +3800,32 @@ The applied diff is now printed for every mutant.
 - **PORTING_LEDGER / ADR updated:** ledger entry timestamp corrected only; no decision changed
 - **Mutation record:** both arms of the new gate were seen to fail — a future-dated probe and a wrong-zone-suffix probe each exited 1, and the gate returned to 0 when they were removed. Its first real run additionally caught a future stamp quoted inside the DEBUG_LOG entry describing the bug, establishing the convention that offending values are described, not quoted.
 - **Stop-condition status:** met
+
+## 2026-08-09 03:17 EDT — Lens shell and design tokens
+
+- **Stage / plugin / port:** Phase 4 · Vibe/Pro semantic-zoom shell · theme tokens, lens state, responsive shell, viewport gate
+- **What changed:** Added the deep-lapis token layer with per-token WCAG contrast measurements; a binary persisted Vibe/Pro lens hook; a responsive, CSS-only shell with a single lens toggle, collapsible Pro rail, 900px read-only capability gate, and reduced-motion/transparency handling. Added real-DOM tests plus verified mutation kills for the controls and gate.
+- **Files touched:**
+  - `apps/gui/src/theme/tokens.ts`
+  - `apps/gui/src/theme/tokens.css`
+  - `apps/gui/src/theme/tokens.test.ts`
+  - `apps/gui/src/features/lens/useLens.ts`
+  - `apps/gui/src/features/lens/useLens.test.tsx`
+  - `apps/gui/src/shell/Shell.tsx`
+  - `apps/gui/src/shell/Shell.css`
+  - `apps/gui/src/shell/Shell.test.tsx`
+  - `apps/gui/src/shell/useViewportGate.ts`
+- **Ports / adapters affected:** None; presentation-only shell over the existing shared data model.
+- **PORTING_LEDGER / ADR updated:** —
+- **Stop-condition status:** met — scoped Vitest suite passes; no integration files, shared logs, build, gate, commit, or push were touched by this task.
+
+2026-08-09 03:19 EDT — Canvas conversation-event rendering port completed.
+
+- Scope: GUI-local projection under `apps/gui/src/features/events/`; no ports crossed and no donor runtime dependency.
+- ADR basis: ADR-015 native fidelity, ADR-023 discriminator normalization, ADR-025 source-level donor reuse, ADR-026 D1.3 donor-as-evidence posture.
+- Implemented: event wire projection, event visibility, action titles/content, observation content, durable action/observation pairing, error/finish/thinking components, and three scoped test files.
+- Native fidelity: only SDK-verified fields are read; action-null and absent signals remain distinct; unknown action/observation kinds render UNHANDLED rather than folding into a neighbour.
+- Donor defects recorded in `/tmp/ledger-events.md`: raw mangled-kind comparisons, nullable-action loss, optional content discriminator loss, and fabricated observation success fallback.
+- Validation: `npx vitest run` scoped to the three event test files: 3 passed, 27 passed. Deliberate mutants M1–M8 were all killed; detailed output: `/tmp/events-mutation-results.txt` and `/tmp/events-vitest-output.txt`.
+- Files created: `event-types.ts`; four event-content helpers; `chat/group-events.ts`; three event-message components; and three test files, all inside the assigned `apps/gui/src/features/events/` boundary.
+- Stop condition: current event-rendering port implementation and scoped test contract are complete. No commit, push, gate, or build was run.

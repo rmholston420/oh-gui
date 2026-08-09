@@ -1830,3 +1830,13 @@ gating" defect class in this repo.
 - **Files changed:** `PORTING_LEDGER.md`, `BUILD_LOG.md`, `DEBUG_LOG.md`, `adrs/ADR-023-blast-radius-projection-table.md`
 - **Detection gap closed:** nothing checked that a recorded timestamp is in the past. Added `scripts/check-log-timestamps.py`, which scans the four operational logs, the ledger, all ADRs, and all specs (289 timestamps across 56 files) for two faults: a stamp later than now, and a zone suffix disagreeing with America/Detroit's real offset on that date (an `EDT` label in January is this same bug). Mutation-tested both arms: a year-2099 probe was caught by the future check, and a mid-January probe carrying a summer suffix by the offset check, each exiting 1; both pass when removed. Its first real run also caught a future stamp quoted inside this very entry, which is why the values above are described rather than quoted.
 - **Related BUILD_LOG entry:** —
+
+## 2026-08-09 03:24 EDT — `git add -A` committed a subagent's mid-write files, bypassing the gate
+
+- **Symptom:** commit `4d987f3`, whose message describes only a log-timestamp fix, also contains 9 files of unrelated lens/theme work (`src/theme/*`, `src/features/lens/*`, `src/shell/*`). The authoring subagent finished one minute *after* that commit and then modified `Shell.tsx` and `Shell.css` further, so what was pushed was a partial snapshot no gate had ever run over.
+- **Affected stage / plugin / port:** process · `apps/gui` · no runtime component
+- **Root cause:** `git add -A` stages the entire working tree. A subagent was concurrently writing into that same tree, so the wildcard captured whatever bytes happened to exist at that instant. The standing rule — never push behind anything but the gate's exit status — was satisfied in letter for the log fix and broken in fact for the lens files, because staging was wider than the work being verified. The commit message then misdescribed its own contents, which is the more durable damage: a future reader bisecting for the lens work would not find it here.
+- **Fix applied:** none possible retroactively without rewriting pushed history, which is not worth it for a single-operator repo. Forward fix: the merged, gated commit that follows supersedes the partial snapshot, and this entry records that `4d987f3` is not the provenance of the lens work.
+- **Rule tightened:** never `git add -A` while any subagent shares the working tree. Stage explicit paths matching the change being described, and run `git status --short` first to see what else is in flight.
+- **Files changed:** none (process record)
+- **Related BUILD_LOG entry:** 2026-08-09 03:16 EDT

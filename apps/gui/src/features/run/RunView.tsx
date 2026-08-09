@@ -6,24 +6,7 @@ import {
   type TrustStopId,
 } from '../first-run/trust-dial';
 import { useConversation } from './useConversation';
-
-function EventList({ events }: { events: ReturnType<typeof useConversation>['events'] }) {
-  if (events.length === 0) {
-    return <p className="p-4 text-sm text-slate-400">No events have been returned yet.</p>;
-  }
-
-  return (
-    <ol className="divide-y divide-slate-800">
-      {events.map((event, index) => (
-        <li key={event.id ?? String(index)} className="p-3">
-          <pre className="overflow-x-auto whitespace-pre-wrap break-words text-xs text-slate-200">
-            {JSON.stringify(event, null, 2)}
-          </pre>
-        </li>
-      ))}
-    </ol>
-  );
-}
+import EventLog from './EventLog';
 
 /**
  * The run surface is a view of durable server objects, not a chat transcript. Event narration is
@@ -188,7 +171,7 @@ export default function RunView() {
           </p>
         </header>
         <div className="max-h-[50vh] overflow-y-auto">
-          <EventList events={run.events} />
+          <EventLog events={run.events} />
         </div>
       </section>
     </main>
