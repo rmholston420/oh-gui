@@ -1,42 +1,57 @@
-# Kosmos Session Handoff — 2026-08-09 05:58 EDT
+# Kosmos Session Handoff — 2026-08-09 07:03 EDT
 
 ## Current build-sequencing position
-- **Stage / phase:** Phase 1 · GUI run surface + authorization audit
-- **Plugin / kernel component:** `apps/gui` run view, audit log; ADR-016 tool-call benchmark
-- **Port(s) in progress:** none open; `CodeIndexPort` proposed but not filed
+- **Stage / phase:** Phase 1 · agent context + GUI surfaces
+- **Plugin / kernel component:** `oh-gui` plugin (`.agents/plugins/oh-gui/`); GUI plugins panel
+- **Port(s) in progress:** agent-server plugins API (read path only)
 
 ## Completed this session
-- `2fa161a` follow-up composer · `7dd78f3` audit log mounted · `56235b4` cell H promoted to
-  confirmatory a priori · `c5bc940` measured warm latency for H
-- `15fff34` live specs for composer + audit · `1aa6c84` elapsed-time progress output
-- `f617350` composer is a `<form>`, not a `region` — caught by the live suite, headless guard added
-- `2eab582` provenance conformed to ADR-020 clause 3; `useAuthorizationAudit` no longer setStates
-  in an effect (pre-existing lint error)
-- **Live suite: 5/5 green against the real agent-server.** 220 unit / 49 browser / 0 lint errors /
-  hard constraints PASSED
+- `0f8eeee` ADR-citation gate + 4 regression tests.
+- `38b0bf1` 18 skills ported from Forge-OH (MIT, SHA `df73ebe`); 5 rejected with reasons.
+- `fb5e1c0` repackaged as one `oh-gui` plugin per REQ-15-006. **Pushed red** — see below.
+- `aa645f9` gate fix: in repo-root logs an ADR number in inline code is a mention, not a citation.
+  Specs and ADRs get no such escape.
+- `97934df` `argument-hint`, not `argument_hint`. Found by loading the plugin with a real
+  `openhands-sdk==1.41.0`. The loader ignored the underscore key silently, so both command hints
+  were absent. New `scripts/tests/test_plugin_manifest.py` reads the accepted keys out of the
+  pinned SDK source rather than restating them; 4 mutants caught.
+- `20cc2ca` read-only Plugins panel at `?surface=plugins` + live Playwright spec.
 
-## Remaining before current Definition of Done
-- **Run the ADR-016 benchmark** — `cd ~/dev/oh-gui && ./bench/toolcall/run_overnight.sh`.
-  Confirmatory A,B,C,D,H; exploratory E,F,I,K; G,J skip (HTTP 412). Projection 3.33 h vs 8 h cap.
-- Score, rank, record the verdict in ADR-016.
-- Requirement IDs across remaining Phase 1 specs; four drift gates + mutation tests.
-- Code-graph/embedding ADR (next free is **ADR-033**) — research at
-  `code_graph_research.md`, top candidate needs independent verification before adoption.
+## Remaining before the current Definition of Done
+- **Operator witness owed:** `cd apps/gui && npx playwright test plugins-live --grep @live --headed
+  --workers=1 --reporter=list`. The spec stages `.agents` into `ohg-verify` itself.
+- Record the ADR-016 verdict as a closing amendment (decision made: change nothing; A stays
+  default. A=45.0%, B=47.5% on 40 tasks — one task apart, no confirmatory GPU run).
+- Assign requirement IDs across the remaining Phase 1 specs; four drift gates + mutation tests.
 
 ## Open questions / awaiting user answer
-- Code-graph stack choice (see ADR-033 below); my read is Serena + a local embedding index, not
-  the highest-starred single artifact.
-- Stale merged branches `phase-1/governance` (local) and `phase-1/middleware-skeleton`
-  (local + origin) — delete? Never confirmed.
+- **Tier 3 (enable/disable via `PATCH /plugins/{name}`)** — mutating but local and reversible.
+  Probably no ADR. Not started.
+- **Tier 4 (install / uninstall / refresh / marketplace)** — `POST /plugins` fetches remote code
+  into the agent's context. Needs an ADR on authorization and blast radius before any code.
 
-## Carried debt
-- Wizard §3.4 items 1 & 3 inert; `trust-dial.ts` mirror owed; `scripts/spec_coverage.py` auto-note
-  defect; ADR-030 `03-layout.md` object-set
-- No gate asserts ADR cross-references resolve (KNOWN_ISSUES) — this session produced two
-  fabricated citations
-- Quarter-tile 860px disables approvals; 3440x1440 leaves a 2640px stage with no 4th region
+## Verified contract facts (do not re-derive)
+- Plugin routes are under **`/api`** — the prefix lives on the including router (`api.py:428`),
+  not on `plugins_router`.
+- `POST /api/plugins` reports user- and project-discovered plugins. `GET /api/plugins/installed`
+  reports **only** registry-managed installs and returns `[]` for a `.agents/plugins/` plugin.
+- Manifest path is `.plugin/plugin.json` (`PLUGIN_MANIFEST_DIRS`). The `Plugin` class docstring
+  saying `.agents/plugin.json` is wrong.
+- Command frontmatter keys: `description`, `argument-hint`/`argumentHint`,
+  `allowed-tools`/`allowedTools`. Underscore variants are silently discarded.
+- `openhands-sdk==1.41.0` installs cleanly from PyPI into a throwaway venv; the plugin can be
+  loaded for real without the container.
+
+## Process failures this session — read before the next commit
+1. **Pushed red at `fb5e1c0`.** I chained the gate run and the push into one command *and* appended
+   to BUILD_LOG after the gate ran, so the gate never saw the final file. Twice. **Run gates as the
+   last step of a bash call, or re-run after any append. Never chain a gate and a push.**
+2. **A validator built from memory cannot catch a mistake made from memory.** The frontmatter
+   checker encoded my assumed key names. Read accepted values out of the pinned source.
+3. **Reading vendored evidence must not execute it** — a failed import wrote `__pycache__` into
+   `review/_sdk_src/` and tripped the evidence-snapshot gate.
 
 ## Exact next action
-```
-cd ~/dev/oh-gui && ./bench/toolcall/run_overnight.sh
-```
+Run the live plugins spec and report pass/fail:
+
+    cd ~/dev/oh-gui && git pull --ff-only && cd apps/gui && npx playwright test plugins-live --grep @live --headed --workers=1 --reporter=list
