@@ -17,6 +17,7 @@ confirmatory arm may carry an inferential claim.
 | B | `hf.co/unsloth/Devstral-Small-2507-GGUF:UD-Q4_K_XL` | confirmatory | 5/task | majority vote of 5 |
 | C | `qwen3.5:27b-q4_K_M` | confirmatory | 5/task | majority vote of 5 |
 | D | `qwen3.5:9b-q8_0` | confirmatory | 5/task | majority vote of 5 |
+| H | `glm-4.7-flash:q4_K_M` | confirmatory | 5/task | majority vote of 5 |
 | E | `qwen3.5:4b-q8_0` | exploratory | 1/task | none; raw rate only |
 | F | `qwen3.5:2b-q8_0` | exploratory | 1/task | none; raw rate only |
 | G | `laguna-xs-2.1:q4_K_M` | exploratory | 1/task | none; raw rate only |
@@ -43,9 +44,28 @@ cannot affect the confirmatory arm or the Holm family. Cells run at 0.8b/2b/4b/9
 GUI's observed-reliability-tier surface a scale curve with a measured floor instead of scattered
 points.
 
+**Cell H was promoted from exploratory to confirmatory at 2026-08-09 05:33 EDT,
+before any model was invoked.** The reason is architectural, not empirical: cells
+A, C and D are all Qwen, so three of the four original confirmatory cells share a
+family, a tokenizer and a tool-call training regime. A result that held across
+A/C/D could be a fact about Qwen rather than about tool-call reliability, and only
+B (Devstral) could distinguish those. GLM-4.7-Flash is a second independent
+lineage, which is what makes the comparison generalizable.
+
+The promotion is registered **a priori and deliberately not conditioned on
+screening**. The design does permit promotion on screening evidence tested on the
+held-out split, and that route would have been defensible — but choosing the
+challenger after seeing its screening score lets noise pick the arm, and it grows
+the Holm family as a function of observed data. Registering it now costs one extra
+comparison in the family and roughly 26 minutes of runtime, and buys a selection
+rule that owes nothing to any outcome.
+
 **Multiplicity.** McNemar is pairwise. The confirmatory arm is therefore
-restricted to **baseline-vs-each**, giving *k*−1 = 3 comparisons (A–B, A–C,
-A–D), corrected by **Holm–Bonferroni** at family-wise α = 0.05. Testing all
+restricted to **baseline-vs-each**, giving *k*−1 = 4 comparisons (A–B, A–C,
+A–D, A–H), corrected by **Holm–Bonferroni** at family-wise α = 0.05. The family
+grew from three to four when cell H was promoted; because that promotion was
+registered before any model ran, the family size is still fixed a priori and
+does not depend on observed data. Testing all
 pairs across ten cells would be 45 comparisons and would be expected to
 manufacture roughly two spurious winners at α = 0.05. Exploratory cells receive
 no p-value and no "better than" claim of any kind.

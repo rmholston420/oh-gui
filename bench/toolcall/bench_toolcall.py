@@ -92,7 +92,7 @@ CELLS: dict[str, dict[str, str]] = {
     "E": {"model": "qwen3.5:4b-q8_0", "arm": EXPLORATORY},
     "F": {"model": "qwen3.5:2b-q8_0", "arm": EXPLORATORY},
     "G": {"model": "laguna-xs-2.1:q4_K_M", "arm": EXPLORATORY},
-    "H": {"model": "glm-4.7-flash:q4_K_M", "arm": EXPLORATORY},
+    "H": {"model": "glm-4.7-flash:q4_K_M", "arm": CONFIRMATORY},
     "I": {"model": "lfm2.5:8b", "arm": EXPLORATORY},
     "J": {"model": "ornith:35b", "arm": EXPLORATORY},
     "K": {"model": "qwen3.5:0.8b-q8_0", "arm": EXPLORATORY},

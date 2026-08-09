@@ -43,12 +43,22 @@ def test_split_membership_is_stable_across_calls():
     assert [t["id"] for t in split_tasks(tasks)[0]] == [t["id"] for t in split_tasks(tasks)[0]]
 
 
-def test_confirmatory_arm_is_baseline_plus_three_challengers():
+def test_confirmatory_arm_is_baseline_plus_four_challengers():
     confirmatory = cells_in_arm(CONFIRMATORY)
-    # Holm-Bonferroni in the manifest is registered over exactly k-1 = 3
-    # baseline-vs-each comparisons; more cells here would invalidate it.
-    assert confirmatory == ["A", "B", "C", "D"]
+    # Holm-Bonferroni in the manifest is registered over exactly k-1 = 4
+    # baseline-vs-each comparisons; changing this set without changing the
+    # registered family size would invalidate the correction.
+    assert confirmatory == ["A", "B", "C", "D", "H"]
     assert CELLS["A"]["arm"] == CONFIRMATORY
+
+
+def test_confirmatory_arm_is_not_a_single_model_family():
+    # A, C and D are all Qwen. A result that held only across them could be a
+    # fact about Qwen rather than about tool-call reliability, so the arm must
+    # keep at least two independent lineages.
+    models = [CELLS[c]["model"].lower() for c in cells_in_arm(CONFIRMATORY)]
+    non_qwen = [m for m in models if "qwen" not in m]
+    assert len(non_qwen) >= 2, f"confirmatory arm needs >=2 non-Qwen lineages, got {non_qwen}"
 
 
 def test_every_cell_declares_an_arm():

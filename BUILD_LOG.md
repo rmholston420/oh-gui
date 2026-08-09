@@ -4159,3 +4159,28 @@ The applied diff is now printed for every mutant.
   first-party item, panel always visible, lose the rejection reason, record without a conversation).
 - **Stop-condition status:** carried debt "audit-log panel unwired" is closed. The confidence /
   provenance convention above is a real architectural decision and still owes an ADR.
+
+## 2026-08-09 05:37 EDT — Cell H promoted to the confirmatory arm, a priori
+
+- **Stage / plugin / port:** ADR-016 tool-call benchmark · design registration
+- **What changed:** `glm-4.7-flash:q4_K_M` (cell H) moved from exploratory to confirmatory.
+  Cells A, C and D are all Qwen; only B (Devstral) was an independent lineage, so a result that
+  held across the original arm could have been a fact about Qwen rather than about tool-call
+  reliability.
+- **Why a priori rather than conditional on screening:** the manifest already permitted promotion
+  on screening evidence tested against the held-out split, and that route was defensible. It was
+  not taken, because selecting the challenger after seeing its screening score lets noise choose
+  the arm and makes the Holm family size a function of observed data. Registering the promotion
+  before any model runs costs one extra comparison and ~100 min of projected runtime, and buys a
+  selection rule that owes nothing to any outcome.
+- **Files touched:** `bench/toolcall/bench_toolcall.py`, `bench/toolcall/MANIFEST.md`,
+  `bench/toolcall/tests/test_split.py`
+- **Holm family:** now *k*−1 = 4 (A–B, A–C, A–D, A–H), updated in the manifest.
+- **Two gates caught this, which is the point:** the existing arm test failed immediately on the
+  promotion because it pinned the family at three comparisons. Added a second gate asserting the
+  confirmatory arm keeps >= 2 non-Qwen lineages, so the monoculture cannot silently return.
+  Both mutation-tested: demoting H fails 2 tests, demoting B fails 2 tests.
+- **Projection:** screen 77.5 min, confirm 206.5 min, total ~4.7 h against the 8 h cap. H has no
+  measured warm latency and falls back to the conservative default, which inflates the confirm
+  figure; a timing probe on H would tighten it.
+- **Stop-condition status:** design registration complete. Benchmark is dispatchable.
