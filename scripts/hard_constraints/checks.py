@@ -603,11 +603,71 @@ def spec_cross_references_resolve() -> str | None:
                         offenders.append(
                             f"{source.relative_to(REPO_ROOT)}:{lineno} links missing {target}"
                         )
+    offenders.extend(_adr_citation_offenders())
+
     if offenders:
         return "unresolvable spec/ADR document references: " + "; ".join(offenders[:6]) + (
             f" (+{len(offenders) - 6} more)" if len(offenders) > 6 else ""
         )
     return None
+
+
+_ADR_NUMBER_RE = re.compile(r"\bADR-(\d{3})\b")
+_ADR_INDEX_ROW_RE = re.compile(r"^\|\s*\[?ADR-(\d{3})\b", re.MULTILINE)
+
+# Other projects' documents carry other projects' ADR numbering. Forge-OH's ADR-074 is a real
+# decision of Forge-OH's, not a dangling reference to one of ours.
+_FOREIGN_ADR_DIRS = ("docs/donor-specs",)
+
+
+def _adr_citation_offenders() -> list[str]:
+    """Bare `ADR-###` citations, and the index that is supposed to list them all.
+
+    The link half of this gate only sees Markdown links under `docs/specs/` and `adrs/`. Three
+    things fall outside it, and all three were live defects when this was written:
+
+    1. prose cites `ADR-###` far more often than it links one, and a citation to a number nobody
+       ever wrote reads as provenance while carrying none;
+    2. `BUILD_LOG.md`, `DEBUG_LOG.md` and `PORTING_LEDGER.md` cite ADRs constantly and sit in
+       neither scanned directory;
+    3. an ADR can be filed and never indexed, which is how it stops being findable.
+    """
+    offenders: list[str] = []
+    adr_dir = REPO_ROOT / "adrs"
+    if not adr_dir.is_dir():
+        return offenders
+
+    by_number = {p.name[4:7]: p.name for p in sorted(adr_dir.glob("ADR-*.md"))}
+
+    scanned: list[Path] = sorted(adr_dir.rglob("*.md"))
+    scanned += sorted((REPO_ROOT / "docs" / "specs").glob("*.md"))
+    scanned += sorted(REPO_ROOT.glob("*.md"))
+    scanned += sorted((REPO_ROOT / "bench").rglob("*.md")) if (REPO_ROOT / "bench").is_dir() else []
+
+    for source in scanned:
+        rel = source.relative_to(REPO_ROOT).as_posix()
+        if rel.startswith(_FOREIGN_ADR_DIRS):
+            continue
+        text = source.read_text(encoding="utf-8", errors="replace")
+        for number in sorted(set(_ADR_NUMBER_RE.findall(text))):
+            if number not in by_number:
+                offenders.append(f"{rel} cites ADR-{number}, which has no file")
+
+    index = adr_dir / "README.md"
+    if not index.is_file():
+        return offenders + ["adrs/README.md is missing"]
+
+    index_rows = _ADR_INDEX_ROW_RE.findall(index.read_text(encoding="utf-8"))
+    indexed = set(index_rows)
+    for number, name in by_number.items():
+        if number not in indexed:
+            offenders.append(f"adrs/README.md does not index {name}")
+    for number in sorted(indexed - set(by_number)):
+        offenders.append(f"adrs/README.md indexes ADR-{number}, which has no file")
+    for number in sorted(indexed):
+        if index_rows.count(number) > 1:
+            offenders.append(f"adrs/README.md indexes ADR-{number} {index_rows.count(number)} times")
+    return offenders
 
 
 REGISTRY_CHECKS = {

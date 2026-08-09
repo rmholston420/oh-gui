@@ -4345,3 +4345,20 @@ The applied diff is now printed for every mutant.
   the second time this session an unapplied mutant looked like a caught one.
 - **Stop-condition status:** ADR-022 unchanged; still a client-side affordance, still not mirrored
   in middleware. 20/20 card tests green.
+
+## 2026-08-09 06:44 EDT — ADR citation gate extended to numbers, logs and the index
+
+- **Stage / plugin / port:** Phase 0 · tooling · `spec_cross_references_resolve`
+- **What changed:** the registered cross-reference gate now also fails on a bare `ADR-###` citation
+  with no file, an ADR that is filed but not indexed, an index row with no file, and a duplicated
+  index row. Scanning widened to repo-root logs, `bench/`, and all of `adrs/`. `docs/donor-specs/`
+  is exempt: Forge-OH's ADR-074 is Forge-OH's, not a dangling reference to ours.
+- **Correction recorded:** my carried debt note claimed no gate asserted ADR cross-references.
+  That was false — `spec_cross_references_resolve` has been registered and enforced since ADR-018,
+  and would have caught the fabricated *links*. Only bare numbers and the index were unguarded. I
+  spent a round building a standalone duplicate before checking, and deleted it.
+- **Files touched:** `scripts/hard_constraints/checks.py`,
+  `scripts/tests/test_check_hard_constraints.py`, `adrs/README.md`
+- **Mutation evidence:** bogus number in BUILD_LOG, unindexed ADR, and phantom index row each
+  caught; all three pinned by permanent tests, plus one asserting donor specs stay exempt. 63 pass.
+- **Stop-condition status:** carried debt item closed.

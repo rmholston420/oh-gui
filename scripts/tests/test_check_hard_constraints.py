@@ -631,6 +631,42 @@ def test_spec_cross_references_resolve_catches_a_dangling_document(repo_copy):
     assert checks.spec_cross_references_resolve() is not None
 
 
+def test_a_cited_adr_number_that_was_never_written_is_caught(repo_copy):
+    """Prose cites ADR numbers far more often than it links them.
+
+    Five ADR filenames were fabricated in one working session. A citation to a number nobody wrote
+    reads as provenance and carries none, so the number itself is gated, not just the link.
+    """
+    (repo_copy / "BUILD_LOG.md").write_text(
+        "## entry\n\n- ratified by ADR-099.\n", encoding="utf-8"
+    )
+    assert checks.spec_cross_references_resolve() is not None
+
+
+def test_an_unindexed_adr_is_caught(repo_copy):
+    """An ADR that is filed but not indexed stops being findable."""
+    (repo_copy / "adrs" / "ADR-901-mutant.md").write_text("# ADR-901\n", encoding="utf-8")
+    assert checks.spec_cross_references_resolve() is not None
+
+
+def test_an_index_row_with_no_file_is_caught(repo_copy):
+    index = repo_copy / "adrs" / "README.md"
+    index.write_text(index.read_text(encoding="utf-8") + "| ADR-902 | phantom | Ratified |\n",
+                     encoding="utf-8")
+    assert checks.spec_cross_references_resolve() is not None
+
+
+def test_donor_specs_keep_their_own_adr_numbering(repo_copy):
+    """Forge-OH's ADR-074 is a real decision of Forge-OH's, not a dangling reference to ours.
+
+    Without this exemption the gate fires on every donor document and gets switched off.
+    """
+    donor = repo_copy / "docs" / "donor-specs" / "forge-oh"
+    donor.mkdir(parents=True, exist_ok=True)
+    (donor / "mutant.md").write_text("Superseded by ADR-074.\n", encoding="utf-8")
+    assert checks.spec_cross_references_resolve() is None
+
+
 # ---------------------------------------------------------------------------- coverage
 
 
