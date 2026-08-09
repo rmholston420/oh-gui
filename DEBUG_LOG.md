@@ -1961,3 +1961,17 @@ gating" defect class in this repo.
 - **Files changed:** `bench/toolcall/grading.py`, `bench/toolcall/tests/test_grading.py`,
   `bench/toolcall/regrade.py`, `bench/toolcall/MANIFEST.md`, `adrs/ADR-016-*.md`
 - **Related BUILD_LOG entry:** 2026-08-09 06:14 EDT
+
+## 2026-08-09 06:20 EDT — the weakest model ranked first after the grading fix
+
+- **Symptom:** re-graded screening ranked `lfm2.5:8b` first at 75.0% on 4/40 measured tasks, above
+  `qwen3.6:35b-a3b-mtp-coder` at 60.0% on 30/40. 36 of its 40 replies were `missing_tool_call`.
+- **Affected stage / plugin / port:** Phase 0 · ADR-016 benchmark · `bench/toolcall/grading.py`
+- **Root cause:** the same missing-not-at-random denominator as the 06:14 entry, in a second form.
+  `missing_tool_call` was classified unmeasurable, so a model that answers in prose has its hard
+  tasks deleted and is scored only on the ones it chose to attempt. Refusal was rewarded.
+- **Fix applied:** only a transport failure or an absent assistant message is unobserved; every
+  emitted reply is graded. Coverage is now printed beside every rate and flagged below 90%.
+- **Files changed:** `bench/toolcall/grading.py`, `bench/toolcall/tests/test_grading.py`,
+  `bench/toolcall/regrade.py`
+- **Related BUILD_LOG entry:** 2026-08-09 06:20 EDT

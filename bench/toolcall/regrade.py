@@ -84,7 +84,13 @@ def main() -> int:
     rows.sort(key=lambda row: row[1], reverse=True)
     print(f"\n{GREEN}ranking on the amended predicate (screening only — not a verdict){OFF}")
     for rank, (cell, rate, measured, total) in enumerate(rows, 1):
-        print(f"  {rank}. cell {cell}  {rate * 100:5.1f}%  ({measured}/{total} measured)")
+        # Coverage is printed next to every rate and low coverage is called out, because a rate
+        # computed on a subset the model selected for itself is not comparable to one computed on
+        # the whole set. lfm2.5:8b ranked first on 4 of 40 tasks before the second amendment.
+        coverage = measured / total if total else 0.0
+        flag = "" if coverage >= 0.90 else (
+            f"  {RED}<- {coverage * 100:.0f}% coverage: not comparable{OFF}")
+        print(f"  {rank}. cell {cell}  {rate * 100:5.1f}%  ({measured}/{total} measured){flag}")
     return 0
 
 

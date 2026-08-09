@@ -42,17 +42,19 @@ def test_native_object_arguments_pass():
     assert got["resolved"] is True
 
 
-def test_no_tool_call_is_unmeasurable_not_quality_zero():
+def test_describing_the_call_instead_of_making_it_is_a_measured_failure():
+    # Amended 2026-08-09 (ADR-016, second amendment). Prose in place of a tool call is the failure
+    # mode the benchmark exists to measure, not an outcome that could not be observed.
     got = grade_message(TERMINAL_TASK, {"content": "I would run pwd."})
-    assert got["resolved"] is None
-    assert got["tool_call_failure"] == "missing_tool_call"
-    assert got["quality_failure"] is None
+    assert got["resolved"] is False
+    assert got["quality_failure"] == "missing_tool_call"
+    assert got["tool_call_failure"] is None
 
 
-def test_malformed_argument_json_is_unmeasurable():
+def test_malformed_argument_json_is_a_measured_failure():
     got = grade_message(TERMINAL_TASK, message("terminal", '{"command":'))
-    assert got["resolved"] is None
-    assert got["tool_call_failure"] == "arguments_not_json"
+    assert got["resolved"] is False
+    assert got["quality_failure"] == "arguments_not_json"
 
 
 def test_wrong_valid_tool_is_measured_quality_failure():
@@ -78,17 +80,28 @@ def test_invalid_argument_shape_is_a_measured_quality_failure():
     assert got["tool_call_failure"] is None
 
 
-def test_only_unobservable_responses_are_unmeasurable():
-    # The boundary the amendment turns on: None means the instrument failed, not the model. If a
-    # future edit folds argument errors back to None, the two tests above go red; if it folds
-    # envelope failures to False, this one does.
+def test_only_an_absent_response_is_unmeasurable():
+    # The boundary the amendment turns on. Exactly one thing is unobservable at this layer: no
+    # assistant message. Transport failures are caught upstream in the harness.
+    got = grade_message(EDITOR_TASK, None)
+    assert got["resolved"] is None
+    assert got["tool_call_failure"] == "missing_assistant_message"
+
+
+def test_everything_the_model_emitted_is_measured():
+    # A refusal is an answer. lfm2.5:8b ranked first on 4 of 40 tasks because 36 no-tool-call
+    # replies were dropped instead of counted; if a future edit folds any of these back to None,
+    # that survivorship artifact comes back and this goes red.
     for msg, expected in (
-        (None, "missing_assistant_message"),
         ({"tool_calls": []}, "missing_tool_call"),
+        ({"tool_calls": None}, "missing_tool_call"),
         ({"tool_calls": "nope"}, "tool_calls_not_list"),
+        ({"tool_calls": ["not-an-object"]}, "tool_call_not_object"),
+        ({"tool_calls": [{"function": "not-an-object"}]}, "missing_function_object"),
         (message("file_editor", "not json at all"), "arguments_not_json"),
+        (message("file_editor", '"a string, not an object"'), "arguments_not_object"),
     ):
         got = grade_message(EDITOR_TASK, msg)
-        assert got["resolved"] is None, expected
-        assert got["tool_call_failure"] == expected
-        assert got["quality_failure"] is None
+        assert got["resolved"] is False, expected
+        assert got["quality_failure"] == expected
+        assert got["tool_call_failure"] is None

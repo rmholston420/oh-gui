@@ -1,5 +1,12 @@
 # ADR-016 — The benchmark gates a claim, not the code: decouple the baseline report from Phase 0 exit
 
+> **STATUS AMENDMENT 2 (2026-08-09 06:20 EDT):** the same criterion is applied in full.
+> `missing_tool_call` and malformed-envelope outcomes are measured quality failures, not
+> unmeasurable ones; only a transport failure or an absent assistant message is unobserved.
+> Amendment 1 alone left `lfm2.5:8b` ranked first on 4 of 40 tasks, because its 36 no-tool-call
+> replies were dropped rather than counted. Coverage is now reported beside every rate. The
+> attainability gate is re-run against re-graded screening rates before confirmatory GPU time.
+
 > **STATUS AMENDMENT (2026-08-09 06:14 EDT):** the grading predicate is amended on screening
 > evidence. Argument errors (`missing_required_arg:*`, `invalid_arg:*`) are measured quality
 > failures, not unmeasurable tool-call failures; `resolved=None` is reserved for responses whose

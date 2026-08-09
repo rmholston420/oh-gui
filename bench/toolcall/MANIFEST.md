@@ -251,3 +251,29 @@ than assumed.
 **Re-grading rather than re-running.** Each replicate persists the assistant `tool_calls`
 verbatim, so the screening run is rescored offline by `bench/toolcall/regrade.py` at zero GPU cost.
 Captured replicates are immutable; re-grades are written to `<run>/regraded/`.
+
+## Protocol amendment 2 — 2026-08-09 06:20 EDT (same criterion, applied in full)
+
+Re-grading under amendment 1 surfaced the identical bias in a second form. `lfm2.5:8b` emitted no
+tool call on 36 of 40 screening tasks. Those 36 folded to `null`, and the cell then ranked **first
+at 75%** on the four tasks it happened to attempt, ahead of a 35B coder at 60%. Excluding a refusal
+scores a model on a subset it selected for itself, which is a missing-not-at-random denominator.
+
+**What changed.** `resolved=None` now covers only responses whose outcome could not be observed at
+all: a transport failure, or a reply with no assistant message. Everything the model emitted is
+graded — `missing_tool_call`, malformed envelopes, unparseable arguments, wrong argument values.
+Every task in the set declares a required tool, so a prose reply is a wrong answer, not an absent
+one.
+
+**Why both amendments are one decision.** Amendment 1 stopped discarding wrong arguments;
+amendment 2 stops discarding absent calls. They are the same criterion — observed or not observed —
+and splitting them across two passes was an error of thoroughness, not a change of standard. Both
+are declared on the screening split before any confirmatory replicate is graded.
+
+**Consequences for the registered calibration.** \(p_A=0.60\) and \(p_B=0.50\) are now certainly
+stale: cell A measured 30/40 under amendment 1 and will measure 40/40 under amendment 2, so its
+acceptance falls while the measured-pair count rises. The attainability gate must be re-run against
+the re-graded screening rates before any confirmatory GPU time is spent; it is not assumed.
+
+**Reporting.** `regrade.py` prints measured coverage beside every rate and flags any cell below
+90%, so a self-selected denominator cannot be read as a score again.

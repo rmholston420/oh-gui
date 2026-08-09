@@ -68,13 +68,21 @@ def _result(*, resolved: bool | None, tool_call_failure: str | None = None,
 def grade_message(task: Mapping[str, Any], message: Mapping[str, Any] | None) -> dict[str, Any]:
     """Grade an assistant message against a task's declared predicate.
 
-    ``resolved=None`` is reserved for responses whose outcome could not be *observed*: no call at
-    all, a malformed call envelope, or arguments that are not a JSON object. In those cases the
-    instrument failed, not the model.
+    ``resolved=None`` is reserved for responses whose outcome could not be *observed at all*: the
+    request never returned, or it returned without an assistant message. Those are instrument
+    failures and nothing else is.
 
-    A well-formed call whose arguments are wrong is the opposite: fully observed, unambiguously the
-    model's doing, and the single most informative thing this benchmark measures. It is a quality
-    failure (``resolved=False``), exactly like selecting the wrong tool.
+    Everything the model emitted is an observation, including a reply containing no tool call.
+    Every task declares a required tool, so answering in prose is not an abstention to be excluded
+    from scoring — it is the failure mode this benchmark exists to measure. Malformed envelopes,
+    unparseable arguments and wrong argument values are the model's doing on the same principle,
+    and are quality failures (``resolved=False``) exactly like selecting the wrong tool.
+
+    **Second amendment, same session, same criterion.** Re-grading exposed the original bias in a
+    second form: `lfm2.5:8b` emitted no tool call on 36 of 40 tasks, those 36 were dropped as
+    unmeasurable, and it then ranked *first* on the four it chose to attempt. Excluding a refusal
+    scores a model on a subset it selected for itself. The criterion is applied in full rather than
+    in slices: observed, or not observed, with nothing in between.
 
     **Amended 2026-08-09 on screening evidence (ADR-016, MANIFEST "Protocol amendments").** The
     original predicate folded `missing_required_arg:*` and `invalid_arg:*` to ``None``. Because
@@ -89,26 +97,26 @@ def grade_message(task: Mapping[str, Any], message: Mapping[str, Any] | None) ->
         return _result(resolved=None, tool_call_failure="missing_assistant_message")
     calls = message.get("tool_calls")
     if calls is None or calls == []:
-        return _result(resolved=None, tool_call_failure="missing_tool_call")
+        return _result(resolved=False, quality_failure="missing_tool_call")
     if not isinstance(calls, list):
-        return _result(resolved=None, tool_call_failure="tool_calls_not_list")
+        return _result(resolved=False, quality_failure="tool_calls_not_list")
     if len(calls) != 1:
         return _result(resolved=False, quality_failure="expected_exactly_one_tool_call")
     call = calls[0]
     if not isinstance(call, Mapping):
-        return _result(resolved=None, tool_call_failure="tool_call_not_object")
+        return _result(resolved=False, quality_failure="tool_call_not_object")
     function = call.get("function")
     if not isinstance(function, Mapping):
-        return _result(resolved=None, tool_call_failure="missing_function_object")
+        return _result(resolved=False, quality_failure="missing_function_object")
     name = function.get("name")
     if not isinstance(name, str) or not name:
-        return _result(resolved=None, tool_call_failure="missing_function_name")
+        return _result(resolved=False, quality_failure="missing_function_name")
     if "arguments" not in function:
-        return _result(resolved=None, tool_call_failure="missing_arguments")
+        return _result(resolved=False, quality_failure="missing_arguments")
     try:
         arguments = _arguments_as_object(function["arguments"])
     except _MalformedCall as exc:
-        return _result(resolved=None, tool_call_failure=str(exc), tool_name=name)
+        return _result(resolved=False, quality_failure=str(exc), tool_name=name)
 
     expected = task["expected_outcome"]
     if name != expected["tool"]:

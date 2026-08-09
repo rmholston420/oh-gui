@@ -4291,3 +4291,19 @@ The applied diff is now printed for every mutant.
   `apps/gui/src/features/authorization/viewport.ts`, `AuthorizationCard.tsx`,
   `apps/gui/src/__tests__/authorization-card.test.tsx`
 - **Stop-condition status:** ADR Proposed; implementation in progress, tests being repaired.
+
+## 2026-08-09 06:20 EDT — ADR-016 amendment 2: a refusal is an answer
+
+- **Stage / plugin / port:** Phase 0 · ADR-016 tool-call benchmark · grading predicate
+- **What changed:** `resolved=None` narrowed to genuinely unobserved outcomes only. Prose replies,
+  malformed envelopes and unparseable arguments are now measured failures. `regrade.py` reports
+  measured coverage per cell and flags anything under 90%.
+- **Why:** re-grading ranked `lfm2.5:8b` first at 75% on 4 of 40 measured tasks, ahead of a 35B
+  coder at 60% on 30 — a model rewarded for refusing to answer.
+- **Files touched:** `bench/toolcall/grading.py`, `bench/toolcall/tests/test_grading.py`,
+  `bench/toolcall/regrade.py`, `bench/toolcall/MANIFEST.md`, `adrs/ADR-016-*.md`, `DEBUG_LOG.md`
+- **Mutation evidence:** two tests asserting the old `None` classification went red and were
+  rewritten; a new test pins all seven emitted-but-wrong shapes to `False` so folding any of them
+  back to `None` reintroduces the artifact and fails.
+- **Stop-condition status:** attainability gate must be re-run against re-graded rates before the
+  confirmatory stage is relaunched. \(p_A=0.60\)/\(p_B=0.50\) are stale.
