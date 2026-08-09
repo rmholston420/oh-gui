@@ -3710,3 +3710,24 @@ The applied diff is now printed for every mutant.
   ALLOW/DENY with ASK commented out (`types.py:35-40`), invalid decisions fall open with a warning
   (`executor.py:343-352`). Three referenced ADR filenames were wrong on first write and were
   corrected against `ls`. `spec_coverage.py` exit 0 · constraints runner exit 0
+
+## 2026-08-09 02:12 EDT — ADR-030: the conversation is a view over the workspace, never the workspace itself
+
+- **Stage / plugin / port:** Phase 1 · cross-cutting · founding surface posture
+- **What changed:** Operator diagnosed chat-first interfaces as evolved rather than designed. ADR-030
+  makes the corrective binding before the first surface is built: workspace is a set of durable
+  addressable objects (plan, envelope, run, requirement, change, session); the transcript is
+  append-only narration with no authority, so losing it changes no object's value; output modality is
+  chosen by the data not the channel; direct manipulation where the object supports it; concurrent
+  views with spatial persistence; free-text input retained but demoted to one input among several.
+  Notable: this reaches the same conclusion as ADR-028 (permanent requirement identity) from the
+  interaction side rather than the corpus side — the operator's three standing complaints (no
+  persistent memory, spec drift, re-establishing context each session) are one complaint.
+- **Files touched:** `adrs/ADR-030-workspace-not-chat.md` (new, 118 lines), `adrs/README.md`
+- **Ports / adapters affected:** none
+- **PORTING_LEDGER / ADR updated:** ADR-030 ratified
+- **Stop-condition status:** met · `03-layout.md` object-set definition and the "no surface reads
+  authoritative state from message history" gate are recorded DEFERRED to Phase 1 under ADR-028
+  amendment 1 clause 3, not half-built
+- **Verification:** all 8 cross-referenced ADR and spec paths checked to resolve before commit ·
+  constraints runner PASSED (21 enforced · 48 deferred · 6 witnessed · 2 retired)
