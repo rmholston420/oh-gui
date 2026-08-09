@@ -48,28 +48,29 @@ def declared_fields() -> dict[str, str]:
     return out
 
 
-def upstream_optional(types_src: str, field: str) -> bool:
-    """Does the image's own `HookEvent` permit this field to be null?"""
-    m = re.search(rf"^\s{{4}}{re.escape(field)}\s*:\s*(.+)$", types_src, re.MULTILINE)
-    return bool(m and "None" in m.group(1))
-
-
 def main() -> int:
+    """Compare against the envelope produced by `extract_image_sdk.py`.
+
+    Upstream nullability is read from the envelope's `fields` map, which was produced by
+    *executing* the image's own `HookEvent`. An earlier version re-derived it here with a
+    regex over the SDK source, which meant two independent readings of the same fact and
+    two chances to be wrong. One source of truth, and it is the one that ran.
+    """
     envelope = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
-    types_src = Path(sys.argv[2]).read_text(encoding="utf-8")
+    upstream = envelope["fields"]
     declared = declared_fields()
 
     print("  --- AuthorizeRequest vs the pinned image ------------------------------")
     bad = 0
 
-    for field in envelope:
+    for field, spec in upstream.items():
         if field not in declared:
             print(f"  {Y}MISSING{X}  upstream sends `{field}`; AuthorizeRequest does not declare it")
             print("           survivable (extra=allow preserves it) but unread")
             bad += 1
             continue
         ann = declared[field]
-        nullable_up = upstream_optional(types_src, field)
+        nullable_up = spec["nullable"]
         # Optional is not nullable, and conflating them hides the exact bug this script
         # is for. `tool_input: dict[str, Any] = Field(default_factory=dict)` is optional
         # — pydantic fills it when the key is absent — and still rejects an explicit
@@ -88,7 +89,7 @@ def main() -> int:
             print(f"  {G}ok{X}       `{field}`: {ann}")
 
     for field in declared:
-        if field not in envelope:
+        if field not in upstream:
             print(f"  {Y}EXTRA{X}    we declare `{field}`; not present in the captured envelope")
             bad += 1
 

@@ -1,0 +1,67 @@
+{
+  "example_payload": {
+    "event_type": "PreToolUse",
+    "message": null,
+    "metadata": {},
+    "session_id": "s-1",
+    "tool_input": {
+      "command": "rm -rf /"
+    },
+    "tool_name": "execute_bash",
+    "tool_response": null,
+    "working_dir": "/workspace"
+  },
+  "fields": {
+    "event_type": {
+      "annotation": "<enum 'HookEventType'>",
+      "nullable": false,
+      "required": true
+    },
+    "message": {
+      "annotation": "str | None",
+      "nullable": true,
+      "required": false
+    },
+    "metadata": {
+      "annotation": "dict[str, typing.Any]",
+      "nullable": false,
+      "required": false
+    },
+    "session_id": {
+      "annotation": "str | None",
+      "nullable": true,
+      "required": false
+    },
+    "tool_input": {
+      "annotation": "dict[str, typing.Any] | None",
+      "nullable": true,
+      "required": false
+    },
+    "tool_name": {
+      "annotation": "str | None",
+      "nullable": true,
+      "required": false
+    },
+    "tool_response": {
+      "annotation": "dict[str, typing.Any] | None",
+      "nullable": true,
+      "required": false
+    },
+    "working_dir": {
+      "annotation": "str | None",
+      "nullable": true,
+      "required": false
+    }
+  },
+  "serialized_keys": [
+    "event_type",
+    "message",
+    "metadata",
+    "session_id",
+    "tool_input",
+    "tool_name",
+    "tool_response",
+    "working_dir"
+  ],
+  "source": "openhands.sdk.hooks.types.HookEvent, verified byte-identical to the code inside agent-server@sha256:f0244fd7\u2026"
+}

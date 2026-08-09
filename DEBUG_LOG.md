@@ -1447,3 +1447,62 @@ the snap daemon. Recorded in `docs/forge-oh-port-survey.md`.
   including the failure path, the interpreter fallback, and a 4-mismatch success path.
 - **Files changed:** `scripts/capture-hook-envelope.sh`
 - **Related BUILD_LOG entry:** 2026-08-08 21:25 EDT
+
+## 2026-08-08 21:58 EDT — envelope capture: "no Python interpreter in the image could import openhands.sdk.hooks.types"
+
+- **Symptom:** `scripts/capture-hook-envelope.sh` on Colossus:
+  ```
+   FAIL  no Python interpreter in the image could import openhands.sdk.hooks.types
+   last stderr from the probe:
+     /bin/bash: line 1: /opt/venv/bin/python: No such file or directory
+   searching the image filesystem instead:
+   WARN  re-run with the path this printed, or send me the output above
+  ```
+  The `find` fallback printed **nothing at all**, which read as a broken script.
+- **Affected stage / plugin / port:** Phase 1 · Authorization slice · ADR-014 verification item 5
+- **Root cause:** Two defects and one wrong premise.
+  1. **Wrong premise (the real cause).** `ghcr.io/openhands/agent-server@sha256:f0244fd7…`
+     contains no Python package tree and no interpreter on `PATH`. It ships a single 112 MB
+     stripped PyInstaller binary at `/usr/local/bin/openhands-agent-server`. There was no
+     `types.py` on that filesystem to find and nothing to import. `find` printing nothing was
+     the correct answer to the question asked; the question was wrong. Established by reading
+     the image config and all 23 layer tarballs from the ghcr registry — the `openhands`
+     string appears in exactly one path, the binary itself.
+  2. **The probe overwrote its own evidence** — `probe()` redirected stderr to `$OUT/locate.err`
+     with `>`, truncating on each of 12 attempts, so only the last survived. Same
+     discard-the-evidence defect logged at 21:32 EDT, in a second location. Fixed by deleting
+     the probe entirely rather than making it log better; it could not have worked.
+  3. `find … 2>/dev/null` swallowed whatever the fallback would have said.
+- **Fix applied:** Replaced the probe with `scripts/extract_image_sdk.py`: copies the binary out
+  of the image, parses the PyInstaller CArchive TOC, extracts `PYZ.pyz`, unmarshals the five
+  `openhands.sdk.hooks.*` modules, proves each matches the pinned sdist structurally, then
+  executes the image's own `HookEvent` to serialize the envelope.
+- **Files changed:**
+  - `scripts/capture-hook-envelope.sh` (rewritten)
+  - `scripts/extract_image_sdk.py`, `scripts/compare_bytecode.py` (new)
+  - `scripts/diff_envelope.py` (reads the envelope's own `fields` map; no second regex parse)
+
+## 2026-08-08 22:04 EDT — bytecode comparison produced a false "image diverges from upstream", twice
+
+- **Symptom:** The comparator reported all five hook modules as diverged from the pinned sdist.
+  Both times the underlying code was identical.
+- **Affected stage / plugin / port:** Phase 1 · ADR-014 item 5 · `scripts/compare_bytecode.py`
+- **Root cause:** Two independent false-positive mechanisms.
+  1. `marshal.dumps(a) == marshal.dumps(b)` is not an equality test. Marshal emits
+     back-references for interned objects, so semantically identical code objects serialize to
+     different bytes depending on first-seen order. The entire visible diff was memory addresses
+     inside `repr` strings.
+  2. After switching to a structural comparison, all five failed again on
+     `co_flags: 16777216 != 0` — `CO_FUTURE_ANNOTATIONS`. `compile()` **inherits `__future__`
+     statements from the calling module**, and the new comparator module has
+     `from __future__ import annotations`, so every reference module was compiled with string
+     annotations while the shipped ones had real ones. The earlier throwaway script lacked that
+     import, which is the only reason its first run looked correct.
+- **Fix applied:** Structural recursive comparison over the fields that carry meaning; explicit
+  `dont_inherit=True` in `compile_reference()`, documented as load-bearing. Mutation-tested
+  against five semantic mutations (nullability removed, field renamed, field dropped, default
+  changed, field added) — all caught — and one whitespace-only mutation, correctly ignored.
+- **Note for future work:** a false "upstream has diverged" is worse than no check. It is the
+  alarm an operator learns to ignore, and it nearly caused a real upstream-drift claim to be
+  written into the ADR.
+- **Files changed:** `scripts/compare_bytecode.py`, `scripts/extract_image_sdk.py`

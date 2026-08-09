@@ -3131,3 +3131,39 @@ a rewording test was comparing a file with itself and could never have failed.
   that the registry is the source of truth for the gate set)
 - **Stop-condition status:** met. 42 runner tests, mutant killed, gate green with 0 warnings on
   Colossus.
+
+## 2026-08-08 22:10 EDT — ADR-014 verification item 5 discharged; AuthorizeRequest corrected against the image
+
+- **Stage / plugin / port:** Phase 1 · Authorization slice · IPC schema · ADR-014 item 5, ADR-021
+- **What changed:**
+  - Captured the `pre_tool_use` envelope from `agent-server@sha256:f0244fd7…` by extracting
+    `openhands.sdk.hooks.types` from the image's PyInstaller bundle and executing it.
+  - Verified all five `openhands.sdk.hooks.*` modules in the image match the pinned sdist
+    (`openhands_sdk-1.41.0`, sha256 checked), making the sdist a verified stand-in.
+  - **Corrected four of eight fields in `AuthorizeRequest`**: `tool_name` → `str | None`,
+    `tool_input` → `dict | None`, added `tool_response` and `message`. The image sends explicit
+    nulls for all four and `model_dump_json` does not drop them, so the previous model would
+    have failed validation on every real `pre_tool_use` and denied it as *unparseable*.
+  - Added `is_judgeable` so a null `tool_name` denies as a judgement rather than being judged
+    as an empty call.
+  - `AUTHORIZE_REQUEST_PROVISIONAL` → `False`, now guarded: the flag may only be False while
+    the evidence file exists and still agrees with the model.
+- **Files touched:**
+  - `scripts/extract_image_sdk.py`, `scripts/compare_bytecode.py` (new)
+  - `scripts/capture-hook-envelope.sh` (rewritten), `scripts/diff_envelope.py`
+  - `services/middleware/src/ohgui_middleware/ipc/schema.py`
+  - `services/middleware/tests/test_provisional_marker.py`
+  - `services/middleware/tests/test_real_envelope.py` (new)
+  - `adrs/ADR-014-authorization-enforcement-seam.md`
+  - `docs/evidence/hook-envelope/{envelope.json,README.md}`
+- **Ports / adapters affected:** IPC seam only. No plugin imports added; ADR-007 unaffected.
+- **PORTING_LEDGER / ADR updated:** ADR-014 item 5 checked and scoped. No new port — nothing
+  was vendored; the extractor reads a pinned artifact.
+- **Mutation records (per the operator-witnessed gate):**
+  - `compare_bytecode`: 5 semantic mutations caught, 1 whitespace mutation correctly ignored.
+  - `test_provisional_marker`: tool_name-required / tool_response-dropped / evidence-deleted — 3/3 caught.
+  - `test_real_envelope`: tool_name-required / tool_input-defaulted / is_judgeable-disabled — 3/3 caught.
+  - `capture-hook-envelope.sh`: tampered reference source, cookieless binary, wrong sdist
+    sha256 — 3/3 fail correctly.
+- **Stop-condition status:** item 5 met. **Items 1-4 unrun** — they need a live agent-server;
+  the capture is static. ADR-014 remains *Proposed*.
