@@ -288,7 +288,7 @@ mistake in this repo, caught before a hook was wired to it and now marked
 - **Port(s):** none
 - **Modifications:** n/a
 - **ADR:** ADR-024
-- **Logged:** 2026-08-09 03:45 EDT
+- **Logged:** 2026-08-08 23:45 EDT
 
 New in 1.41.0: installable UI bundles contributing pages via a `canvas-extension.json` manifest,
 with path-traversal and symlink-escape containment. Deferred, not rejected on merit: the module is

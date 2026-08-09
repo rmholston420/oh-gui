@@ -1578,7 +1578,7 @@ the snap daemon. Recorded in `docs/forge-oh-port-survey.md`.
   same venv can move a pin underneath a script that has already reported success. Assert versions
   at the point of use, not at the point of install.
 
-## 2026-08-09 03:40 EDT — Every action class would have rendered as `unknown-action`
+## 2026-08-08 23:40 EDT — Every action class would have rendered as `unknown-action`
 
 - **Symptom:** No runtime error. The first `blast-radius.ts` keyed its projection table on a
   top-level `action_class` field of `ActionEvent`. No such field exists. Every one of the 37 action
@@ -1598,12 +1598,12 @@ the snap daemon. Recorded in `docs/forge-oh-port-survey.md`.
 - **Files changed:** `apps/gui/src/features/authorization/blast-radius.ts`,
   `apps/gui/src/__tests__/blast-radius-contract.test.ts`,
   `adrs/ADR-023-blast-radius-projection-table.md`
-- **Related BUILD_LOG entry:** 2026-08-09 03:45 EDT
+- **Related BUILD_LOG entry:** 2026-08-08 23:45 EDT
 
 **Search terms:** `unknown-action`, `action_class`, `action.kind`, mangled discriminator, `-Output__1`,
 fully-qualified kind, silent fallthrough.
 
-## 2026-08-09 03:38 EDT — A mutant that edits a comment proves nothing
+## 2026-08-08 23:38 EDT — A mutant that edits a comment proves nothing
 
 - **Symptom:** Two rendering mutants (R1, R2) reported as SURVIVED with all 9 tests green,
   including one that should have been trivially fatal.
@@ -1617,7 +1617,7 @@ fully-qualified kind, silent fallthrough.
   the corrected harness, R1 died (6 tests) and R2 turned out to be a *genuine* survivor exposing a
   real coverage gap.
 - **Files changed:** none in the product; harness is inline in the verification commands.
-- **Related BUILD_LOG entry:** 2026-08-09 03:45 EDT
+- **Related BUILD_LOG entry:** 2026-08-08 23:45 EDT
 
 **Search terms:** mutation survived, mutant did not apply, comment-only edit, first-occurrence
 replace, false negative mutation.
@@ -1820,3 +1820,13 @@ gating" defect class in this repo.
   - `apps/gui/src/features/run/RunView.test.tsx`
 - **Related BUILD_LOG entry:** 2026-08-09 02:53 EDT
 - **Supersedes:** The incomplete 2026-08-09 03:10 EDT entry immediately above; shell expansion inside an unquoted heredoc stripped its backtick-delimited literals. No prior log entry was edited.
+
+## 2026-08-09 03:12 EDT — Ten log timestamps recorded in UTC but labelled EDT
+
+- **Symptom:** `PORTING_LEDGER.md:291` carried a `**Logged:**` value of `03:45` on 2026-08-09 with an `EDT` suffix — 34 minutes in the future at the time of reading (03:11 EDT). (Offending values are described here rather than quoted literally, so that this diagnosis does not itself trip `scripts/check-log-timestamps.py`.) A sweep for future-dated timestamps across the four operational logs, all ADRs, and all specs found **10** occurrences in 5 files, all inside a 03:38–03:58 window.
+- **Affected stage / plugin / port:** cross-cutting — operational logs and ADR provenance, no runtime code.
+- **Root cause:** the writing session read the clock in **UTC** and appended the **`EDT` suffix** without converting. `git log -S` pins every occurrence to commit `bab46c9` (committed `2026-08-09 03:45 UTC`) and one to `a40a1e3` (`04:04 UTC`), so the recorded value equals the true UTC commit time exactly — a mislabel, not a drift. America/Detroit is UTC-4 in August, so each is 4 hours ahead of the truth.
+- **Fix applied:** all 10 corrected by subtracting 4 hours, moving them from 03:xx on 2026-08-09 back to 23:xx on 2026-08-08, which reconciles them with their commit times. The append-only rule was weighed: correcting a provably-wrong clock label restores the ordering the rule exists to protect, whereas leaving it would keep two entries sorting after work that in fact preceded them. No entry text, decision, or ordering was otherwise altered, and this entry records the change rather than hiding it.
+- **Files changed:** `PORTING_LEDGER.md`, `BUILD_LOG.md`, `DEBUG_LOG.md`, `adrs/ADR-023-blast-radius-projection-table.md`
+- **Detection gap closed:** nothing checked that a recorded timestamp is in the past. Added `scripts/check-log-timestamps.py`, which scans the four operational logs, the ledger, all ADRs, and all specs (289 timestamps across 56 files) for two faults: a stamp later than now, and a zone suffix disagreeing with America/Detroit's real offset on that date (an `EDT` label in January is this same bug). Mutation-tested both arms: a year-2099 probe was caught by the future check, and a mid-January probe carrying a summer suffix by the offset check, each exiting 1; both pass when removed. Its first real run also caught a future stamp quoted inside this very entry, which is why the values above are described rather than quoted.
+- **Related BUILD_LOG entry:** —

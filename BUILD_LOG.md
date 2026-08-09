@@ -3360,7 +3360,7 @@ a rewording test was comparing a file with itself and could never have failed.
 - **Stop-condition status:** still blocked on the same operator decision (a/b/c). Scope of the
   evidence behind it is now the full suite rather than one package.
 
-## 2026-08-09 03:45 EDT — Blast radius built, wired into the authorization card, and mutation-tested
+## 2026-08-08 23:45 EDT — Blast radius built, wired into the authorization card, and mutation-tested
 
 - **Stage / plugin / port:** Phase 1 · authorization surface · spec 04 §4.2 · ADR-023 (option B), ADR-024
 - **What changed:**
@@ -3426,7 +3426,7 @@ Two earlier mutants (R1, R2) were also initially mis-reported as survivors becau
 script matched the first occurrence of a string, which fell inside a doc comment rather than code.
 The applied diff is now printed for every mutant.
 
-## 2026-08-09 03:58 EDT — Blast-radius operator walkthrough: a headed run that actually drives the UI
+## 2026-08-08 23:58 EDT — Blast-radius operator walkthrough: a headed run that actually drives the UI
 
 - **Stage / plugin / port:** Phase 1 · authorization surface · spec 04 §4.2 · ADR-023
 - **What changed:** Added `e2e/blast-radius-walkthrough.spec.ts` and the `watch:blast` script.
@@ -3450,7 +3450,7 @@ The applied diff is now printed for every mutant.
 
 - **Stage / plugin / port:** log hygiene
 - **What changed:** nothing in the tree. Recording an error in this log's own discipline. The
-  entries headed `2026-08-09 03:45 EDT` and `2026-08-09 03:58 EDT` were written when the wall
+  entries headed `2026-08-08 23:45 EDT` and `2026-08-08 23:58 EDT` were written when the wall
   clock in America/Detroit read **2026-08-08 23:45** and **23:58 EDT**. Both are UTC values
   mislabelled `EDT`, four hours ahead. The entries either side of them are correct, so the drift
   is visible in the file. Per append-only discipline the headings are left as written and this
@@ -3789,4 +3789,14 @@ The applied diff is now printed for every mutant.
 - **Ports / adapters affected:** Agent Server conversation adapter only; no upstream source modified.
 - **PORTING_LEDGER / ADR updated:** —
 - **Verification:** `npm run gate` passed: lint, 16 Vitest files / 124 tests, TypeScript build, and Vite build. `python3 scripts/check-hard-constraints.py` printed `=== PASSED ===`.
+- **Stop-condition status:** met
+
+## 2026-08-09 03:16 EDT — Timestamp-integrity gate; 10 mislabelled log timestamps corrected
+
+- **Stage / plugin / port:** cross-cutting · operational logs · no runtime code
+- **What changed:** Found 10 timestamps written in UTC but suffixed `EDT` (up to 4h in the future), traced to commits `bab46c9`/`a40a1e3`, and corrected them to their true America/Detroit times. Added `scripts/check-log-timestamps.py` to make the fault class impossible to reintroduce silently.
+- **Files touched:** `scripts/check-log-timestamps.py` (new), `PORTING_LEDGER.md`, `BUILD_LOG.md`, `DEBUG_LOG.md`, `adrs/ADR-023-blast-radius-projection-table.md`
+- **Ports / adapters affected:** none
+- **PORTING_LEDGER / ADR updated:** ledger entry timestamp corrected only; no decision changed
+- **Mutation record:** both arms of the new gate were seen to fail — a future-dated probe and a wrong-zone-suffix probe each exited 1, and the gate returned to 0 when they were removed. Its first real run additionally caught a future stamp quoted inside the DEBUG_LOG entry describing the bug, establishing the convention that offending values are described, not quoted.
 - **Stop-condition status:** met

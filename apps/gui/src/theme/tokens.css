@@ -1,0 +1,37 @@
+/*
+ * docs/specs/07-visual-design.md §7.1 / §7.3
+ * The matching measured contrast data lives in tokens.ts.
+ */
+:root {
+  --oh-base: #040814;
+  --oh-panel-sunken: #060b19;
+  --oh-panel: #070d1f;
+  --oh-panel-raised: #0b132b;
+  --oh-text: #f8fafc;
+  --oh-text-muted: #b8c4d8;
+  --oh-interactive-border: #718096;
+  --oh-focus-ring: #93c5fd;
+
+  /* Reserved exclusively for agent-active states. */
+  --oh-agent-active: #f59e0b;
+  --oh-agent-active-bright: #fbbf24;
+
+  /* Green/red are reserved strictly for diff and pass/fail. */
+  --oh-diff-add: #86efac;
+  --oh-diff-delete: #fda4af;
+  --oh-status-pass: #86efac;
+  --oh-status-fail: #fca5a5;
+
+  --oh-font-sans: ui-sans-serif, system-ui, sans-serif;
+  --oh-font-mono: ui-monospace, "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+}
+
+code,
+kbd,
+pre,
+samp,
+.oh-code,
+.oh-metric {
+  font-family: var(--oh-font-mono);
+  font-variant-numeric: tabular-nums;
+}

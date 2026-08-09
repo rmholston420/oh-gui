@@ -1,0 +1,234 @@
+/*
+ * docs/specs/03-layout.md §§3.0–3.2 and docs/specs/07-visual-design.md §7.2.
+ * The largest desktop mode keeps the center stage at a 60% minimum; side
+ * ranges make the 1600px lower boundary overflow by 20px rather than silently
+ * shrinking below the specified center-stage minimum.
+ */
+.oh-shell {
+  box-sizing: border-box;
+  min-block-size: 100vh;
+  background: var(--oh-base);
+  color: var(--oh-text);
+  font-family: var(--oh-font-sans);
+}
+
+.oh-shell *,
+.oh-shell *::before,
+.oh-shell *::after {
+  box-sizing: border-box;
+}
+
+.oh-shell__command-bar,
+.oh-shell__lens-bar {
+  position: sticky;
+  z-index: 1;
+  top: 0;
+  display: flex;
+  min-block-size: 3.5rem;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem clamp(1rem, 2vw, 2rem);
+  border-block-end: 1px solid var(--oh-interactive-border);
+  background: color-mix(in srgb, var(--oh-panel) 90%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+.oh-shell__command-content {
+  min-inline-size: 0;
+  flex: 1 1 auto;
+}
+
+.oh-shell__lens-bar {
+  justify-content: flex-end;
+  background: var(--oh-base);
+}
+
+.oh-shell__lens-toggle,
+.oh-shell__rail-toggle {
+  min-block-size: 2.5rem;
+  border: 1px solid var(--oh-interactive-border);
+  border-radius: 0.375rem;
+  background: var(--oh-panel-raised);
+  color: var(--oh-text);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.oh-shell__lens-toggle {
+  padding-inline: 0.875rem;
+}
+
+.oh-shell__rail-toggle {
+  padding-inline: 0.625rem;
+}
+
+.oh-shell__lens-toggle:hover,
+.oh-shell__rail-toggle:hover {
+  border-color: var(--oh-focus-ring);
+  background: var(--oh-panel);
+}
+
+.oh-shell__lens-toggle:focus-visible,
+.oh-shell__rail-toggle:focus-visible {
+  outline: 3px solid var(--oh-focus-ring);
+  outline-offset: 3px;
+}
+
+.oh-shell__read-only-notice {
+  margin: 0;
+  padding: 0.625rem clamp(1rem, 2vw, 2rem);
+  border-block-end: 1px solid var(--oh-interactive-border);
+  background: var(--oh-panel-sunken);
+  color: var(--oh-text-muted);
+  font-size: 0.875rem;
+}
+
+.oh-shell__workspace {
+  display: grid;
+  min-block-size: calc(100vh - 3.5rem);
+}
+
+.oh-shell__center-stage {
+  min-inline-size: 0;
+}
+
+.oh-shell--vibe .oh-shell__workspace {
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  padding: clamp(2rem, 8vh, 6rem) clamp(1rem, 7vw, 9rem);
+}
+
+.oh-shell--vibe .oh-shell__center-stage {
+  inline-size: min(100%, 52rem);
+}
+
+.oh-shell--pro .oh-shell__workspace {
+  grid-template-areas: "stage";
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.oh-shell--pro .oh-shell__center-stage {
+  grid-area: stage;
+  padding: clamp(1rem, 2vw, 2rem);
+}
+
+.oh-shell__left-rail {
+  grid-area: rail;
+  min-inline-size: 0;
+  overflow: hidden;
+  border-inline-end: 1px solid var(--oh-interactive-border);
+  background: var(--oh-panel-sunken);
+}
+
+.oh-shell__right-column {
+  grid-area: conversation;
+  min-inline-size: 0;
+  border-inline-start: 1px solid var(--oh-interactive-border);
+  background: var(--oh-panel);
+}
+
+.oh-shell__rail-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-block-end: 1px solid var(--oh-interactive-border);
+  color: var(--oh-text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* 900–1199px: one working pane with the conversation drawer stacked below. */
+@media (min-width: 900px) and (max-width: 1199px) {
+  .oh-shell--pro .oh-shell__workspace {
+    grid-template-areas:
+      "stage"
+      "conversation";
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .oh-shell__left-rail {
+    display: none;
+  }
+
+  .oh-shell__right-column {
+    border-block-start: 1px solid var(--oh-interactive-border);
+    border-inline-start: 0;
+  }
+}
+
+/* 1200–1599px: center stage plus the persistent conversation pane. */
+@media (min-width: 1200px) and (max-width: 1599px) {
+  .oh-shell--pro .oh-shell__workspace {
+    grid-template-areas: "stage conversation";
+    grid-template-columns: minmax(0, 1fr) clamp(380px, 32vw, 440px);
+  }
+
+  .oh-shell__left-rail {
+    display: none;
+  }
+}
+
+/* >=1600px: command bar + rail + >=60% center stage + conversation column. */
+@media (min-width: 1600px) {
+  .oh-shell--pro .oh-shell__workspace {
+    grid-template-areas: "rail stage conversation";
+    grid-template-columns:
+      clamp(280px, 18vw, 360px)
+      minmax(60%, 1fr)
+      clamp(380px, 24vw, 440px);
+    overflow-x: auto;
+  }
+
+  .oh-shell--pro.oh-shell--left-rail-collapsed .oh-shell__workspace {
+    grid-template-columns: 0 minmax(60%, 1fr) clamp(380px, 24vw, 440px);
+  }
+
+  .oh-shell--left-rail-collapsed .oh-shell__left-rail {
+    border-inline-end: 0;
+  }
+}
+
+/* <900px: monitoring/conversation only; action consumers receive the gate boolean. */
+@media (max-width: 899px) {
+  .oh-shell--pro .oh-shell__workspace {
+    grid-template-areas:
+      "stage"
+      "conversation";
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .oh-shell__left-rail {
+    display: none;
+  }
+
+  .oh-shell__right-column {
+    border-block-start: 1px solid var(--oh-interactive-border);
+    border-inline-start: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .oh-shell *,
+  .oh-shell *::before,
+  .oh-shell *::after {
+    scroll-behavior: auto;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .oh-shell__command-bar,
+  .oh-shell__lens-bar {
+    background: var(--oh-panel);
+    backdrop-filter: none;
+  }
+}

@@ -1,6 +1,6 @@
 # ADR-023 — Blast radius is a per-tool projection, and the terminal tool has none
 
-> **STATUS AMENDMENT (2026-08-09 03:40 EDT) — the discriminator is not the class name.**
+> **STATUS AMENDMENT (2026-08-08 23:40 EDT) — the discriminator is not the class name.**
 >
 > This ADR's projection table is keyed by action class. Implementation revealed that the class
 > does **not** arrive as a bare name, and does not arrive where the first implementation looked
