@@ -51,4 +51,5 @@ old one and mark the old one `Amended · superseded by ADR-###`.
 | ADR-014 | The SDK hook is a deny gate, not a policy plane: where Phase 1 enforcement lives | **Proposed** - gated on executable verification |
 | ADR-015 | Native-fidelity boundary: only verified native fields, upstream code over documentation | Ratified · amended 2026-08-08 (DERIVED tier ratified; spec 04 §4.2 amended) |
 | ADR-016 | The benchmark gates a claim, not the code: decouple the baseline report from Phase 0 exit | Ratified |
+| ADR-017 | Three ambiguities in the Phase 1 exit criteria, resolved before any of them can be built to | Ratified |
 

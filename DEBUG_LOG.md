@@ -1353,3 +1353,51 @@ the snap daemon. Recorded in `docs/forge-oh-port-survey.md`.
 - **Files changed:** `apps/gui/src/features/first-run/wizard-nav.ts`, `FirstRunWizard.tsx`,
   `apps/gui/src/__tests__/wizard-nav.test.ts`, `apps/gui/e2e/walkthrough.spec.ts`
 - **Related BUILD_LOG entry:** 2026-08-08 20:22 EDT
+
+## 2026-08-08 21:05 EDT — pip install failed on a version pin that does not exist
+
+- **Symptom:**
+  ```
+  ERROR: Could not find a version that satisfies the requirement httpx==0.29.2; extra == "dev"
+  (from ohgui-middleware[dev]) (from versions: ... 0.28.0, 0.28.1, 1.0.dev1 ...)
+  ERROR: No matching distribution found for httpx==0.29.2; extra == "dev"
+  ```
+- **Affected stage / plugin / port:** Phase 1 · Authorization slice · `services/middleware`
+  scaffold (`pyproject.toml`)
+- **Root cause:** the dependency pins were written from recall instead of resolved against PyPI.
+  `httpx==0.29.2` does not exist. Checking the rest against the live JSON API showed **seven of
+  eight were wrong**: fastapi 0.121.2→0.141.1, uvicorn 0.41.0→0.52.1, pydantic 2.13.2→2.13.4,
+  pytest 9.0.1→9.1.1, pytest-asyncio 1.3.0→1.4.0, ruff 0.15.1→0.16.2, hatchling floated on `>=1.27`.
+  This is the "never guess" rule broken directly. The failure mode is worse than it looks: httpx was
+  the only one that did not exist, so the other six would have installed silently at versions the
+  repo asserts are deliberate pins. A plausible-looking wrong pin is harder to catch than a missing
+  one, and `docs/UPSTREAM_PINS.md` explicitly makes a pin a deliberate act.
+- **Fix applied:** resolved every version against `https://pypi.org/pypi/<pkg>/json`, pinned exactly,
+  and added a comment above the dependency block recording that the values were resolved rather than
+  recalled, pointing here.
+- **Prevention:** the same one-liner already in `docs/UPSTREAM_PINS.md` §"Re-verification procedure"
+  works for any package:
+  ```bash
+  for p in fastapi uvicorn pydantic httpx pytest pytest-asyncio ruff hatchling; do
+    printf '%-16s %s\n' "$p" "$(curl -sf https://pypi.org/pypi/$p/json \
+      | python3 -c 'import json,sys;print(json.load(sys.stdin)["info"]["version"])')"
+  done
+  ```
+  Run it before writing any new pin, not after the install fails.
+- **Files changed:** `services/middleware/pyproject.toml`
+- **Related BUILD_LOG entry:** 2026-08-08 21:10 EDT
+
+## 2026-08-08 21:08 EDT — verify-local.sh rejected a Node version its own package.json allows
+
+- **Symptom:** `FAIL  node v20.20.1 is too old; package.json requires ^20.19 || >=22.12`
+- **Affected stage / plugin / port:** Phase 0 carry-over · `scripts/verify-local.sh` step 1
+- **Root cause:** the check was `[ "$NODE_MAJ" -ge 22 ]`, but `apps/gui/package.json` declares
+  `"node": "^20.19.0 || >=22.12.0"`. The `^20.19` branch was never implemented, so any Node 20.19+
+  aborted the whole gate with `die "environment is not usable"`. Latent since the script was written
+  — it never fired on Colossus, which runs 22+. The danger is the shape, not the impact: a gate that
+  reports a false red trains you to argue with it.
+- **Fix applied:** implemented both branches of the engines range (`20.19+`, or `22.12+`, or `23+`;
+  21 excluded, matching the range). Also made `--middleware-only` skip the Node and frontend-port
+  checks entirely, since they gate the frontend and have nothing to say about the Python gate.
+- **Files changed:** `scripts/verify-local.sh`
+- **Related BUILD_LOG entry:** 2026-08-08 21:10 EDT

@@ -48,3 +48,11 @@ Schema additions:
 - Tool/skill count warning: soft warning at 30 concurrently enabled tools.
 
 Phase 1 exit criterion addition: reliability-tier indicator displays correctly for a loaded Qwen3 27B-35B profile; a synthetic malformed-tool-call scenario surfaces the correct diagnostic; cloud-fallback escape hatch preserves context; deterministic_replay field is present and correctly read by the rewind/fork UI.
+
+> **AMENDED 2026-08-08 20:52 EDT by [ADR-017](../../adrs/ADR-017-phase-1-exit-criteria-resolution.md).**
+> The `deterministic_replay` clause is **split at the layer boundary**. Phase 1 exits when the field
+> is present in the middleware model profile, read through the anti-corruption layer from a
+> verified-native SDK field (ADR-015), and covered by a contract test asserting the read.
+> "...and correctly read by the **rewind/fork UI**" is **deferred to Phase 3**, where
+> `05-plan-model.md` — the file that specifies that UI — actually lives. Phase 1's file list does
+> not include it, so as written this criterion made Phase 1 exit depend on a Phase 3 deliverable.

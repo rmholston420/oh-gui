@@ -2,8 +2,42 @@
 
 The policy plane. This is where the substance of the spec lives.
 
-**Not scaffolded yet.** Phase 0/1 work. This file records the contract so the shape is
-fixed before any code exists.
+**Scaffolded 2026-08-08 21:10 EDT** (Phase 1 slice 1). The list below is still the *target*
+contract; almost none of it is implemented. What exists today is the seam and nothing else.
+
+## What exists right now
+
+```
+src/ohgui_middleware/
+  config.py            loopback-only settings; a non-loopback bind is a hard error
+  upstream/sdk.py      anti-corruption layer (ADR-001 item 7) - the ONLY permitted
+                       `openhands*` import site. Mirrors nothing yet, by design (ADR-015)
+  ipc/schema.py        the pre_tool_use envelope, verbatim; Decision with its source attributed
+  ipc/failclosed.py    the guard (ADR-014 clause 3) - everything that is not an affirmative
+                       well-formed allow is a deny
+  ipc/server.py        GET /healthz  GET /v1/upstream  POST /v1/authorize
+```
+
+**It is pre-enforcement and denies everything.** ADR-014 is *Proposed*; its lock-in clause
+forbids writing enforcement before its four-item executable verification gate passes on
+Colossus. `/healthz` says so in its own response body rather than looking like a working gate.
+
+No hook is installed. No policy plane exists. No audit log yet.
+
+## Run it
+
+```bash
+cd "$(git rev-parse --show-toplevel)"
+./scripts/verify-local.sh --middleware-only     # creates .venv, installs, lints, tests, live-probes
+```
+
+The SDK extra is deliberately **not** installed by that gate: the fail-closed seam must be
+provable on a machine without the 1.41.0 wheels, and the ACL reports their absence as a state
+rather than crashing. Install it when ADR-014 ratification work begins:
+
+```bash
+services/middleware/.venv/bin/pip install -e 'services/middleware[sdk]'
+```
 
 ## Why Python (ADR-001)
 

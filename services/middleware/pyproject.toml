@@ -1,0 +1,57 @@
+[build-system]
+requires = ["hatchling==1.31.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ohgui-middleware"
+version = "0.1.0"
+description = "OH-GUI policy plane. Runs in-process with openhands-sdk (ADR-001 item 3)."
+readme = "README.md"
+license = { text = "MIT" }
+# Hard floor from docs/UPSTREAM_PINS.md §2: all four openhands-* wheels are requires_python >=3.12.
+requires-python = ">=3.12"
+
+# Exact pins. Never float. A bump is a deliberate act: edit docs/UPSTREAM_PINS.md, re-run the
+# anti-corruption layer's contract checks, log it in BUILD_LOG.md.
+# Every version below was resolved against the live PyPI JSON API on 2026-08-08, not recalled.
+# See DEBUG_LOG 2026-08-08 21:05 EDT for why that sentence is here.
+dependencies = [
+  "fastapi==0.141.1",
+  "uvicorn==0.52.1",
+  "pydantic==2.13.4",
+]
+
+[project.optional-dependencies]
+# The SDK family is a separate extra so the fail-closed IPC seam can be tested on a machine
+# without the 1.41.0 wheels present. The anti-corruption layer degrades to "unavailable" rather
+# than failing to import — see src/ohgui_middleware/upstream/sdk.py.
+sdk = [
+  "openhands-sdk==1.41.0",
+  "openhands-tools==1.41.0",
+  "openhands-workspace==1.41.0",
+  "openhands-agent-server==1.41.0",
+]
+dev = [
+  "pytest==9.1.1",
+  "pytest-asyncio==1.4.0",
+  "httpx==0.28.1",
+  "ruff==0.16.2",
+]
+
+[project.scripts]
+ohgui-middleware = "ohgui_middleware.__main__:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ohgui_middleware"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "-q --strict-markers"
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "ASYNC"]

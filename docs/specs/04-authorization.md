@@ -103,4 +103,11 @@ A "Speculative" mode: the agent spawns N parallel attempts in disposable worktre
 
 StuckDetector.is_stuck() firing triggers a dismissible-but-persistent card with one-click actions: Nudge simplify, Nudge add constraint, Nudge switch model, Fork and restart from step N, Kill and open post-mortem. Each logged to section 4.2.1.
 
+## 4.12 Phase 1 exit criteria
+
+> **NUMBERED 2026-08-08 20:52 EDT.** This list was previously an unnumbered trailing paragraph.
+> It is the single most-referenced passage in the repo and was already being cited as "§4.10",
+> which is Speculative execution. Numbering only — the text below is unchanged except where
+> [ADR-017](../../adrs/ADR-017-phase-1-exit-criteria-resolution.md) is noted inline.
+
 Phase 1 exit criteria (cumulative, v4.3): the operator can approve, reject-with-reason, and adjust the trust dial mid-run without restarting; a pending action is never retroactively (auto-)approved; an untrusted-content-derived action correctly surfaces its provenance badge; a "relax for this class" grant correctly expires and appears in the audit log; a synthetic stuck-loop scenario surfaces the intervention card with all five actions wired; a synthetic hard-budget scenario correctly pauses with Extend/Review; reliability-tier indicator and malformed-tool-call diagnostic pass synthetic tests; cloud-fallback escape hatch preserves context; the scope-shape review screen is present and functional; UNKNOWN-risk handling is visibly configurable. All demonstrable in both Vibe and Pro lenses (Principle 11).
