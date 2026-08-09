@@ -58,6 +58,26 @@ When the conversation enters WAITING_FOR_CONFIRMATION, render a rail-anchored ca
 - The trust-dial widget displays a live badge count of currently-active relaxations for the session.
 - Cross-links to the Context Inspector's per-item provenance data.
 
+> **AMENDED 2026-08-08 by [ADR-020](../../adrs/ADR-020-audit-log-provenance-reference.md).**
+> The cross-link above named a consumer that does not exist in Phase 1 — the Context Inspector
+> is Phase 5 (`11-dev-plan.md`) — so as written it was either unbuildable or an invitation to
+> ship an inert control. It is split at the data boundary:
+>
+> - **Phase 1 (this file).** Every audit entry carries a structured `provenance` array captured
+>   **at decision time**, one element per context item that informed the decision, each with a
+>   stable `id`, a `trust_class`, and a `source`. Capture is not deferrable: the context that
+>   justified an approval cannot be reconstructed after the conversation ends.
+> - **Phase 1 zero-trust rule.** `provenance: null` means *not captured* and is a distinct state
+>   from `provenance: []`, which means *captured, nothing informed it*. The middleware schema
+>   rejects an entry that omits the field rather than defaulting it — a manufactured empty array
+>   would silently assert the second when the truth is the first (ADR-015 least-astonishment).
+> - **Phase 1 does not ship cross-link UI.** The IDs are recorded and exportable; nothing in the
+>   Phase 1 surface resolves them to a rendered item.
+> - **Phase 5.** The Context Inspector resolves `provenance[].id` and the cross-link becomes live.
+>   Until then the recorded IDs are the audit trail, not a navigation affordance.
+>
+> `04a-prompt-injection.md` §4.9.1 quarantine logging writes into this same shape.
+
 ## 4.2.2 ~~Optional delegated approval~~ - REMOVED v4.3
 
 > **AMENDED v4.3 (2026-08-08) by [ADR-003](../../adrs/ADR-003-single-operator-remove-household.md).**

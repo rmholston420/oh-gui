@@ -341,35 +341,30 @@ better than another. They are a baseline of record for the app, not a model rank
 
 ### 2026-08-08 — Phase 1 scope items surfaced by the full spec read
 
+> **NARROWED 2026-08-08 21:20 EDT.** Items 1, 2, 9 and 10 are resolved by ADR-018, ADR-019,
+> ADR-020 and ADR-021 respectively and have been removed rather than struck — this file is the
+> *open* list, and the closed record lives in the ADRs and `BUILD_LOG.md`. Renumbering is
+> deliberate: stable numbering here would be a fiction, since the list was never referenced by
+> number anywhere. Items below are the six that remain untracked.
+
 - **Blocks:** Phase 1 Definition of Done (they are in scope but were untracked).
-- **Symptom:** `SESSION_HANDOFF.md`'s eleven-item remaining list omits the following, each
-  traceable to a spec file that had not been read in full:
-  1. **`13-hard-constraints.md` has no executable checker.** The file's own header says
-     "machine-checkable — run it before every PR"; `grep -rln "hard-constraints" scripts/
-     apps/gui/src apps/gui/e2e services` returns only `FirstRunWizard.tsx`. Every gate in
-     it is currently enforced by reading, which is the inert-control failure of ADR-006.
-  2. **Spec Wizard (`14-spec-wizard.md`) is due at the Phase 0/1 boundary** and appears in
-     no phase-1 tracking list.
-  3. §4.1 — trust dial must be settable **per task type**, not only globally.
-  4. §4.3 — the thirteen named batching/confirmation trigger conditions are not enumerated
+- **Symptom:** `SESSION_HANDOFF.md`'s remaining list omits the following, each traceable to a
+  spec file that had not been read in full:
+  1. §4.1 — trust dial must be settable **per task type**, not only globally.
+  2. §4.3 — the thirteen named batching/confirmation trigger conditions are not enumerated
      anywhere in the build list.
-  5. §8.4 — model-profile fields `generation/family version` and `dense vs MoE` are
+  3. §8.4 — model-profile fields `generation/family version` and `dense vs MoE` are
      hard-constraint gates distinct from `deterministic_replay`.
-  6. §8.5/§8.6 — tool-call-depth budget axis (distinct from turns and wall clock) and the
+  4. §8.5/§8.6 — tool-call-depth budget axis (distinct from turns and wall clock) and the
      30-concurrent-tool soft warning.
-  7. §3.2 / v4.3 gate — below 900px authorization cards are read-only with **no exception
+  5. §3.2 / v4.3 gate — below 900px authorization cards are read-only with **no exception
      path**; needs a headed Playwright assertion at a narrow viewport.
-  8. §04a — quarantine invocations must be written to the authorization audit log with
+  6. §04a — quarantine invocations must be written to the authorization audit log with
      source and trust class, and batched when several untrusted items arrive in one turn.
-  9. **Forward dependency:** §4.2.1 requires the audit log to cross-link the Context
-     Inspector, which is Phase 5. Same shape as the three conflicts ADR-017 resolved; needs
-     a layer split or an ADR.
-  10. **Possible ADR-015 gate conflict in shipped code:** "DTOs for the Agent Server are
-      generated from the upstream OpenAPI document and diffed, never hand-written."
-      `ipc/schema.py` is hand-written. It is arguably OH-GUI's own IPC contract rather than
-      an Agent Server DTO, but the boundary has not been ruled on.
+     The audit shape is now fixed by ADR-020; the batching behaviour is not.
 - **Attempted fixes:** none yet — recorded, not resolved.
-- **Next investigation:** decide which of 1, 2, 9 and 10 need an ADR (next free: ADR-018)
-  before any further Phase 1 code lands.
-- **Related DEBUG_LOG search terms:** hard-constraints, spec wizard, per task type,
-  tool-call depth, 900px, quarantine audit, OpenAPI DTO
+- **Next investigation:** these six are build work, not decisions — none appears to need an ADR.
+  Item 5 is the cheapest and is a headed-Playwright assertion, which is how the operator wants
+  frontend behaviour proven; do it first so the pattern exists for the rest.
+- **Related DEBUG_LOG search terms:** per task type, tool-call depth, 900px, quarantine audit,
+  batching triggers, model profile fields

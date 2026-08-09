@@ -1,0 +1,447 @@
+"""Mutation tests for the ADR-018 hard-constraints runner.
+
+The runner is a gate, and this project's standing rule is that a gate which has never been
+seen to fail is not a gate. So every claim the runner makes is tested by *planting the
+violation it is supposed to catch* and asserting it goes red. A test that only asserts the
+current tree is green would pass just as happily against a runner that always returns 0.
+
+Two layers:
+
+* the four ADR-018 structural properties, exercised against synthetic checklists and
+  registries, and
+* each of the fifteen `STATIC` predicates, exercised against a throwaway copy of the real
+  repository with a plausible mistake written into it.
+"""
+
+from __future__ import annotations
+
+import json
+import shutil
+import sys
+from pathlib import Path
+
+import pytest
+
+SCRIPTS = Path(__file__).resolve().parents[1]
+REPO = SCRIPTS.parent
+sys.path.insert(0, str(SCRIPTS))
+
+import check_hard_constraints_shim as runner
+from hard_constraints import checks
+from hard_constraints import parse as parse_mod
+from hard_constraints import registry as reg
+from hard_constraints.registry import Entry
+
+# --------------------------------------------------------------------------- fixtures
+
+
+@pytest.fixture
+def spec(tmp_path: Path):
+    """A minimal checklist file plus a helper to compute the ID of a gate line."""
+
+    counter = iter(range(1000))
+
+    def _write(*lines: str) -> Path:
+        # A fresh filename each call. Reusing one path made an earlier version of
+        # `test_rewording_a_gate_changes_its_id_and_goes_red` compare a file against itself,
+        # so it passed vacuously.
+        path = tmp_path / f"13-hard-constraints-{next(counter)}.md"
+        path.write_text("# checklist\n\n" + "\n".join(lines) + "\n", encoding="utf-8")
+        return path
+
+    return _write
+
+
+def gate_id_of(path: Path, index: int = 0) -> str:
+    return parse_mod.parse(path)[index].gate_id
+
+
+@pytest.fixture
+def patched_registry(monkeypatch):
+    """Swap the real registry for a synthetic one."""
+
+    def _apply(entries: dict[str, Entry], closed: set[str] | None = None) -> None:
+        monkeypatch.setattr(runner, "REGISTRY", entries, raising=True)
+        monkeypatch.setattr(reg, "REGISTRY", entries, raising=True)
+        monkeypatch.setattr(runner, "CLOSED_PHASES", frozenset(closed or {"Phase 0"}))
+
+    return _apply
+
+
+@pytest.fixture
+def repo_copy(tmp_path: Path, monkeypatch) -> Path:
+    """A throwaway copy of the repository, with every path constant repointed at it.
+
+    Violations are planted here, never in the working tree.
+    """
+    dest = tmp_path / "repo"
+    shutil.copytree(
+        REPO,
+        dest,
+        ignore=shutil.ignore_patterns(".git", "node_modules", ".venv", "__pycache__"),
+    )
+    monkeypatch.setattr(checks, "REPO_ROOT", dest)
+    monkeypatch.setattr(checks, "GUI_SRC", dest / "apps" / "gui" / "src")
+    monkeypatch.setattr(checks, "GUI_PKG", dest / "apps" / "gui" / "package.json")
+    monkeypatch.setattr(
+        checks, "MW_SRC", dest / "services" / "middleware" / "src" / "ohgui_middleware"
+    )
+    monkeypatch.setattr(
+        checks, "MW_PYPROJECT", dest / "services" / "middleware" / "pyproject.toml"
+    )
+    monkeypatch.setattr(checks, "PINS", dest / "docs" / "UPSTREAM_PINS.md")
+    monkeypatch.setattr(checks, "LEDGER", dest / "PORTING_LEDGER.md")
+    return dest
+
+
+# ------------------------------------------------------------ the tree as it stands
+
+
+def test_real_tree_is_green():
+    """Baseline. Meaningless alone — every test below is what gives it weight."""
+    assert runner.run(colour=False, quiet=True) == 0
+
+
+def test_every_registered_check_name_resolves():
+    assert reg.validate_registry() == []
+
+
+def test_registry_covers_the_spec_exactly():
+    spec_ids = {g.gate_id for g in parse_mod.parse()}
+    assert spec_ids == set(reg.REGISTRY), "spec and registry disagree"
+
+
+# ------------------------------------------------ ADR-018 property 1: drift fails the build
+
+
+def test_unregistered_gate_is_red(spec, patched_registry):
+    path = spec("- [ ] A brand new requirement nobody has triaged.")
+    patched_registry({})
+    assert runner.run(path, colour=False, quiet=True) == 1
+
+
+def test_orphaned_registry_entry_is_red(spec, patched_registry):
+    path = spec("- [ ] A requirement.")
+    patched_registry({gate_id_of(path): Entry("PHASE", owner="Phase 9"), "deadbeef01": Entry("PHASE", owner="Phase 9")})
+    assert runner.run(path, colour=False, quiet=True) == 1
+
+
+def test_rewording_a_gate_changes_its_id_and_goes_red(spec, patched_registry):
+    original = spec("- [ ] Reject actions require a free-text reason.")
+    entries = {gate_id_of(original): Entry("PHASE", owner="Phase 9")}
+    patched_registry(entries)
+    assert runner.run(original, colour=False, quiet=True) == 0
+
+    reworded = spec("- [ ] Reject actions may omit a reason.")
+    assert gate_id_of(reworded) != gate_id_of(original)
+    assert runner.run(reworded, colour=False, quiet=True) == 1
+
+
+def test_rewrapping_a_gate_does_not_change_its_id(spec, patched_registry):
+    one_line = spec("- [ ] A requirement long enough that someone might rewrap it one day.")
+    wrapped = spec(
+        "- [ ] A requirement long enough that someone",
+        "      might rewrap it one day.",
+    )
+    assert gate_id_of(one_line) == gate_id_of(wrapped)
+
+
+# --------------------------------- ADR-018 property 2: a closed phase cannot leave a gate open
+
+
+def test_gate_deferred_to_a_closed_phase_is_red(spec, patched_registry):
+    path = spec("- [ ] Something Phase 0 was supposed to have done.")
+    patched_registry({gate_id_of(path): Entry("PHASE", owner="Phase 0")}, closed={"Phase 0"})
+    assert runner.run(path, colour=False, quiet=True) == 1
+
+
+def test_the_same_gate_is_green_while_its_phase_is_open(spec, patched_registry):
+    path = spec("- [ ] Something Phase 1 will do.")
+    patched_registry({gate_id_of(path): Entry("PHASE", owner="Phase 1")}, closed={"Phase 0"})
+    assert runner.run(path, colour=False, quiet=True) == 0
+
+
+def test_closing_a_phase_turns_its_open_gates_red(spec, patched_registry):
+    """The load-bearing case: closure is what converts deferral into a failure."""
+    path = spec("- [ ] Something Phase 1 will do.")
+    entry = {gate_id_of(path): Entry("PHASE", owner="Phase 1")}
+    patched_registry(entry, closed={"Phase 0"})
+    assert runner.run(path, colour=False, quiet=True) == 0
+    patched_registry(entry, closed={"Phase 0", "Phase 1"})
+    assert runner.run(path, colour=False, quiet=True) == 1
+
+
+def test_phase_entry_without_an_owner_is_red(spec, patched_registry):
+    path = spec("- [ ] A requirement.")
+    patched_registry({gate_id_of(path): Entry("PHASE")})
+    assert runner.run(path, colour=False, quiet=True) == 1
+
+
+# ------------------------------------- ADR-018 property 3: a witness must name its artefact
+
+
+def test_witness_without_an_artifact_is_red(spec, patched_registry):
+    path = spec("- [ ] Something only a human can judge.")
+    patched_registry({gate_id_of(path): Entry("WITNESS")})
+    assert runner.run(path, colour=False, quiet=True) == 1
+
+
+def test_witness_with_an_artifact_is_green(spec, patched_registry):
+    path = spec("- [ ] Something only a human can judge.")
+    patched_registry({gate_id_of(path): Entry("WITNESS", artifact="BUILD_LOG.md")})
+    assert runner.run(path, colour=False, quiet=True) == 0
+
+
+def test_static_entry_naming_an_unknown_check_is_red(spec, patched_registry):
+    path = spec("- [ ] A requirement.")
+    patched_registry({gate_id_of(path): Entry("STATIC", check="no_such_predicate")})
+    assert runner.run(path, colour=False, quiet=True) == 1
+
+
+# ---------------------------- ADR-018 property 4: retirement must be deliberate and attributed
+
+
+def test_retired_entry_without_a_named_adr_is_red(spec, patched_registry):
+    path = spec("- [ ] ~~An abandoned requirement.~~")
+    patched_registry({gate_id_of(path): Entry("RETIRED")})
+    assert runner.run(path, colour=False, quiet=True) == 1
+
+
+def test_struck_gate_not_registered_retired_is_red(spec, patched_registry):
+    path = spec("- [ ] ~~An abandoned requirement.~~")
+    patched_registry({gate_id_of(path): Entry("PHASE", owner="Phase 9")})
+    assert runner.run(path, colour=False, quiet=True) == 1
+
+
+def test_live_gate_registered_retired_is_red(spec, patched_registry):
+    """Guards the quiet failure mode: retiring a gate in code but not in the spec."""
+    path = spec("- [ ] A requirement still in force.")
+    patched_registry({gate_id_of(path): Entry("RETIRED", note="ADR-999")})
+    assert runner.run(path, colour=False, quiet=True) == 1
+
+
+def test_annotating_a_retirement_does_not_change_the_gate_id(spec):
+    bare = spec("- [ ] ~~An abandoned requirement.~~")
+    annotated = spec(
+        "- [ ] ~~An abandoned requirement.~~ **RETIRED by ADR-999** because the",
+        "      underlying field turned out not to be recoverable.",
+    )
+    assert gate_id_of(bare) == gate_id_of(annotated)
+
+
+# ------------------------------------------------------------ the fifteen STATIC predicates
+
+
+def _gui(repo: Path) -> Path:
+    return repo / "apps" / "gui" / "src"
+
+
+def _mw(repo: Path) -> Path:
+    return repo / "services" / "middleware" / "src" / "ohgui_middleware"
+
+
+def _edit_json(path: Path, mutate) -> None:
+    data = json.loads(path.read_text(encoding="utf-8"))
+    mutate(data)
+    path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+
+
+def test_no_framer_motion_catches_a_dependency(repo_copy):
+    assert checks.no_framer_motion() is None
+    _edit_json(
+        repo_copy / "apps" / "gui" / "package.json",
+        lambda d: d["dependencies"].update({"framer-motion": "^11.0.0"}),
+    )
+    assert checks.no_framer_motion() is not None
+
+
+def test_no_framer_motion_catches_an_import(repo_copy):
+    (_gui(repo_copy) / "Bad.tsx").write_text(
+        "import { motion } from 'framer-motion'\nexport const X = motion.div\n", encoding="utf-8"
+    )
+    assert checks.no_framer_motion() is not None
+
+
+def test_no_copypaste_libs_as_deps_catches_aceternity(repo_copy):
+    assert checks.no_copypaste_libs_as_deps() is None
+    _edit_json(
+        repo_copy / "apps" / "gui" / "package.json",
+        lambda d: d["dependencies"].update({"aceternity-ui": "^1.0.0"}),
+    )
+    assert checks.no_copypaste_libs_as_deps() is not None
+
+
+def test_upstream_source_not_vendored_catches_a_forked_tree(repo_copy):
+    assert checks.upstream_source_not_vendored() is None
+    (repo_copy / "services" / "middleware" / "src" / "openhands").mkdir(parents=True)
+    assert checks.upstream_source_not_vendored() is not None
+
+
+def test_upstream_pinned_by_digest_catches_an_unpinned_image(repo_copy):
+    assert checks.upstream_pinned_by_digest() is None
+    pins = repo_copy / "docs" / "UPSTREAM_PINS.md"
+    import re as _re
+
+    pins.write_text(
+        _re.sub(r"@sha256:[0-9a-f]{64}", ":latest", pins.read_text(encoding="utf-8")),
+        encoding="utf-8",
+    )
+    assert checks.upstream_pinned_by_digest() is not None
+
+
+def test_upstream_pinned_by_digest_catches_a_loosened_wheel(repo_copy):
+    pyproject = repo_copy / "services" / "middleware" / "pyproject.toml"
+    pyproject.write_text(
+        pyproject.read_text(encoding="utf-8").replace("openhands-sdk==", "openhands-sdk>="),
+        encoding="utf-8",
+    )
+    assert checks.upstream_pinned_by_digest() is not None
+
+
+def test_policy_logic_not_in_browser_catches_an_invocation(repo_copy):
+    assert checks.policy_logic_not_in_browser() is None
+    (_gui(repo_copy) / "Bad.ts").write_text(
+        "export const p = ConfirmRisky({ threshold: 'HIGH' })\n", encoding="utf-8"
+    )
+    assert checks.policy_logic_not_in_browser() is not None
+
+
+def test_policy_logic_not_in_browser_ignores_prose(repo_copy):
+    """The precision half. A checker with false positives gets switched off."""
+    (_gui(repo_copy) / "Doc.tsx").write_text(
+        "export const H = () => <p>Choosing <code>NeverConfirm()</code> disables prompts.</p>\n",
+        encoding="utf-8",
+    )
+    assert checks.policy_logic_not_in_browser() is None
+
+
+def test_ts_client_confined_catches_a_runtime_dependency(repo_copy):
+    assert checks.ts_client_confined() is None
+    _edit_json(
+        repo_copy / "apps" / "gui" / "package.json",
+        lambda d: d["dependencies"].update({"@openhands/typescript-client": "1.37.0"}),
+    )
+    assert checks.ts_client_confined() is not None
+
+
+def test_ts_client_confined_catches_a_value_import(repo_copy):
+    (_gui(repo_copy) / "Bad.ts").write_text(
+        "import { Client } from '@openhands/typescript-client'\nexport const c = Client\n",
+        encoding="utf-8",
+    )
+    assert checks.ts_client_confined() is not None
+
+
+def test_no_identity_fields_catches_an_owner_column(repo_copy):
+    assert checks.no_identity_fields() is None
+    (_mw(repo_copy) / "bad.py").write_text("owner_id: str | None = None\n", encoding="utf-8")
+    assert checks.no_identity_fields() is not None
+
+
+def test_no_household_surface_catches_a_revived_concept(repo_copy):
+    assert checks.no_household_surface() is None
+    (_gui(repo_copy) / "Bad.ts").write_text("export const proficiency = 1\n", encoding="utf-8")
+    assert checks.no_household_surface() is not None
+
+
+def test_agent_server_dtos_generated_catches_a_hand_written_model(repo_copy):
+    assert checks.agent_server_dtos_generated() is None
+    (_mw(repo_copy) / "upstream" / "bad.py").write_text(
+        "from pydantic import BaseModel\n\n\nclass ToolCall(BaseModel):\n    name: str\n",
+        encoding="utf-8",
+    )
+    assert checks.agent_server_dtos_generated() is not None
+
+
+def test_agent_server_dtos_generated_allows_generated_models(repo_copy):
+    gen = _mw(repo_copy) / "upstream" / "_generated"
+    gen.mkdir(parents=True, exist_ok=True)
+    (gen / "models.py").write_text(
+        "from pydantic import BaseModel\n\n\nclass ToolCall(BaseModel):\n    name: str\n",
+        encoding="utf-8",
+    )
+    assert checks.agent_server_dtos_generated() is None
+
+
+def test_no_nonexistent_stats_event_catches_a_reference(repo_copy):
+    assert checks.no_nonexistent_stats_event() is None
+    (_mw(repo_copy) / "bad.py").write_text(
+        "handler = StatsConversationStateUpdateEvent\n", encoding="utf-8"
+    )
+    assert checks.no_nonexistent_stats_event() is not None
+
+
+def test_ledger_records_native_basis_catches_a_missing_basis(repo_copy):
+    assert checks.ledger_records_native_basis() is None
+    ledger = repo_copy / "PORTING_LEDGER.md"
+    ledger.write_text(
+        ledger.read_text(encoding="utf-8")
+        + "\n#### Some Adapter — VENDORED\n- **Source:** https://example.invalid\n"
+        "- **Carries:** openhands event payloads\n",
+        encoding="utf-8",
+    )
+    assert checks.ledger_records_native_basis() is not None
+
+
+def test_provisional_types_not_wired_catches_a_hook_install(repo_copy):
+    """The interlock: AuthorizeRequest is provisional today, so a hook must not be installable."""
+    assert checks.provisional_types_not_wired() is None
+    (_mw(repo_copy) / "bad.py").write_text(
+        "def setup(conv):\n    conv.add_hook(HookType.COMMAND, cmd)\n", encoding="utf-8"
+    )
+    assert checks.provisional_types_not_wired() is not None
+
+
+def test_provisional_types_not_wired_allows_a_hook_once_the_marker_clears(repo_copy):
+    """The other half. A rule that can only ever say no is not a gate, it is a wall."""
+    schema = _mw(repo_copy) / "ipc" / "schema.py"
+    schema.write_text(
+        schema.read_text(encoding="utf-8")
+        .replace("PROVISIONAL \u2014 UNVERIFIED", "verified against agent-server 1.41.0")
+        .replace("PROVISIONAL - UNVERIFIED", "verified against agent-server 1.41.0"),
+        encoding="utf-8",
+    )
+    (_mw(repo_copy) / "bad.py").write_text(
+        "def setup(conv):\n    conv.add_hook(HookType.COMMAND, cmd)\n", encoding="utf-8"
+    )
+    assert checks.provisional_types_not_wired() is None
+
+
+def test_no_execute_tool_ui_path_catches_a_call(repo_copy):
+    assert checks.no_execute_tool_ui_path() is None
+    (_gui(repo_copy) / "Bad.ts").write_text(
+        "export const go = () => conversation.executeTool(x)\n", encoding="utf-8"
+    )
+    assert checks.no_execute_tool_ui_path() is not None
+
+
+def test_no_coauthored_by_trailer_catches_a_trailer(repo_copy):
+    assert checks.no_coauthored_by_trailer() is None
+    (_mw(repo_copy) / "bad.py").write_text(
+        'TRAILER = "Co-authored-by: agent <agent@localhost>"\n', encoding="utf-8"
+    )
+    assert checks.no_coauthored_by_trailer() is not None
+
+
+def test_no_phase_6_surface_catches_a_compare_mode(repo_copy):
+    assert checks.no_phase_6_surface() is None
+    (_gui(repo_copy) / "Bad.tsx").write_text(
+        "export const CompareMode = () => null\n", encoding="utf-8"
+    )
+    assert checks.no_phase_6_surface() is not None
+
+
+def test_no_shared_visibility_toggle_catches_a_relic(repo_copy):
+    assert checks.no_shared_visibility_toggle() is None
+    (_gui(repo_copy) / "Bad.ts").write_text("export const shareAll = true\n", encoding="utf-8")
+    assert checks.no_shared_visibility_toggle() is not None
+
+
+# ---------------------------------------------------------------------------- coverage
+
+
+def test_every_static_check_has_a_mutation_test():
+    """Stops a predicate being added without a test proving it can fail."""
+    source = Path(__file__).read_text(encoding="utf-8")
+    untested = [name for name in checks.REGISTRY_CHECKS if f"checks.{name}()" not in source]
+    assert untested == [], f"STATIC predicates with no mutation test: {untested}"

@@ -73,10 +73,32 @@ Files: 08-telemetry.md (remainder), 09-missing-states.md, 10-mission-control.md
 "Needs you" inbox, full telemetry strip, model profiles with new fields, StuckDetector UI wiring, mission-control dashboard, Project Skill panel, Context Inspector, condensation preview, notification model, air-gapped mode, three-class error model.
 Exit criterion: see 09-missing-states.md and 10-mission-control.md.
 
-## Phase 0/Phase 1 boundary - Spec Wizard
+> **AMENDED 2026-08-08 by [ADR-020](../../adrs/ADR-020-audit-log-provenance-reference.md).**
+> Phase 5 additionally owns **resolution of the audit log's `provenance[].id` references**: the
+> Context Inspector built here is what makes `04-authorization.md` §4.2.1's cross-link live.
+> Phase 1 captures the IDs; Phase 5 renders them. A Phase 5 exit that ships the Context Inspector
+> without resolving audit-log provenance leaves §4.2.1 permanently half-built.
+
+## Phase 1/Phase 2 boundary - Spec Wizard
 Files: 14-spec-wizard.md
 Ships early enough to be usable for the project's own subsequent-phase specification.
 Exit criterion: see 14-spec-wizard.md.
+
+> **AMENDED 2026-08-08 by [ADR-019](../../adrs/ADR-019-spec-wizard-phase-placement.md).**
+> Moved from the Phase 0/1 boundary, which had already passed unnoticed at `52fa9e6` — a
+> boundary in the past is not a schedule. Split at the primitive boundary:
+>
+> - **Phase 1** builds the **restricted-capability primitive** the wizard needs, because
+>   `04a-prompt-injection.md` §4.9.1 needs the same thing for untrusted-content quarantine and
+>   is already in Phase 1's file list. One tool-less quarantined conversation mechanism, two
+>   consumers. Building it twice is how the two copies drift.
+> - **The wizard itself ships at the Phase 1→2 boundary**, trigger: *no Phase 2 specification
+>   work begins until the wizard is usable*. This preserves the original intent — that the
+>   project specify itself with its own tool — by tying the ship date to the first moment that
+>   intent can actually be exercised, rather than to a calendar point.
+> - **Phase 1 exit does not gate on the wizard.** Phase 1's exit criterion is §4.12 (ADR-017)
+>   and is unchanged. Loading the wizard into Phase 1 exit would hold the authorization slice
+>   hostage to a feature that needs live web search and a separate thinking-model tier.
 
 ## Phase 6 - Compare mode and multi-agent orchestration (optional, deferrable indefinitely)
 Files: 03-layout.md section 3.6, 04-authorization.md section 4.10

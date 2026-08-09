@@ -215,3 +215,26 @@ reaching significance.
 | Paired mid-p McNemar test | `bench/lib/mcnemar.py` | **Port-early** (was port-later). MIT. Suite executed 6/6 during review. Inherit and state its two limits: drops `resolved=None`; one outcome per task, so it does not consume repetitions |
 | NVML background sampler | `bench/_common/nvml_sampler.py` | **Port-early.** Modifications required before use: missing-NVML must **fail closed** rather than degrade to a silent no-op returning zeros (ADR-013 clause 5, ADR-015 clause 3 — unmeasured is `null`, not `0.0`); wire the 45 C cold / 80 C warn / 83 C stop gates; keep native NVML field names |
 | Immutable per-trial manifest | SWE Path A design | **Port-early as design.** Every replicate retained; the donor's final-of-three retention is the specific defect being avoided; fold rule pre-registered in the manifest |
+
+## 2026-08-08 21:15 EDT — ADR-021: DTO generation
+
+#### datamodel-code-generator — PLANNED
+- **Source:** https://github.com/koxudaxi/datamodel-code-generator
+- **Commit / Version:** to be pinned at first use
+- **License:** MIT
+- **Kosmos location:** n/a — OH-GUI: build-time tool; output lands in
+  `services/middleware/src/ohgui_middleware/upstream/_generated/`
+- **Port(s):** none — it is a generator, not a runtime dependency, and nothing imports it
+- **Native basis:** the pinned agent-server OpenAPI document, served by
+  `ghcr.io/openhands/agent-server@sha256:f0244fd7bb31428216394397cc183a3d820affe7cfe93441c98d8b3e98fa0520`
+  (tag `ca46719-python`, v1.41.0). Generated output *is* the native basis, which is the point:
+  a generated DTO cannot drift from upstream without the diff showing it.
+- **Modifications:** none planned. Generated files are committed and reviewed as a diff, never
+  edited by hand — an edited generated file is a hand-written DTO wearing a disguise.
+- **ADR:** [ADR-021](adrs/ADR-021-dto-generation-boundary.md)
+- **Logged:** 2026-08-08 21:15 EDT
+
+Rejected alternative: hand-writing Agent Server DTOs. The donor already did this and
+`PORTING_LEDGER.md` above excludes the result. `ipc/schema.py:AuthorizeRequest` is the same
+mistake in this repo, caught before a hook was wired to it and now marked
+`PROVISIONAL — UNVERIFIED` under ADR-014 verification item 5.
