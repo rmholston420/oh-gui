@@ -4,12 +4,26 @@ const HOST = '127.0.0.1';
 const PORT = 5173;
 const URL = `http://${HOST}:${PORT}`;
 
-// Watched runs are for a human to read in real time, so they get a large window and a slow
-// step. Unwatched runs keep Playwright's defaults.
-const WATCH_WIDTH = Number(process.env.WATCH_WIDTH ?? 1920);
-const WATCH_HEIGHT = Number(process.env.WATCH_HEIGHT ?? 1080);
+// Watched runs are for a human to read in real time, so they get the whole screen and a slow step.
+// Unwatched runs keep Playwright's defaults.
+//
+// The default is `--start-maximized` with `viewport: null` rather than a hardcoded size. A fixed
+// height is a guess about the operator's monitor: guess high and the window is taller than the
+// screen so the bottom of the page is simply unreachable, guess low and it is needlessly short.
+// Maximizing asks the window manager instead, and `viewport: null` makes the page adopt the real
+// window size rather than rendering a letterboxed 1280x720 inside it.
+//
+// Set WATCH_WIDTH and WATCH_HEIGHT to force an exact size — useful for reproducing a specific
+// breakpoint, e.g. WATCH_WIDTH=1200 to sit in spec 03's three-region band.
+const FIXED_WIDTH = process.env.WATCH_WIDTH ? Number(process.env.WATCH_WIDTH) : null;
+const FIXED_HEIGHT = process.env.WATCH_HEIGHT ? Number(process.env.WATCH_HEIGHT) : null;
+const HAS_FIXED_SIZE = FIXED_WIDTH !== null && FIXED_HEIGHT !== null;
 /** Chrome's tab strip, omnibox and the automation banner sit above the viewport. */
 const CHROME_UI_HEIGHT = 140;
+
+const watchArgs = HAS_FIXED_SIZE
+  ? [`--window-size=${FIXED_WIDTH},${FIXED_HEIGHT + CHROME_UI_HEIGHT}`]
+  : ['--start-maximized'];
 
 export default defineConfig({
   testDir: './e2e',
@@ -23,12 +37,12 @@ export default defineConfig({
     baseURL: URL,
     trace: 'on-first-retry',
     launchOptions: {
-      slowMo: process.env.WATCH ? Number(process.env.WATCH_MS ?? 1200) : 0,
+      slowMo: process.env.WATCH ? Number(process.env.WATCH_MS ?? 1800) : 0,
       // The OS window and the page viewport are two different things in headed Chromium. Setting
       // only `viewport` leaves a small window with a letterboxed page inside it; setting only
       // `--window-size` leaves the page rendering at the default 1280x720 regardless of how large
       // the window is. Both are needed, and they are kept in step below.
-      args: process.env.WATCH ? [`--window-size=${WATCH_WIDTH},${WATCH_HEIGHT + CHROME_UI_HEIGHT}`] : [],
+      args: process.env.WATCH ? watchArgs : [],
     },
   },
   projects: [
@@ -38,7 +52,11 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
         // Spec 03 puts the four-region Pro layout above 1600px. Watching at the default 1280 would
         // show the collapsed layout, so a headed run would be demonstrating the wrong thing.
-        ...(process.env.WATCH ? { viewport: { width: WATCH_WIDTH, height: WATCH_HEIGHT } } : {}),
+        ...(process.env.WATCH
+          ? HAS_FIXED_SIZE
+            ? { viewport: { width: FIXED_WIDTH, height: FIXED_HEIGHT } }
+            : { viewport: null }
+          : {}),
       },
     },
   ],
