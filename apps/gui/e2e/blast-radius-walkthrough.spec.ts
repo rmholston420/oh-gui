@@ -12,8 +12,8 @@ import { expect, test } from '@playwright/test';
  * distinguishable, so the separation can be *seen* rather than inferred from a passing count.
  *
  * Watch it:
- *   npm run watch:blast              # ~40s, framed and paced for reading
- *   WATCH_DWELL=2000 npm run watch:blast
+ *   npm run watch:blast                    # ~35s, framed and paced for reading
+ *   WATCH_DWELL=1400 npm run watch:blast   # the original, brisker pace
  *
  * It also runs in the normal gate, where every dwell collapses to zero and the outlining is
  * skipped, so it costs the headless suite almost nothing and still exercises the same paths.
@@ -27,7 +27,9 @@ test.use({
 });
 
 const WATCHING = Boolean(process.env.WATCH);
-const DWELL = Number(process.env.WATCH_DWELL ?? 1400);
+// 1400ms was measured too fast to read on Colossus (whole run 19.8s). 2500 puts the run at ~35s,
+// which is the point: this spec exists to be read, not to finish.
+const DWELL = Number(process.env.WATCH_DWELL ?? 2500);
 
 test('an operator can see derived and echoed values stay apart across all four states', async ({
   page,
