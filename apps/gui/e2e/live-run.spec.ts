@@ -62,6 +62,17 @@ test.describe('@live real conversation against agent-server', () => {
   async function startRun(page: Page, goal: string) {
     await page.goto('/');
 
+    // Spec 03 makes the GUI read-only below 900px with no exception path, so a window that failed
+    // to maximize would disable the very controls these tests click, and the failure would surface
+    // as an unexplained "element is not enabled" twenty seconds later. Name it here instead.
+    const width = await page.evaluate(() => window.innerWidth);
+    expect(
+      width,
+      `viewport is ${width}px wide; below 900px the GUI is read-only by design and no control can ` +
+        'be clicked. The watched window did not maximize. Force a size:\n' +
+        '  WATCH_WIDTH=1920 WATCH_HEIGHT=1080 npm run watch:live\n',
+    ).toBeGreaterThanOrEqual(900);
+
     // The shell must be present and must not have swallowed the run surface.
     await expect(page.getByRole('heading', { name: 'Agent Server workspace' })).toBeVisible();
 

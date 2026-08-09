@@ -25,6 +25,24 @@ const watchArgs = HAS_FIXED_SIZE
   ? [`--window-size=${FIXED_WIDTH},${FIXED_HEIGHT + CHROME_UI_HEIGHT}`]
   : ['--start-maximized'];
 
+/**
+ * Spec 03 puts the four-region Pro layout above 1600px. Watching at Playwright's default 1280 would
+ * show the collapsed layout, so a headed run would be demonstrating the wrong thing.
+ *
+ * `viewport: null` (adopt the real maximized window) is mutually exclusive with the
+ * `deviceScaleFactor` that `devices['Desktop Chrome']` carries — Playwright rejects the pair at
+ * `browser.newContext` with "deviceScaleFactor option is not supported with null viewport". So the
+ * key is deleted rather than overridden: passing `deviceScaleFactor: undefined` still counts as
+ * present and still throws.
+ */
+function chromiumUse() {
+  const base = { ...devices['Desktop Chrome'] };
+  if (!process.env.WATCH) return base;
+  if (HAS_FIXED_SIZE) return { ...base, viewport: { width: FIXED_WIDTH, height: FIXED_HEIGHT } };
+  delete (base as { deviceScaleFactor?: number }).deviceScaleFactor;
+  return { ...base, viewport: null };
+}
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
@@ -45,21 +63,7 @@ export default defineConfig({
       args: process.env.WATCH ? watchArgs : [],
     },
   },
-  projects: [
-    {
-      name: 'chromium',
-      use: {
-        ...devices['Desktop Chrome'],
-        // Spec 03 puts the four-region Pro layout above 1600px. Watching at the default 1280 would
-        // show the collapsed layout, so a headed run would be demonstrating the wrong thing.
-        ...(process.env.WATCH
-          ? HAS_FIXED_SIZE
-            ? { viewport: { width: FIXED_WIDTH, height: FIXED_HEIGHT } }
-            : { viewport: null }
-          : {}),
-      },
-    },
-  ],
+  projects: [{ name: 'chromium', use: chromiumUse() }],
   webServer: {
     // `--host 127.0.0.1` is load-bearing, not decoration. Vite's default host is `localhost`,
     // which on a dual-stack machine resolves to ::1 first, so Vite binds only the IPv6 loopback

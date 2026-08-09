@@ -1859,3 +1859,14 @@ gating" defect class in this repo.
 - **Fix applied:** probe `GET /ready` instead. It is mounted at the root rather than under `/api` (`APIRouter(prefix="")` included with no prefix, `openhands/agent_server/server_details_router.py:17,97,103`), and it returns 503 until initialization completes, so a pass means the server can actually accept a conversation rather than merely that a socket is open.
 - **Files changed:** `apps/gui/e2e/live-run.spec.ts`
 - **Related BUILD_LOG entry:** 2026-08-09 03:38 EDT
+
+## 2026-08-09 03:36 EDT — `browser.newContext: "deviceScaleFactor" option is not supported with null "viewport"`
+
+- **Symptom:** `npm run watch:live` failed instantly (2ms) on the first test with `Error: browser.newContext: "deviceScaleFactor" option is not supported with null "viewport"`. Introduced by the previous commit, which switched watched runs to `--start-maximized` + `viewport: null`.
+- **Affected stage / plugin / port:** `apps/gui/playwright.config.ts`
+- **Root cause:** the chromium project spreads `devices['Desktop Chrome']`, which carries `deviceScaleFactor: 1`. Playwright rejects that key alongside a null viewport. Overriding it to `undefined` does not help — the key still counts as present.
+- **Fix applied:** build the project's `use` object in a function and `delete` the `deviceScaleFactor` key on the maximized path only. The fixed-size path keeps the device defaults untouched.
+- **How it escaped:** it was verified with `playwright test --list`, which parses the config but never calls `browser.newContext`, so the invalid combination could not surface. Chromium was available in the agent sandbox the whole time. Verified this round by launching a real browser through all three config paths (unwatched 1280x720, watch-maximized, watch-fixed 1200x900) and reading back `window.innerWidth`.
+- **Follow-on hazard found while verifying:** the maximized path reports 800x600 under a headless sandbox with no window manager. Below 900px the GUI is read-only by spec 03, so a window that failed to maximize would disable the controls the tests click and fail 20s later as "element is not enabled". Added an explicit viewport-width assertion at the top of the live run that names the cause and gives the override command.
+- **Files changed:** `apps/gui/playwright.config.ts`, `apps/gui/e2e/live-run.spec.ts`
+- **Related BUILD_LOG entry:** 2026-08-09 03:33 EDT
