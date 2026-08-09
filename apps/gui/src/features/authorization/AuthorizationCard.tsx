@@ -35,7 +35,12 @@ import { blastRadius, type ActionLike } from './blast-radius';
 import BlastRadiusSection from './BlastRadiusSection';
 import { UntrustedContentBadge } from './UntrustedContentBadge';
 import type { GuiLocalUntrustedContentProvenance } from './untrusted-content';
-import { APPROVAL_MIN_WIDTH, canActOnAuthorization, useViewportWidth } from './viewport';
+import {
+  approvalMinWidth,
+  canActOnAuthorization,
+  usePointerIsCoarse,
+  useViewportWidth,
+} from './viewport';
 
 export type SecurityRisk = 'LOW' | 'MEDIUM' | 'HIGH' | 'UNKNOWN';
 
@@ -81,7 +86,8 @@ export default function AuthorizationCard({
   onApproveAndRelax,
 }: AuthorizationCardProps) {
   const width = useViewportWidth();
-  const canAct = canActOnAuthorization(width);
+  const pointerIsCoarse = usePointerIsCoarse();
+  const canAct = canActOnAuthorization(width, pointerIsCoarse);
   const [reason, setReason] = useState('');
   const reasonId = useId();
   const radius = useMemo(
@@ -146,7 +152,7 @@ export default function AuthorizationCard({
           className="mt-3 rounded border border-amber-600 bg-amber-950 p-3 text-sm text-amber-100"
         >
           <span className="font-semibold">Read-only at this window size. </span>
-          Approving, rejecting, or relaxing needs a window at least {APPROVAL_MIN_WIDTH}px wide, so
+          Approving, rejecting, or relaxing needs a window at least {approvalMinWidth(pointerIsCoarse)}px wide, so
           the command and its effects can be read together before you decide. Widen the window to
           act.
         </p>

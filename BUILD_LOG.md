@@ -4326,3 +4326,22 @@ The applied diff is now printed for every mutant.
   fails hard, and demoting the `file_editor` enum turns a test red.
 - **Stop-condition status:** re-grade, then re-run attainability against the new rates. GPU still
   idle by design.
+
+## 2026-08-09 06:34 EDT — ADR-034 ratified: the approval gate reads the pointer, not just the width
+
+- **Stage / plugin / port:** Phase 1 · GUI · authorization surface
+- **What changed:** the single 900px lockout is split along the two threats it conflated. Mis-tap
+  is a pointer property, so 900px now applies to coarse pointers only; unreadable evidence is a
+  width property, so a fine pointer floors at 768px (the card's own `max-w-3xl`). Unknown pointer
+  resolves to the stricter floor.
+- **Operator impact:** a quarter-snap window on 3440x1440 is 860px. It was read-only. It now acts.
+- **Files touched:** `apps/gui/src/features/authorization/viewport.ts`,
+  `apps/gui/src/features/authorization/AuthorizationCard.tsx`,
+  `apps/gui/src/__tests__/authorization-card.test.tsx`, `adrs/ADR-034-*.md`, `adrs/README.md`
+- **Mutation evidence:** M1 (collapse to touch floor) 6 red, M2 (collapse to mouse floor) 8 red,
+  M3 (unknown pointer resolves fine instead of coarse) **survived** and was closed with a new
+  test; re-run of the corrected mutant is 1 red. M3's first run also failed to apply — the sed
+  anchor ended in a comma, not a semicolon — and was only caught by grepping the file, which is
+  the second time this session an unapplied mutant looked like a caught one.
+- **Stop-condition status:** ADR-022 unchanged; still a client-side affordance, still not mirrored
+  in middleware. 20/20 card tests green.

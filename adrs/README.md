@@ -68,3 +68,4 @@ old one and mark the old one `Amended · superseded by ADR-###`.
 | ADR-031 | The four-region layout breakpoint is 1700px: clamp preferred side widths against the stage floor, not the side minimums | Ratified · revision 2 |
 | ADR-032 | Audit confidence is record fidelity: it describes the record, not a belief about the action, and an uncomputed untrusted-content tracker is never flattened into a clean one | Ratified · conforms to ADR-020 |
 | ADR-033 | The code index is an MCP server, not vendored source: Serena (MIT) is configured as a harness surface, codebase-memory-mcp is rejected on a self-reported 9-point quality regression and opaque binary distribution, and semantic search is deferred | Proposed |
+| ADR-034 | [Approval gate is pointer-aware](ADR-034-approval-gate-is-pointer-aware.md) | Ratified v25 | Phase 1 · GUI |

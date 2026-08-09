@@ -1991,3 +1991,16 @@ gating" defect class in this repo.
 - **Files changed:** `bench/toolcall/grading.py`, `bench/toolcall/tests/test_grading.py`,
   `bench/toolcall/regrade.py`
 - **Related BUILD_LOG entry:** 2026-08-09 06:26 EDT
+
+## 2026-08-09 06:34 EDT — a mutation that never applied looked identical to one that was caught
+
+- **Symptom:** mutating the unknown-pointer fallback reported "20 passed", implying the mutant was
+  killed by nothing and survived; the same command shape had already misfired once this session.
+- **Affected stage / plugin / port:** Phase 1 · GUI · mutation procedure
+- **Root cause:** `sed 's/?? true;/?? false;/'` found no match — the expression is an argument in a
+  `useSyncExternalStore` call and ends in a comma. No match means no edit, and an unmutated file
+  passes, which is indistinguishable from a mutant the suite caught.
+- **Fix applied:** mutations are applied through a Python replace with `assert old in s`, which
+  fails loudly when the anchor is absent, and the file is grepped before the verdict is believed.
+- **Files changed:** procedure only.
+- **Related BUILD_LOG entry:** 2026-08-09 06:34 EDT
