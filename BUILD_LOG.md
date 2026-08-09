@@ -4514,3 +4514,17 @@ The applied diff is now printed for every mutant.
 - **Files touched:** `adrs/ADR-016-decouple-baseline-benchmark-from-phase-0-exit.md`, `adrs/README.md`
 - **ADR / ledger updated:** ADR-016 status line and index row
 - **Stop-condition status:** met — ADR-016 is closed.
+
+## 2026-08-09 07:26 EDT — Phase 1 spec/gate work was already complete; handoff was stale
+
+- **Stage / plugin / port:** Phase 1 · governance
+- **What changed:** nothing in the tree. This entry records a verification, not a build.
+- **Finding:** `SESSION_HANDOFF.md` listed requirement IDs and the four ADR-028 drift gates as
+  remaining. Both are done. The gates are implemented (`checks.py:552,558,564,573`), wired as
+  STATIC entries, mutation-tested, and registered as REQ-13-078..081. Spec `02` is excluded from
+  enrollment deliberately — it is the closed Phase 0 setup record.
+- **Cost:** several tool calls spent re-deriving completed work before reading the register.
+- **Correction:** the handoff now records *why* each item is closed, and that `02`'s exclusion is a
+  decision rather than a gap, so it cannot read as unfinished again.
+- **Files touched:** `SESSION_HANDOFF.md`
+- **Stop-condition status:** Phase 1 spec-governance work is complete.

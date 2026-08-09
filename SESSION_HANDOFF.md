@@ -1,4 +1,4 @@
-# Kosmos Session Handoff — 2026-08-09 07:07 EDT
+# Kosmos Session Handoff — 2026-08-09 07:26 EDT
 
 ## Current build-sequencing position
 - **Stage / phase:** Phase 1 · agent context + GUI surfaces
@@ -25,7 +25,12 @@
   agent-server.** Tier 2 is complete.
 - Record the ADR-016 verdict as a closing amendment (decision made: change nothing; A stays
   default. A=45.0%, B=47.5% on 40 tasks — one task apart, no confirmatory GPU run).
-- Assign requirement IDs across the remaining Phase 1 specs; four drift gates + mutation tests.
+- ~~Assign requirement IDs across the remaining Phase 1 specs; four drift gates + mutation tests.~~
+  **Both already done — this line was stale and cost a re-investigation on 2026-08-09.** Verified:
+  all four ADR-028 gates exist in `scripts/hard_constraints/checks.py` (lines 552, 558, 564, 573),
+  are wired as STATIC-tier entries, are mutation-tested in `scripts/tests/test_check_hard_constraints.py`,
+  and are recorded IMPLEMENTED as REQ-13-078..081. Requirement IDs are assigned across all 17
+  enrolled specs; `02` is excluded **by design** as the closed Phase 0 setup record, not by omission.
 
 ## Open questions / awaiting user answer
 - **Tier 3 (enable/disable via `PATCH /plugins/{name}`)** — mutating but local and reversible.
