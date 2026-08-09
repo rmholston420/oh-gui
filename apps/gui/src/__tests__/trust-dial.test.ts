@@ -3,6 +3,7 @@ import {
   DEFAULT_CONFIRM_RISKY,
   DEFAULT_STOP,
   TRUST_STOPS,
+  confirmationPolicyForTrustStop,
   shouldConfirm,
   type SecurityRisk,
   type TrustStopId,
@@ -28,6 +29,21 @@ describe('trust-dial mirror', () => {
   it('defaults to ConfirmRisky(threshold=HIGH, confirm_unknown=True) (spec 3.4 item 4)', () => {
     expect(DEFAULT_STOP).toBe('ask-risky');
     expect(DEFAULT_CONFIRM_RISKY).toEqual({ threshold: 'HIGH', confirmUnknown: true });
+  });
+
+  it('maps all four dial positions to the three native confirmation-policy variants', () => {
+    expect(confirmationPolicyForTrustStop('ask-always')).toEqual({ kind: 'AlwaysConfirm' });
+    expect(confirmationPolicyForTrustStop('ask-risky')).toEqual({
+      kind: 'ConfirmRisky',
+      threshold: 'HIGH',
+      confirm_unknown: true,
+    });
+    expect(confirmationPolicyForTrustStop('ask-outside-worktree')).toEqual({
+      kind: 'ConfirmRisky',
+      threshold: 'HIGH',
+      confirm_unknown: true,
+    });
+    expect(confirmationPolicyForTrustStop('never')).toEqual({ kind: 'NeverConfirm' });
   });
 
   it('"Ask always" pauses on every risk, in or out of the worktree', () => {

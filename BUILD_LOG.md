@@ -3764,3 +3764,29 @@ The applied diff is now printed for every mutant.
 - **ADR / ledger:** No donor component was ported, no ADR or porting ledger update was required. ADR-015 and ADR-030 boundaries were followed.
 - **Verification:** `npm run gate` completed successfully: constraints passed, lint passed, 15 test files / 118 tests passed, and Vite build completed. `python3 /tmp/ohg/scripts/check-hard-constraints.py` printed `=== PASSED ===`.
 - **Stop condition:** Met for this task. No commit or push performed.
+
+## 2026-08-09 02:53 EDT — Wire approval gate: implementation start
+
+- **Stage / component:** Phase 1 · run-workspace authorization surface · native Agent Server confirmation policy and response routes.
+- **Scope:** Extend the existing browser client only with the verified confirmation-policy and confirmation-response request shapes; construct the three native policy discriminators; derive unmatched executable `ActionEvent`s from polled event objects while the durable run state is `waiting_for_confirmation`; feed those objects to the existing authorization card; wire approve/reject and immediate refresh; apply one trust-dial-to-native-policy mapping at conversation creation and on dial change. A `pre_tool_use` hook may be attached only from an explicitly configured command; no ADR-014 test command is embedded.
+- **Boundary / Definition of Done:** No changes below `review/_sdk_src/`; no OpenHands modification, cloud control plane, or second Vibe/Pro code path. Vitest mocked-fetch coverage proves native policy serialization and confirmation responses, plus a real pending card approval flow. `apps/gui` gate and root hard-constraint check must pass. This task stops after those checks, append-only logging, and a refreshed handoff; no commit or push.
+
+## 2026-08-09 03:10 EDT — Wire approval gate: complete
+
+- **Stage / plugin / port:** Phase 1 · run-workspace authorization surface · Agent Server conversation adapter
+- **What changed:** Added native confirmation-policy constructors and optional pre-tool-use hook configuration; mapped the trust dial to the three native policies at conversation start and mid-run; derived pending action records from the polled native event stream; wired real AuthorizationCard approve/reject actions through the confirmation endpoint with immediate state refresh. Kept the transcript as narration only.
+- **Files touched:**
+  - `apps/gui/src/api/types.ts`
+  - `apps/gui/src/features/first-run/trust-dial.ts`
+  - `apps/gui/src/features/run/useConversation.ts`
+  - `apps/gui/src/features/run/RunView.tsx`
+  - `apps/gui/src/api/agentServer.test.ts`
+  - `apps/gui/src/api/types.test.ts`
+  - `apps/gui/src/__tests__/trust-dial.test.ts`
+  - `apps/gui/src/features/run/useConversation.test.tsx`
+  - `apps/gui/src/features/run/RunView.test.tsx`
+  - `DEBUG_LOG.md`
+- **Ports / adapters affected:** Agent Server conversation adapter only; no upstream source modified.
+- **PORTING_LEDGER / ADR updated:** —
+- **Verification:** `npm run gate` passed: lint, 16 Vitest files / 124 tests, TypeScript build, and Vite build. `python3 scripts/check-hard-constraints.py` printed `=== PASSED ===`.
+- **Stop-condition status:** met

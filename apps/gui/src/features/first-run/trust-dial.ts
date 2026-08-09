@@ -12,6 +12,13 @@
  * the spec table so drift fails the gate rather than misleading the operator.
  */
 
+import {
+  alwaysConfirm,
+  confirmRisky as confirmRiskyPolicy,
+  neverConfirm,
+  type ConfirmationPolicy,
+} from '../../api/types';
+
 export type SecurityRisk = 'LOW' | 'MEDIUM' | 'HIGH' | 'UNKNOWN';
 export type TrustStopId = 'ask-always' | 'ask-risky' | 'ask-outside-worktree' | 'never';
 
@@ -57,6 +64,25 @@ export const TRUST_STOPS: readonly TrustStop[] = [
 /** The wizard must state and justify this explicitly (spec 3.4 item 4). */
 export const DEFAULT_STOP: TrustStopId = 'ask-risky';
 export const DEFAULT_CONFIRM_RISKY: ConfirmRiskyParams = { threshold: 'HIGH', confirmUnknown: true };
+
+/**
+ * Translate each dial position to the native policy union the Agent Server consumes.
+ *
+ * `ask-outside-worktree` shares ConfirmRisky with `ask-risky`: its narrower envelope is enforced
+ * by ADR-029's separately configured pre-tool-use COMMAND hook, not by a fourth confirmation-policy
+ * variant. Vibe and Pro therefore choose defaults on this same data model rather than separate paths.
+ */
+export function confirmationPolicyForTrustStop(stop: TrustStopId): ConfirmationPolicy {
+  switch (stop) {
+    case 'ask-always':
+      return alwaysConfirm();
+    case 'never':
+      return neverConfirm();
+    case 'ask-risky':
+    case 'ask-outside-worktree':
+      return confirmRiskyPolicy(DEFAULT_CONFIRM_RISKY.threshold, DEFAULT_CONFIRM_RISKY.confirmUnknown);
+  }
+}
 
 const RANK: Record<Exclude<SecurityRisk, 'UNKNOWN'>, number> = { LOW: 0, MEDIUM: 1, HIGH: 2 };
 

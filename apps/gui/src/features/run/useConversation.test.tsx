@@ -50,6 +50,85 @@ describe('useConversation', () => {
     unmount();
   });
 
+  it('exposes pending native actions and sends approve and reject confirmation responses', async () => {
+    const api = apiWith({
+      getConversation: vi
+        .fn()
+        .mockResolvedValue({ id: 'conversation-1', execution_status: 'waiting_for_confirmation' }),
+      searchEvents: vi.fn().mockResolvedValue({
+        items: [
+          {
+            id: 'action-1',
+            timestamp: '2026-08-09T00:00:00',
+            source: 'agent',
+            kind: 'ActionEvent',
+            tool_name: 'terminal',
+            tool_call_id: 'call-1',
+            security_risk: 'HIGH',
+            action: {
+              kind: 'openhands__tools__terminal__definition__TerminalAction-Output__1',
+              command: 'npm test',
+            },
+          },
+        ],
+        next_page_id: null,
+      }),
+    });
+    const { result } = renderHook(() => useConversation({ api, pollIntervalMs: 60_000 }));
+
+    await act(async () => {
+      await result.current.start('Run the tests.', 'ask-always');
+    });
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('waiting_for_confirmation');
+      expect(result.current.pendingActions).toHaveLength(1);
+    });
+    expect(result.current.pendingActions[0]).toMatchObject({
+      toolName: 'terminal',
+      securityRisk: 'HIGH',
+      command: expect.stringContaining('npm test'),
+    });
+    expect(api.createConversation).toHaveBeenCalledWith(
+      expect.objectContaining({ confirmation_policy: { kind: 'AlwaysConfirm' } }),
+    );
+
+    await act(async () => {
+      await result.current.approve();
+    });
+    expect(api.respondToConfirmation).toHaveBeenCalledWith('conversation-1', {
+      accept: true,
+      reason: 'User rejected the action.',
+    });
+
+    await act(async () => {
+      await result.current.reject('The test command needs review.');
+    });
+    expect(api.respondToConfirmation).toHaveBeenLastCalledWith('conversation-1', {
+      accept: false,
+      reason: 'The test command needs review.',
+    });
+  });
+
+  it('updates the native policy when the trust dial changes during a run', async () => {
+    const api = apiWith();
+    const { result } = renderHook(() => useConversation({ api, pollIntervalMs: 60_000 }));
+
+    await act(async () => {
+      await result.current.start('Inspect the workspace.');
+    });
+    await waitFor(() => {
+      expect(result.current.conversationId).toBe('conversation-1');
+    });
+    await act(async () => {
+      await result.current.setTrustStop('never');
+    });
+
+    expect(api.setConfirmationPolicy).toHaveBeenCalledWith('conversation-1', {
+      kind: 'NeverConfirm',
+    });
+  });
+
   it('surfaces a non-200-equivalent client failure to the run surface', async () => {
     const api = apiWith({
       createConversation: vi.fn().mockRejectedValue(new Error('POST /conversations failed (500): failed')),

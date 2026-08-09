@@ -1785,3 +1785,38 @@ gating" defect class in this repo.
 - **Root cause:** ADR-015 requires source file:line evidence, while ADR-026's static guard forbids any `apps/` reference to the vendored evidence-root path. The comment used the full repository-relative evidence path instead of the pinned artifact-relative source path.
 - **Fix applied:** retained exact pinned artifact file:line citations but removed the `review/_sdk_src/1.41.0/` prefix from code comments.
 - **Files changed:** `apps/gui/src/api/types.ts`, `apps/gui/src/api/agentServer.ts`, `DEBUG_LOG.md`.
+
+## 2026-08-09 02:57 EDT — approval-gate focused tests: policy helper name collision and test harness state reuse
+
+- **Symptom:** Focused Vitest run failed: eleven trust-dial assertions received a `ConfirmRisky` object where a boolean was expected; the policy serialization test raised `TypeError: Body is unusable: Body has already been read`; the mid-run dial test recorded zero `setConfirmationPolicy` calls.
+- **Affected stage / component:** Phase 1 · run-workspace authorization surface · trust-dial adapter and mocked-fetch tests.
+- **Root cause:** `trust-dial.ts` imported the new `confirmRisky` constructor under the same name as its existing boolean mirror helper, causing the mirror to call the policy constructor. The client test reused one `Response` instance across three JSON reads. The hook test requested a policy update before React had published the conversation-id state set by `start`.
+- **Fix applied:** Pending: alias the native constructor, return a fresh mocked `Response` for each fetch, and split the hook test at a state-observable boundary before changing the dial.
+- **Files changed:** `DEBUG_LOG.md`.
+
+## 2026-08-09 03:09 EDT — approval-gate focused tests resolved
+
+- **Resolution:** Aliased the imported native `confirmRisky` constructor to preserve the existing boolean mirror helper, made each mocked fetch return a fresh JSON response, and waited for `conversationId` before invoking the mid-run dial update.
+- **Verification:** Individually reran `agentServer.test.ts` (2/2), `trust-dial.test.ts` (17/17), `useConversation.test.tsx` (4/4), and `RunView.test.tsx` (1/1). The earlier combined-target runner timed out after 630 seconds without surviving Node/Vitest processes; individual runs complete normally.
+- **Files changed:** `apps/gui/src/features/first-run/trust-dial.ts`, `apps/gui/src/api/agentServer.test.ts`, `apps/gui/src/features/run/useConversation.test.tsx`, `DEBUG_LOG.md`.
+
+## 2026-08-09 03:10 EDT — RunView component test excluded helper build failure
+
+- **Symptom:** 
+- **Affected stage / plugin / port:** Phase 1 · approval gate · GUI conversation adapter
+- **Root cause:** The browser build excludes , while the feature-local component test imported its setup helper from that excluded directory.
+- **Fix applied:** Replaced the excluded helper import with the direct  matcher import, following existing component-test convention.
+- **Files changed:**
+  - 
+- **Related BUILD_LOG entry:** 2026-08-09 02:53 EDT
+
+## 2026-08-09 03:10 EDT — RunView component test excluded helper build failure (corrected record)
+
+- **Symptom:** `src/features/run/RunView.test.tsx(2,8): error TS6307: File '/tmp/ohg/apps/gui/src/__tests__/setup.ts' is not listed within the file list of project '/tmp/ohg/apps/gui/tsconfig.app.json'.`
+- **Affected stage / plugin / port:** Phase 1 · approval gate · GUI conversation adapter
+- **Root cause:** The browser build excludes `src/__tests__`, while the feature-local component test imported its setup helper from that excluded directory.
+- **Fix applied:** Replaced the excluded helper import with the direct `@testing-library/jest-dom/vitest` matcher import, following existing component-test convention.
+- **Files changed:**
+  - `apps/gui/src/features/run/RunView.test.tsx`
+- **Related BUILD_LOG entry:** 2026-08-09 02:53 EDT
+- **Supersedes:** The incomplete 2026-08-09 03:10 EDT entry immediately above; shell expansion inside an unquoted heredoc stripped its backtick-delimited literals. No prior log entry was edited.

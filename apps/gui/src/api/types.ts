@@ -48,6 +48,8 @@ export interface StartConversationRequest {
   workspace: LocalWorkspace;
   agent: AgentConfiguration;
   initial_message?: SendMessageRequest;
+  confirmation_policy?: ConfirmationPolicy;
+  hook_config?: HookConfig;
   tool_module_qualnames: {
     terminal: 'openhands.tools.terminal';
     file_editor: 'openhands.tools.file_editor';
@@ -83,17 +85,70 @@ export interface EventPage {
 
 export interface ConfirmationResponseRequest {
   accept: boolean;
-  reason?: string;
+  reason: string;
 }
 
 /**
- * ConfirmationPolicyBase is a native discriminated union. This client deliberately does not
- * reproduce its variants: the verified contract establishes only that the request wraps `policy`.
+ * Native `ConfirmationPolicyBase` discriminated union:
+ * openhands_sdk-1.41.0/openhands/sdk/security/confirmation_policy.py:27-53.
+ * `kind` serializes to the concrete Python class name through DiscriminatedUnionMixin
+ * (openhands_sdk-1.41.0/openhands/sdk/utils/models.py:192-344).
  */
-export type ConfirmationPolicy = object;
+export interface AlwaysConfirmPolicy {
+  kind: 'AlwaysConfirm';
+}
+
+export interface NeverConfirmPolicy {
+  kind: 'NeverConfirm';
+}
+
+export type ConfirmationRiskThreshold = 'LOW' | 'MEDIUM' | 'HIGH';
+
+export interface ConfirmRiskyPolicy {
+  kind: 'ConfirmRisky';
+  threshold: ConfirmationRiskThreshold;
+  confirm_unknown: boolean;
+}
+
+export type ConfirmationPolicy =
+  | AlwaysConfirmPolicy
+  | NeverConfirmPolicy
+  | ConfirmRiskyPolicy;
+
+export const alwaysConfirm = (): AlwaysConfirmPolicy => ({ kind: 'AlwaysConfirm' });
+
+export const neverConfirm = (): NeverConfirmPolicy => ({ kind: 'NeverConfirm' });
+
+export const confirmRisky = (
+  threshold: ConfirmationRiskThreshold = 'HIGH',
+  confirmUnknown = true,
+): ConfirmRiskyPolicy => ({
+  kind: 'ConfirmRisky',
+  threshold,
+  confirm_unknown: confirmUnknown,
+});
 
 export interface SetConfirmationPolicyRequest {
   policy: ConfirmationPolicy;
+}
+
+/**
+ * The exact inline `pre_tool_use` subset sent when a command is explicitly configured.
+ * `HookConfig`, `HookMatcher`, and command `HookDefinition` are defined at
+ * openhands_sdk-1.41.0/openhands/sdk/hooks/config.py:47-64,113-120,159-205.
+ */
+export interface HookConfig {
+  pre_tool_use: [
+    {
+      matcher: '*';
+      hooks: [{ type: 'command'; command: string }];
+    },
+  ];
+}
+
+export interface DefaultStartRequestOptions {
+  confirmationPolicy?: ConfirmationPolicy;
+  preToolUseHookCommand?: string | undefined;
 }
 
 /**
@@ -102,8 +157,14 @@ export interface SetConfirmationPolicyRequest {
  * those registries after importing the matching modules (agent-server contract, "Starting a
  * conversation").
  */
-export function defaultStartRequest(goal: string): StartConversationRequest {
-  return {
+export function defaultStartRequest(
+  goal: string,
+  {
+    confirmationPolicy = confirmRisky(),
+    preToolUseHookCommand,
+  }: DefaultStartRequestOptions = {},
+): StartConversationRequest {
+  const request: StartConversationRequest = {
     workspace: {
       kind: 'LocalWorkspace',
       working_dir: '/workspace/project',
@@ -125,5 +186,15 @@ export function defaultStartRequest(goal: string): StartConversationRequest {
       content: [{ type: 'text', text: goal }],
       run: false,
     },
+    confirmation_policy: confirmationPolicy,
   };
+
+  const command = preToolUseHookCommand?.trim();
+  if (command) {
+    request.hook_config = {
+      pre_tool_use: [{ matcher: '*', hooks: [{ type: 'command', command }] }],
+    };
+  }
+
+  return request;
 }

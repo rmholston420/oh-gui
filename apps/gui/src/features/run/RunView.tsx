@@ -1,4 +1,10 @@
 import { useState } from 'react';
+import AuthorizationCard from '../authorization/AuthorizationCard';
+import {
+  DEFAULT_STOP,
+  TRUST_STOPS,
+  type TrustStopId,
+} from '../first-run/trust-dial';
 import { useConversation } from './useConversation';
 
 function EventList({ events }: { events: ReturnType<typeof useConversation>['events'] }) {
@@ -25,8 +31,14 @@ function EventList({ events }: { events: ReturnType<typeof useConversation>['eve
  */
 export default function RunView() {
   const [goal, setGoal] = useState('');
+  const [trustStop, setTrustStop] = useState<TrustStopId>(DEFAULT_STOP);
   const run = useConversation();
   const canStart = !run.isStarting && run.conversationId === null;
+
+  const onTrustStopChange = (nextStop: TrustStopId) => {
+    setTrustStop(nextStop);
+    if (run.conversationId !== null) void run.setTrustStop(nextStop);
+  };
 
   return (
     <main className="mx-auto grid min-h-screen max-w-6xl gap-6 p-6 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,0.8fr)]">
@@ -44,7 +56,7 @@ export default function RunView() {
           className="mt-6 space-y-3"
           onSubmit={(event) => {
             event.preventDefault();
-            void run.start(goal);
+            void run.start(goal, trustStop);
           }}
         >
           <label className="block text-sm font-medium" htmlFor="run-goal">
@@ -58,6 +70,27 @@ export default function RunView() {
             disabled={!canStart}
             placeholder="Describe the task for the local agent."
           />
+          <label className="block text-sm font-medium" htmlFor="trust-dial">
+            Trust dial
+          </label>
+          <select
+            id="trust-dial"
+            className="w-full rounded border border-slate-600 bg-night-950 p-3 text-sm outline-none focus:border-agent-active"
+            value={trustStop}
+            onChange={(event) => onTrustStopChange(event.target.value as TrustStopId)}
+            aria-describedby="trust-dial-description"
+            disabled={run.isStarting}
+          >
+            {TRUST_STOPS.map((stop) => (
+              <option key={stop.id} value={stop.id}>
+                {stop.label}
+              </option>
+            ))}
+          </select>
+          <p id="trust-dial-description" className="text-sm text-slate-400">
+            This applies the matching native confirmation policy now when a run is active, or when
+            the next run starts.
+          </p>
           <button
             type="submit"
             className="rounded bg-agent-active px-4 py-2 text-sm font-semibold text-night-950 disabled:cursor-not-allowed disabled:opacity-50"
@@ -66,6 +99,33 @@ export default function RunView() {
             {run.isStarting ? 'Starting…' : 'Start'}
           </button>
         </form>
+
+        {run.status === 'waiting_for_confirmation' && (
+          <section className="mt-6 space-y-4" aria-label="Pending authorization">
+            <header>
+              <h2 className="text-lg font-semibold">Pending authorization</h2>
+              <p className="mt-1 text-sm text-slate-400">
+                These executable action objects are pending server confirmation; the event log is
+                only narration.
+              </p>
+            </header>
+            {run.pendingActions.length === 0 ? (
+              <p className="rounded border border-amber-600 bg-amber-950/40 p-3 text-sm text-amber-100">
+                The server is waiting for confirmation, but its pending action has not arrived in
+                the current event poll yet.
+              </p>
+            ) : (
+              run.pendingActions.map((action, index) => (
+                <AuthorizationCard
+                  key={`${action.toolName}-${index}`}
+                  action={action}
+                  onApprove={() => void run.approve()}
+                  onReject={(reason) => void run.reject(reason)}
+                />
+              ))
+            )}
+          </section>
+        )}
 
         {run.error !== null && (
           <p className="mt-4 rounded border border-rose-700 bg-rose-950/40 p-3 text-sm text-rose-100" role="alert">

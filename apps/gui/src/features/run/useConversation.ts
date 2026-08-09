@@ -5,8 +5,26 @@ import {
   type AgentServerEvent,
   type ConversationExecutionStatus,
 } from '../../api/types';
+import {
+  confirmationPolicyForTrustStop,
+  DEFAULT_STOP,
+  type TrustStopId,
+} from '../first-run/trust-dial';
+import {
+  type PendingAction,
+  type SecurityRisk,
+} from '../authorization/AuthorizationCard';
 
 const POLL_INTERVAL_MS = 3_000;
+export const DEFAULT_CONFIRMATION_RESPONSE_REASON = 'User rejected the action.';
+
+interface ActionEventWire extends AgentServerEvent {
+  kind: 'ActionEvent';
+  action: (Record<string, unknown> & { kind?: unknown }) | null;
+  tool_name: string;
+  tool_call_id: string;
+  security_risk?: unknown;
+}
 
 function messageFrom(error: unknown): string {
   return error instanceof Error ? error.message : 'The Agent Server request failed.';
@@ -15,6 +33,8 @@ function messageFrom(error: unknown): string {
 export interface UseConversationOptions {
   api?: AgentServerClient;
   pollIntervalMs?: number;
+  /** Optional local Agent Server command. Omit it to start with no pre-tool-use hook. */
+  preToolUseHookCommand?: string | undefined;
 }
 
 export interface ConversationRun {
@@ -22,12 +42,85 @@ export interface ConversationRun {
   events: AgentServerEvent[];
   eventCount: number | null;
   status: ConversationExecutionStatus | null;
+  pendingActions: PendingAction[];
   elapsedSeconds: number;
   error: string | null;
   isStarting: boolean;
-  start(goal: string): Promise<void>;
+  start(goal: string, trustStop?: TrustStopId): Promise<void>;
+  setTrustStop(trustStop: TrustStopId): Promise<void>;
+  approve(reason?: string): Promise<void>;
+  reject(reason: string): Promise<void>;
   pause(): Promise<void>;
   stop(): Promise<void>;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function isActionEvent(event: AgentServerEvent): event is ActionEventWire {
+  return (
+    event.kind === 'ActionEvent' &&
+    isRecord(event.action) &&
+    typeof event.tool_name === 'string' &&
+    typeof event.tool_call_id === 'string'
+  );
+}
+
+function isActionObservation(event: AgentServerEvent): event is AgentServerEvent & { action_id: string } {
+  return (
+    (event.kind === 'ObservationEvent' || event.kind === 'UserRejectObservation') &&
+    typeof event.action_id === 'string'
+  );
+}
+
+function isAgentError(event: AgentServerEvent): event is AgentServerEvent & { tool_call_id: string } {
+  return event.kind === 'AgentErrorEvent' && typeof event.tool_call_id === 'string';
+}
+
+function securityRiskFrom(event: ActionEventWire): SecurityRisk | null {
+  switch (event.security_risk) {
+    case 'LOW':
+    case 'MEDIUM':
+    case 'HIGH':
+    case 'UNKNOWN':
+      return event.security_risk;
+    default:
+      return null;
+  }
+}
+
+/**
+ * Mirrors ConversationState.get_unmatched_actions() over the immutable event objects returned by
+ * `/events/search` (openhands_sdk-1.41.0/openhands/sdk/conversation/state.py:662-701). The
+ * transcript is narration only; pending authorization is read from native Action/Observation objects.
+ */
+export function pendingActionsFromEvents(events: AgentServerEvent[]): PendingAction[] {
+  const observedActionIds = new Set<string>();
+  const observedToolCallIds = new Set<string>();
+  const unmatched: ActionEventWire[] = [];
+
+  for (const event of [...events].reverse()) {
+    if (isActionObservation(event)) {
+      observedActionIds.add(event.action_id);
+    } else if (isAgentError(event)) {
+      observedToolCallIds.add(event.tool_call_id);
+    } else if (
+      isActionEvent(event) &&
+      event.action !== null &&
+      !observedActionIds.has(event.id) &&
+      !observedToolCallIds.has(event.tool_call_id)
+    ) {
+      unmatched.unshift(event);
+    }
+  }
+
+  return unmatched.map((event) => ({
+    command: JSON.stringify(event.action, null, 2),
+    toolName: event.tool_name,
+    securityRisk: securityRiskFrom(event),
+    event,
+  }));
 }
 
 /**
@@ -37,6 +130,7 @@ export interface ConversationRun {
 export function useConversation({
   api = agentServer,
   pollIntervalMs = POLL_INTERVAL_MS,
+  preToolUseHookCommand = import.meta.env.VITE_PRE_TOOL_USE_HOOK_COMMAND,
 }: UseConversationOptions = {}): ConversationRun {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [events, setEvents] = useState<AgentServerEvent[]>([]);
@@ -46,6 +140,22 @@ export function useConversation({
   const [isStarting, setIsStarting] = useState(false);
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  const refresh = useCallback(async () => {
+    if (conversationId === null) return;
+
+    // `getConversation` is intentionally best-effort (per the verified contract). The event
+    // count and searched event objects still refresh when that endpoint has its known mid-run
+    // validation failure.
+    const [count, page, conversation] = await Promise.all([
+      api.getEventCount(conversationId),
+      api.searchEvents(conversationId),
+      api.getConversation(conversationId).catch(() => null),
+    ]);
+    setEventCount(count);
+    setEvents(page.items);
+    if (conversation !== null) setStatus(conversation.execution_status);
+  }, [api, conversationId]);
 
   useEffect(() => {
     if (
@@ -67,18 +177,8 @@ export function useConversation({
     let cancelled = false;
     const poll = async () => {
       try {
-        // `getConversation` is intentionally best-effort (per the verified contract). The event
-        // count and searched event objects still refresh when that endpoint has its known mid-run
-        // validation failure.
-        const [count, page, conversation] = await Promise.all([
-          api.getEventCount(conversationId),
-          api.searchEvents(conversationId),
-          api.getConversation(conversationId).catch(() => null),
-        ]);
+        await refresh();
         if (cancelled) return;
-        setEventCount(count);
-        setEvents(page.items);
-        if (conversation !== null) setStatus(conversation.execution_status);
         setError(null);
       } catch (caught) {
         if (!cancelled) setError(messageFrom(caught));
@@ -91,10 +191,10 @@ export function useConversation({
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [api, conversationId, pollIntervalMs]);
+  }, [conversationId, pollIntervalMs, refresh]);
 
   const start = useCallback(
-    async (goal: string) => {
+    async (goal: string, trustStop: TrustStopId = DEFAULT_STOP) => {
       const trimmedGoal = goal.trim();
       if (!trimmedGoal) {
         setError('A goal is required before starting a run.');
@@ -104,7 +204,12 @@ export function useConversation({
       setError(null);
       setIsStarting(true);
       try {
-        const conversation = await api.createConversation(defaultStartRequest(trimmedGoal));
+        const conversation = await api.createConversation(
+          defaultStartRequest(trimmedGoal, {
+            confirmationPolicy: confirmationPolicyForTrustStop(trustStop),
+            preToolUseHookCommand,
+          }),
+        );
         setConversationId(conversation.id);
         setStatus(conversation.execution_status);
         setStartedAt(Date.now());
@@ -117,7 +222,58 @@ export function useConversation({
         setIsStarting(false);
       }
     },
-    [api],
+    [api, preToolUseHookCommand],
+  );
+
+  const setTrustStop = useCallback(
+    async (trustStop: TrustStopId) => {
+      if (conversationId === null) return;
+      setError(null);
+      try {
+        await api.setConfirmationPolicy(
+          conversationId,
+          confirmationPolicyForTrustStop(trustStop),
+        );
+        await refresh();
+      } catch (caught) {
+        setError(messageFrom(caught));
+      }
+    },
+    [api, conversationId, refresh],
+  );
+
+  const approve = useCallback(
+    async (reason = DEFAULT_CONFIRMATION_RESPONSE_REASON) => {
+      if (conversationId === null) return;
+      setError(null);
+      try {
+        await api.respondToConfirmation(conversationId, { accept: true, reason });
+        await refresh();
+      } catch (caught) {
+        setError(messageFrom(caught));
+      }
+    },
+    [api, conversationId, refresh],
+  );
+
+  const reject = useCallback(
+    async (reason: string) => {
+      if (conversationId === null) return;
+      const trimmedReason = reason.trim();
+      if (!trimmedReason) {
+        setError('A rejection reason is required.');
+        return;
+      }
+
+      setError(null);
+      try {
+        await api.respondToConfirmation(conversationId, { accept: false, reason: trimmedReason });
+        await refresh();
+      } catch (caught) {
+        setError(messageFrom(caught));
+      }
+    },
+    [api, conversationId, refresh],
   );
 
   const pause = useCallback(async () => {
@@ -142,16 +298,25 @@ export function useConversation({
     }
   }, [api, conversationId]);
 
+  const pendingActions = useMemo(
+    () => (status === 'waiting_for_confirmation' ? pendingActionsFromEvents(events) : []),
+    [events, status],
+  );
+
   return useMemo(
     () => ({
       conversationId,
       events,
       eventCount,
       status,
+      pendingActions,
       elapsedSeconds,
       error,
       isStarting,
       start,
+      setTrustStop,
+      approve,
+      reject,
       pause,
       stop,
     }),
@@ -162,7 +327,11 @@ export function useConversation({
       eventCount,
       events,
       isStarting,
+      pendingActions,
       pause,
+      approve,
+      reject,
+      setTrustStop,
       start,
       status,
       stop,
