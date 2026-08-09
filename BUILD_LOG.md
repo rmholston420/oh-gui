@@ -4529,7 +4529,7 @@ The applied diff is now printed for every mutant.
 - **Files touched:** `SESSION_HANDOFF.md`
 - **Stop-condition status:** Phase 1 spec-governance work is complete.
 
-## 2026-08-09 07:34 EDT — Plugins reachable from the rail; run surface survives the trip
+## 2026-08-09 07:32 EDT — Plugins reachable from the rail; run surface survives the trip
 
 - **Stage / plugin / port:** Phase 1 · GUI · shell navigation
 - **What changed:** `SurfaceNav` in the Pro left rail selects the centre-stage surface. Plugins is

@@ -2004,3 +2004,23 @@ gating" defect class in this repo.
   fails loudly when the anchor is absent, and the file is grepped before the verdict is believed.
 - **Files changed:** procedure only.
 - **Related BUILD_LOG entry:** 2026-08-09 06:34 EDT
+
+## 2026-08-09 07:33 EDT — pushed with a failing gate because `grep` matched the failure
+
+- **Symptom:** `5b128f6` was pushed while `check-log-timestamps.py` was red. The command chain was
+  `python3 scripts/check-log-timestamps.py | grep -aoE "=== (PASSED|FAILED) ===" && git add ...`,
+  and the console showed `=== FAILED ===` immediately before a successful push.
+- **Affected stage / plugin / port:** Phase 1 · repo hygiene · gate invocation
+- **Root cause:** the guard was the exit status of `grep`, not of the gate. `grep` exits 0 whenever
+  it matches — and the pattern matches `FAILED` just as happily as `PASSED`. So the `&&` chain
+  proceeded on a red gate. The BUILD_LOG entry was stamped `07:34` while the clock read `07:32`;
+  the gate correctly rejected a future timestamp and I overrode it by accident.
+- **Fix applied:** timestamp corrected to `07:32`. **The durable fix is to branch on the gate's own
+  exit status**, capturing output to a file and reporting `exit=$?`, never on a `grep` that is
+  searching for the word "FAILED".
+- **Relation to the earlier lesson:** the standing rule was "run gates as the final step of a bash
+  call" (see `fb5e1c0`). That rule was followed here and still failed, because the defect was not
+  ordering -- it was reading the wrong exit status. The rule is now: **gates must gate on their own
+  exit code.** Printing a gate's verdict is not the same as honouring it.
+- **Files changed:** `BUILD_LOG.md` (timestamp), `DEBUG_LOG.md`
+- **Related BUILD_LOG entry:** 2026-08-09 07:32 EDT
