@@ -3038,3 +3038,17 @@ split.
 - **Stop-condition status:** met for slice 1. **Not started:** the hook, the policy plane, the audit
   log, the trust dial, the lens mechanism. Next gate is ADR-014's four-item verification, which
   requires the pinned agent-server running on Colossus.
+
+## 2026-08-08 21:35 EDT — Phase 1 slice 1 merged to main; full spec set read
+
+- **Stage / plugin / port:** Phase 1 · `services/middleware` · pre-enforcement IPC seam
+- **What changed:** `phase-1/middleware-skeleton` (`66ac4df`) merged `--no-ff` into `main` as
+  `44ab6b7` and pushed. Operator rule recorded: a phase is not complete until its working
+  branch is merged to `main`. All 17 files in `docs/specs/` read end-to-end (previously only
+  04, 06 §6.4, 08 §§8.0-8.1/8.5-8.6, 11).
+- **Files touched:** merge commit only; no source change.
+- **Ports / adapters affected:** none (merge).
+- **PORTING_LEDGER / ADR updated:** —
+- **Stop-condition status:** slice 1 closed and on `main`. Phase 1 DoD **not** met.
+  Full-spec read surfaced items absent from the SESSION_HANDOFF remaining list — recorded
+  in KNOWN_ISSUES.md, same timestamp.
