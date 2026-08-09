@@ -3842,3 +3842,14 @@ The applied diff is now printed for every mutant.
 - **Ports / adapters affected:** none (GUI only)
 - **PORTING_LEDGER / ADR updated:** ledger entry for the Canvas event port landed in `f632b64`
 - **Stop-condition status:** in-progress — gate green (22 files / 161 tests), but the live spec has **not been executed**; it needs the operator's machine, since this sandbox has neither the agent-server nor a browser. Unrun is unproven.
+
+## 2026-08-09 03:33 EDT — live e2e suite passed against the real agent-server; watched runs enlarged and slowed
+
+- **Stage / plugin / port:** Phase 1 · apps/gui · run surface, approval path, lens shell
+- **What changed:**
+  - **Verified, not merely written:** operator ran `npm run watch:live` headed on Colossus and all three live tests passed in 35.1s — approve a real pending action (21.2s), reject with a required reason (9.7s), lens toggle mid-run without disturbing the conversation (3.3s). No mocks anywhere in that path: real agent-server, real model, real `respond_to_confirmation`. This is the first end-to-end evidence that the approval gate works against the live server rather than against fixtures.
+  - Watched runs now open a 1920x1080 window with a matching viewport, and the default step delay went from 600ms to 1200ms. Both are overridable via `WATCH_WIDTH`, `WATCH_HEIGHT`, `WATCH_MS`. The viewport matters beyond legibility: spec 03 puts the four-region Pro layout above 1600px, so watching at Playwright's default 1280 would have demonstrated the collapsed layout.
+- **Files touched:** `apps/gui/playwright.config.ts`
+- **Ports / adapters affected:** none
+- **PORTING_LEDGER / ADR updated:** —
+- **Stop-condition status:** met for the live-verification slice. The approval path, the Canvas event port and the lens shell are now all exercised against the live server.
