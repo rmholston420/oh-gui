@@ -11,15 +11,28 @@ from bench.toolcall.attainability import Design, expected_discordant_pairs, gate
 
 
 def test_registered_manifest_passes_floor():
-    passed, expected = gate(load_registered_design())
+    design = load_registered_design()
+    passed, expected = gate(design)
     assert passed
-    assert math.isclose(expected, 5.079837134270505, rel_tol=0, abs_tol=1e-12)
+    # Pinned to the confirmatory split, not the task library: power comes only
+    # from the held-out tasks the inferential test consumes.
+    assert design.task_count == 80
+    assert design.total_task_files == 120
+    assert design.screening_task_count == 40
+    assert math.isclose(expected, 8.646531292375329, rel_tol=0, abs_tol=1e-12)
 
 
-def test_expanded_design_passes_floor_at_rho_point_eight():
-    passed, expected = gate(Design(47, 0.60, 0.50, 0.80))
+def test_confirmatory_split_passes_floor_at_rho_point_eight():
+    passed, expected = gate(Design(80, 0.60, 0.50, 0.80))
     assert passed
-    assert math.isclose(expected, 5.079837134270505, rel_tol=0, abs_tol=1e-12)
+    assert math.isclose(expected, 8.646531292375329, rel_tol=0, abs_tol=1e-12)
+
+
+def test_scoring_the_whole_library_would_overstate_power():
+    """Guards the specific error this split is designed to prevent."""
+    _, split = gate(Design(80, 0.60, 0.50, 0.80))
+    _, library = gate(Design(120, 0.60, 0.50, 0.80))
+    assert library > split * 1.4
 
 
 def test_mutant_too_small_task_set_fails():

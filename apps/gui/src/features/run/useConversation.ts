@@ -6,6 +6,11 @@ import {
   type ConversationExecutionStatus,
 } from '../../api/types';
 import {
+  nativeModelProfileFromConversation,
+  nativeModelProfileFromStartAgent,
+  type SdkNativeModelProfileFields,
+} from '../model-profiles/model-profile';
+import {
   confirmationPolicyForTrustStop,
   DEFAULT_STOP,
   type TrustStopId,
@@ -42,6 +47,8 @@ export interface ConversationRun {
   events: AgentServerEvent[];
   eventCount: number | null;
   status: ConversationExecutionStatus | null;
+  /** Native model facts from the start request, then refreshed from ConversationInfo.agent. */
+  nativeModelProfile: SdkNativeModelProfileFields;
   pendingActions: PendingAction[];
   elapsedSeconds: number;
   error: string | null;
@@ -140,6 +147,9 @@ export function useConversation({
   const [isStarting, setIsStarting] = useState(false);
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [nativeModelProfile, setNativeModelProfile] = useState<SdkNativeModelProfileFields>(() =>
+    nativeModelProfileFromStartAgent(defaultStartRequest('').agent),
+  );
 
   const refresh = useCallback(async () => {
     if (conversationId === null) return;
@@ -154,7 +164,11 @@ export function useConversation({
     ]);
     setEventCount(count);
     setEvents(page.items);
-    if (conversation !== null) setStatus(conversation.execution_status);
+    if (conversation !== null) {
+      setStatus(conversation.execution_status);
+      const nativeProfile = nativeModelProfileFromConversation(conversation);
+      if (nativeProfile !== null) setNativeModelProfile(nativeProfile);
+    }
   }, [api, conversationId]);
 
   useEffect(() => {
@@ -212,6 +226,10 @@ export function useConversation({
         );
         setConversationId(conversation.id);
         setStatus(conversation.execution_status);
+        // Phase 1 deterministic-replay contract read: ConversationInfo.agent is read through
+        // the Agent Server anti-corruption layer before the event poll.
+        const nativeProfile = nativeModelProfileFromConversation(conversation);
+        if (nativeProfile !== null) setNativeModelProfile(nativeProfile);
         setStartedAt(Date.now());
         setElapsedSeconds(0);
         await api.run(conversation.id);
@@ -309,6 +327,7 @@ export function useConversation({
       events,
       eventCount,
       status,
+      nativeModelProfile,
       pendingActions,
       elapsedSeconds,
       error,
@@ -327,6 +346,7 @@ export function useConversation({
       eventCount,
       events,
       isStarting,
+      nativeModelProfile,
       pendingActions,
       pause,
       approve,

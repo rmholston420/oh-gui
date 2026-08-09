@@ -38,6 +38,41 @@ export interface LlmConfiguration {
   base_url: string;
 }
 
+/**
+ * Read-only native LLM fields returned inside `ConversationInfo.agent`.
+ *
+ * Native basis (SDK source, not documentation):
+ * - `model`: openhands_sdk-1.41.0/openhands/sdk/llm/llm.py:241-245
+ * - `base_url`: openhands_sdk-1.41.0/openhands/sdk/llm/llm.py:271-275
+ * - `temperature`: openhands_sdk-1.41.0/openhands/sdk/llm/llm.py:346-356
+ * - `max_input_tokens`: openhands_sdk-1.41.0/openhands/sdk/llm/llm.py:370-376
+ * - `disable_vision`: openhands_sdk-1.41.0/openhands/sdk/llm/llm.py:457-462
+ * - `native_tool_calling`: openhands_sdk-1.41.0/openhands/sdk/llm/llm.py:489-493
+ *
+ * Optionality is deliberate: an absent native field remains absent in the GUI rather than being
+ * replaced with an optimistic default.
+ */
+export interface SdkNativeLlmConfiguration {
+  model: string;
+  base_url?: string | null;
+  temperature?: number | null;
+  max_input_tokens?: number | null;
+  disable_vision?: boolean | null;
+  native_tool_calling?: boolean | null;
+}
+
+/**
+ * The Agent server serializes `ConversationInfo.agent` from its native `AgentBase` field
+ * (openhands_agent_server-1.41.0/openhands/agent_server/models.py:319-325). `tools` is the
+ * configured Agent tool collection (openhands_sdk-1.41.0/openhands/sdk/agent/agent.py:354-365).
+ * This intentionally permits unknown tool shapes; only a string `name` is read for a count.
+ */
+export interface SdkNativeConversationAgent {
+  kind?: string;
+  llm?: SdkNativeLlmConfiguration | null;
+  tools?: readonly { name?: unknown }[] | null;
+}
+
 export interface AgentConfiguration {
   kind: 'Agent';
   llm: LlmConfiguration;
@@ -69,9 +104,23 @@ export type ConversationExecutionStatus =
 export interface ConversationInfo {
   id: string;
   execution_status: ConversationExecutionStatus;
+  /** See `SdkNativeConversationAgent` for source provenance. */
+  agent?: SdkNativeConversationAgent | null;
+  /**
+   * This is native only for ACP agent configurations:
+   * openhands_agent_server-1.41.0/openhands/agent_server/models.py:293-305.
+   * Regular `Agent` conversations do not expose a context-preserving model switch.
+   */
+  supports_runtime_model_switch?: boolean | null;
 }
 
 export interface AgentServerEvent {
+  /**
+   * Reliability reads ActionEvent.action/tool_name/tool_call_id/tool_call from
+   * openhands_sdk-1.41.0/openhands/sdk/event/llm_convertible/action.py:24-58;
+   * ObservationEvent.action_id and AgentErrorEvent.error are from
+   * openhands_sdk-1.41.0/openhands/sdk/event/llm_convertible/observation.py:17-43,138-150.
+   */
   id: string;
   timestamp: string;
   source: string;

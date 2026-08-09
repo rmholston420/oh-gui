@@ -16,11 +16,19 @@ MARKER = re.compile(r"<!-- attainability: (\{.*?\}) -->")
 
 @dataclass(frozen=True)
 class Design:
+    # task_count is the CONFIRMATORY split size, not the size of the task
+    # library. Power comes only from the held-out tasks the inferential test
+    # actually consumes, so scoring attainability against the full library
+    # would overstate it.
     task_count: int
     acceptance_a: float
     acceptance_b: float
     correlation: float
     minimum_discordant_pairs: float = 5.0
+    # Total task files the manifest claims exist, used to catch drift between
+    # the registered design and the repository.
+    total_task_files: int | None = None
+    screening_task_count: int | None = None
 
 
 def expected_discordant_fraction(a: float, b: float, correlation: float) -> float:

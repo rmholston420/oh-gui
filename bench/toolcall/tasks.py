@@ -18,4 +18,8 @@ def load_task(path: Path) -> dict[str, Any]:
 
 
 def load_tasks() -> list[dict[str, Any]]:
-    return [load_task(path) for path in sorted(TASK_DIR.glob("[0-9][0-9]-*.json"))]
+    paths = sorted(
+        TASK_DIR.glob("[0-9]*-*.json"),
+        key=lambda path: int(path.name.split("-", 1)[0]),
+    )
+    return [load_task(path) for path in paths]

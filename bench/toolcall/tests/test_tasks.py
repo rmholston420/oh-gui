@@ -30,12 +30,12 @@ def _fixture_arguments(task):
     return arguments
 
 
-def test_exactly_forty_seven_disk_backed_tasks_with_declared_predicates():
+def test_exactly_one_hundred_twenty_disk_backed_tasks_with_declared_predicates():
     tasks = load_tasks()
-    assert len(tasks) == 47
-    assert [task["id"][:2] for task in tasks] == [f"{i:02d}" for i in range(1, 48)]
+    assert len(tasks) == 120
+    assert [int(task["id"].split("-", 1)[0]) for task in tasks] == list(range(1, 121))
     assert all(task["goal"] and task["expected_outcome"]["required_args"] for task in tasks)
-    assert len({task["id"] for task in tasks}) == 47
+    assert len({task["id"] for task in tasks}) == 120
 
 
 def test_every_task_carries_the_two_pinned_openhands_schemas():

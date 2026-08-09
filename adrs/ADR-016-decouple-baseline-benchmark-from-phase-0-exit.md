@@ -1,11 +1,18 @@
 # ADR-016 — The benchmark gates a claim, not the code: decouple the baseline report from Phase 0 exit
 
-> **STATUS AMENDMENT (2026-08-09):** Clause 5's one-hour GPU cap is superseded for the
-> tool-call benchmark only, by operator instruction 2026-08-09 03:56 EDT. See
-> "Amendment — budget resized to preserve ADR-013 clause 1" below. The original
-> clause 5 text is retained unaltered for the record.
+> **STATUS AMENDMENT (2026-08-09 03:56 EDT):** Clause 5's one-hour GPU cap superseded for the
+> tool-call benchmark only, raising it to 3.5 hours.
+>
+> **STATUS AMENDMENT (2026-08-09 04:35 EDT) — the 03:56 amendment is WITHDRAWN as
+> premise-falsified.** Its budget arithmetic rested entirely on a 24.2 s/request figure that
+> was an unmeasured 30B-class guess. Direct measurement (`bench/toolcall/timing_probe.py`,
+> 04:23 EDT) found warm per-request latency of **0.32-1.30 s** across all six probed models —
+> the estimate overstated real cost by roughly **40x**. A superseding amendment cannot inherit
+> a disproven premise, so the 3.5-hour figure is withdrawn rather than left standing as though
+> it had been reasoned to. See "Amendment II — budget re-derived from measurement" below.
+> All original text is retained unaltered for the record.
 
-**Status:** Ratified · Amended 2026-08-09
+**Status:** Ratified · Amended 2026-08-09 (twice; first amendment withdrawn)
 **Lock-in phase:** Phase 0 / Phase 1 boundary
 **Supersedes:** — (amends the Consequences of ADR-013)
 
@@ -53,7 +60,7 @@ ADR resolves them by separating *when Phase 0 closes* from *when a model claim m
    budget, the run is not started and the budget is not spent. Per ADR-013 clause 7 a
    non-compliant run is unpublishable, so starting one we know cannot comply is pure waste.
 
-## Amendment — budget resized to preserve ADR-013 clause 1 (2026-08-09)
+## Amendment I — budget resized to preserve ADR-013 clause 1 (2026-08-09 03:56 EDT) — WITHDRAWN 04:35 EDT
 
 The one-hour cap in clause 5 and the ADR-013 clause 1 discrimination floor turned out to be in
 direct conflict once the attainability arithmetic was actually done, rather than assumed.
@@ -84,6 +91,43 @@ publication ban likewise still holds until a compliant run says otherwise.
 **Scope.** This amendment is specific to the tool-call benchmark. It sets no precedent for
 open-ended GPU spend; any future benchmark re-inherits the one-hour default unless separately
 amended.
+
+## Amendment II — budget re-derived from measurement (2026-08-09 04:35 EDT)
+
+**Amendment I is withdrawn.** Not revised — withdrawn. Its entire quantitative case was the
+line "Measured harness estimate is 24.2 s/call", and that number was never measured. It was a
+30B-class guess that had been carried forward until it reached a gate, at which point it was
+setting policy. Measuring it took ten minutes and falsified it by a factor of about forty.
+
+**Measured latency** (`bench/toolcall/timing_probe.py`, 2026-08-09 04:23 EDT, warm):
+
+| Model | warm | cold |
+|---|---:|---:|
+| `qwen3.6:35b-a3b-mtp-coder` | 0.51 s | 29.5 s |
+| `hf.co/unsloth/Devstral-Small-2507-GGUF:UD-Q4_K_XL` | 0.32 s | 6.0 s |
+| `qwen3.5:27b-q4_K_M` | 1.30 s | 66.0 s |
+| `qwen3.5:9b-q8_0` | 0.89 s | 12.8 s |
+| `qwen3.5:4b-q8_0` | 0.73 s | 3.7 s |
+| `qwen3.5:2b-q8_0` | 0.65 s | 5.5 s |
+
+The probe used a single short task, so these are a floor, not a typical cost. The harness
+therefore applies a **5x safety factor** to measured warm latency plus a 70 s cold-load
+allowance per cell, and refuses to dispatch if the projection exceeds the authorised window.
+
+**Re-derived budget.** The operator authorised an unattended overnight window of **up to 8
+hours** at 04:26 EDT. That is the registered ceiling. Because cost per cell collapsed, the
+binding constraint moved from wall-clock to **statistical power**, and the design was resized
+accordingly: 120-task library, 40/80 disjoint screening/confirmatory split, 5 repetitions,
+expected discordant pairs **8.65** at the pessimistic rho = 0.80 (was 5.08 at N = 47).
+
+**What is unchanged.** ADR-013's seven clauses, the pre-GPU attainability gate, and clause 3's
+publication ban all still bind, exactly as under Amendment I. The gate now scores the 80-task
+confirmatory split rather than the full library, because power comes only from the tasks the
+inferential test consumes.
+
+**Process consequence.** A constant that feeds a gate must be measured before it is registered.
+The failure here was not the wrong number; it was promoting an estimate to a premise without
+marking it as one, so that a later decision could rest on it as if it were evidence.
 
 ## Rationale
 

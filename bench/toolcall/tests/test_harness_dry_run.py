@@ -20,12 +20,11 @@ def test_stub_path_accepts_every_expanded_task_without_a_model_or_network():
         run_task(task, "A", "fixture-model", "http://fixture.invalid/v1", stub_responder)
         for task in load_tasks()
     ]
-    assert len(records) == 47
+    assert len(records) == 120
     assert all(record["resolved"] is True and record["accepted"] is True for record in records)
     assert all(record["output_tokens"] == 9 and record["wall_seconds"] == 0.001 for record in records)
     assert all(record["content_stripped"] == "calling tool" for record in records)
 
 
 def test_expanded_set_exceeds_the_unchanged_harness_one_hour_cap():
-    assert estimate_total_seconds(47) == 6828
-    assert estimate_total_seconds(47) > ONE_HOUR_SECONDS
+    assert estimate_total_seconds(len(load_tasks())) > ONE_HOUR_SECONDS

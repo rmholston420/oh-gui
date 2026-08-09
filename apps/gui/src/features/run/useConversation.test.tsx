@@ -50,6 +50,32 @@ describe('useConversation', () => {
     unmount();
   });
 
+  it('reads deterministic replay inputs from the native ConversationInfo agent at the ACL', async () => {
+    const api = apiWith({
+      createConversation: vi.fn().mockResolvedValue({
+        id: 'conversation-1',
+        execution_status: 'idle',
+        agent: {
+          kind: 'Agent',
+          llm: {
+            model: 'local/qwen3.6:35b',
+            base_url: 'http://127.0.0.1:11434',
+            temperature: 0,
+          },
+        },
+      }),
+    });
+    const { result } = renderHook(() => useConversation({ api, pollIntervalMs: 60_000 }));
+
+    await act(async () => {
+      await result.current.start('Inspect the workspace.');
+    });
+
+    await waitFor(() => {
+      expect(result.current.nativeModelProfile.samplingTemperature).toBe(0);
+    });
+  });
+
   it('exposes pending native actions and sends approve and reject confirmation responses', async () => {
     const api = apiWith({
       getConversation: vi

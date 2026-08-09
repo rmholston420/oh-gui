@@ -7,16 +7,17 @@ import {
 } from '../first-run/trust-dial';
 import { useConversation } from './useConversation';
 import EventLog from './EventLog';
+import ModelProfilePanel from '../model-profiles/ModelProfilePanel';
 
 /**
  * The run surface is a view of durable server objects, not a chat transcript. Event narration is
  * append-only; execution status and event objects come from the pinned Agent Server on each poll.
  */
-export default function RunView() {
+export default function RunView({ isReadOnlyViewport = false }: { isReadOnlyViewport?: boolean }) {
   const [goal, setGoal] = useState('');
   const [trustStop, setTrustStop] = useState<TrustStopId>(DEFAULT_STOP);
   const run = useConversation();
-  const canStart = !run.isStarting && run.conversationId === null;
+  const canStart = !isReadOnlyViewport && !run.isStarting && run.conversationId === null;
 
   const onTrustStopChange = (nextStop: TrustStopId) => {
     setTrustStop(nextStop);
@@ -62,7 +63,7 @@ export default function RunView() {
             value={trustStop}
             onChange={(event) => onTrustStopChange(event.target.value as TrustStopId)}
             aria-describedby="trust-dial-description"
-            disabled={run.isStarting}
+            disabled={isReadOnlyViewport || run.isStarting}
           >
             {TRUST_STOPS.map((stop) => (
               <option key={stop.id} value={stop.id}>
@@ -148,7 +149,7 @@ export default function RunView() {
             type="button"
             className="rounded border border-slate-500 px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
             onClick={() => void run.pause()}
-            disabled={run.conversationId === null}
+            disabled={isReadOnlyViewport || run.conversationId === null}
           >
             Pause
           </button>
@@ -156,11 +157,16 @@ export default function RunView() {
             type="button"
             className="rounded border border-rose-700 px-4 py-2 text-sm text-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
             onClick={() => void run.stop()}
-            disabled={run.conversationId === null}
+            disabled={isReadOnlyViewport || run.conversationId === null}
           >
             Stop
           </button>
         </div>
+        <ModelProfilePanel
+          sdkNative={run.nativeModelProfile}
+          events={run.events}
+          isReadOnlyViewport={isReadOnlyViewport}
+        />
       </aside>
 
       <section className="overflow-hidden rounded-lg border border-slate-700 bg-night-900 lg:col-span-2">

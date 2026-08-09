@@ -1,0 +1,110 @@
+{
+  "id": "068-build-web-client",
+  "goal": "Build the web client in /workspace/project/web.",
+  "schema_basis": {
+    "sdk_version": "openhands-tools 1.41.0",
+    "terminal_definition": "OpenHands Tools 1.41.0 package: openhands/tools/terminal/definition.py, TerminalAction",
+    "file_editor_definition": "OpenHands Tools 1.41.0 package: openhands/tools/file_editor/definition.py, FileEditorAction",
+    "llm_schema_conversion": "openhands.sdk.tool.schema.Schema.to_mcp_schema() via openhands.sdk.event.llm_convertible.system:63",
+    "source_url": "https://github.com/OpenHands/software-agent-sdk/tree/v1.41.0/openhands-tools/openhands/tools"
+  },
+  "tool_schemas": [
+    {
+      "type": "function",
+      "function": {
+        "name": "terminal",
+        "description": "Execute shell commands in a persistent terminal session.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "command": {
+              "type": "string",
+              "description": "The shell command to execute."
+            },
+            "is_input": {
+              "type": "boolean",
+              "description": "If true, command is input to a running process."
+            },
+            "timeout": {
+              "type": "number",
+              "description": "Optional maximum time limit in seconds."
+            },
+            "reset": {
+              "type": "boolean",
+              "description": "If true, reset the terminal session."
+            }
+          },
+          "required": [
+            "command"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "file_editor",
+        "description": "Custom editing tool for viewing, creating and editing files in plain-text format.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "command": {
+              "type": "string",
+              "enum": [
+                "view",
+                "create",
+                "str_replace",
+                "insert",
+                "undo_edit"
+              ],
+              "description": "The commands to run."
+            },
+            "path": {
+              "type": "string",
+              "description": "Absolute path to file or directory."
+            },
+            "file_text": {
+              "type": "string",
+              "description": "Required for create; content of file to be created."
+            },
+            "old_str": {
+              "type": "string",
+              "description": "Required for str_replace; string in path to replace."
+            },
+            "new_str": {
+              "type": "string",
+              "description": "Optional replacement text; required for insert."
+            },
+            "insert_line": {
+              "type": "integer",
+              "description": "Required for insert; insert after this line."
+            },
+            "view_range": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              },
+              "description": "Optional file line range for view."
+            }
+          },
+          "required": [
+            "command",
+            "path"
+          ]
+        }
+      }
+    }
+  ],
+  "expected_outcome": {
+    "tool": "terminal",
+    "required_args": [
+      "command"
+    ],
+    "arg_constraints": {
+      "command": {
+        "type": "string",
+        "equals": "npm --prefix /workspace/project/web run build"
+      }
+    }
+  }
+}

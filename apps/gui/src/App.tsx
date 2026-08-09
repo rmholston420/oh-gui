@@ -2,8 +2,11 @@ import AuthorizationCard, {
   type PendingAction,
 } from './features/authorization/AuthorizationCard';
 import FirstRunWizard from './features/first-run/FirstRunWizard';
+import ModelProfilePanel from './features/model-profiles/ModelProfilePanel';
+import type { AgentServerEvent } from './api/types';
 import RunView from './features/run/RunView';
 import Shell from './shell/Shell';
+import type { SdkNativeModelProfileFields } from './features/model-profiles/model-profile';
 
 /**
  * There is no router yet — the shell (docs/specs/03-layout.md section 3.1) is not built. Until it
@@ -79,9 +82,38 @@ const DEMO_ACTIONS: Record<string, PendingAction> = {
   },
 };
 
+const MODEL_PROFILE_DEMO: SdkNativeModelProfileFields = {
+  model: 'ollama_chat/qwen3.6:35b-a3b-mtp-coder',
+  endpoint: 'http://127.0.0.1:11434',
+  configuredContextLimit: null,
+  nativeToolCalling: true,
+  samplingTemperature: null,
+  visionDisabled: null,
+  enabledToolNames: Array.from({ length: 30 }, (_, index) => `demo-tool-${index + 1}`),
+  supportsRuntimeModelSwitch: false,
+};
+
+const MODEL_PROFILE_DEMO_EVENTS: AgentServerEvent[] = [];
+
 export default function App() {
   const query = new URLSearchParams(window.location.search);
   const surface = query.get('surface');
+
+  if (surface === 'model-profile') {
+    return (
+      <Shell lens={query.get('lens') === 'pro' ? 'pro' : 'vibe'}>
+        {({ isReadOnlyViewport }) => (
+          <div className="mx-auto max-w-4xl p-6">
+            <ModelProfilePanel
+              sdkNative={MODEL_PROFILE_DEMO}
+              events={MODEL_PROFILE_DEMO_EVENTS}
+              isReadOnlyViewport={isReadOnlyViewport}
+            />
+          </div>
+        )}
+      </Shell>
+    );
+  }
 
   // `?demo=1` preserves the inert pre-agent-server surfaces. Keep the older authorization query
   // working too: the existing headed checks use it to exercise the safety-card viewport boundary.
@@ -104,7 +136,7 @@ export default function App() {
     <Shell
       commandBarContent={<span className="font-mono text-xs text-slate-400">agent-server · 127.0.0.1:8000</span>}
     >
-      <RunView />
+      {({ isReadOnlyViewport }) => <RunView isReadOnlyViewport={isReadOnlyViewport} />}
     </Shell>
   );
 }

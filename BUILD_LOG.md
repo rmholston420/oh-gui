@@ -3887,3 +3887,51 @@ The applied diff is now printed for every mutant.
 - **Ports / adapters affected:** none
 - **PORTING_LEDGER / ADR updated:** ADR-028 Amendment 2; PORTING_LEDGER unchanged
 - **Stop-condition status:** implementation and four red→green mutation transcripts complete. Full hard-constraints verification is externally blocked by concurrent untracked `bench/toolcall/` evidence citations and unrecorded `review/_sdk_src/**/__pycache__/*.pyc`; neither surface was modified by this slice.
+2026-08-09 04:27 EDT — Tool-call benchmark task-set expansion: added 73 static task fixtures (`048-*` through `120-*`) under `bench/toolcall/tasks/`, bringing the set to 120 unique IDs. Every fixture embeds the OpenHands Tools 1.41.0 terminal and file-editor schemas by value and retains the pinned provenance block; no task references the SDK evidence snapshot. The loader now recognizes three-digit task prefixes and numerically orders IDs, and task/harness integrity tests were updated for the 120-task set. Coverage spans file inspection/listing, search, Git, tests/builds, creation/replacement/insertion, directory/process/environment/log/permission/archive work, and JSON/YAML manipulation. Verification: benchmark tests 23 passed; hard constraints passed; task count 120/120; forbidden snapshot-reference grep clean. Current stop condition: task-set expansion complete; staged log only, BUILD_LOG.md untouched.
+## 2026-08-09 04:33 EDT — GUI model profiles and local tool-calling reliability posture
+
+- **Stage / plugin / port:** OH-GUI Phase 1 · telemetry §8.4 and §8.6 GUI surface
+- **What changed:** Added provenance-separated SDK-native model readings and GUI-local operator configuration, deterministic-replay ACL read/default, observed tool-call reliability tier, failure-signature diagnostics, 30-tool warning, and an explicitly disabled context-preserving cloud-fallback affordance. Added non-live browser coverage in both lenses and at the 900px read-only boundary.
+- **Files touched:** `apps/gui/src/App.tsx`; `apps/gui/src/api/types.ts`; `apps/gui/src/api/agentServer.test.ts`; `apps/gui/src/features/model-profiles/*`; `apps/gui/src/features/run/RunView.tsx`; `apps/gui/src/features/run/useConversation.ts`; `apps/gui/src/features/run/useConversation.test.tsx`; `apps/gui/e2e/model-profiles.spec.ts`
+- **Ports / adapters affected:** Existing Agent Server anti-corruption layer read path only; no SDK patch or invented upstream field.
+- **PORTING_LEDGER / ADR updated:** — (user requested no root/spec edits)
+- **Stop-condition status:** met — `npm run gate` passed (24 files / 174 tests), and non-live Playwright passed (28 tests). Cloud fallback remains honestly disabled because the verified SDK has no generic regular-Agent context-preserving model replacement.
+
+## 2026-08-09 04:36 EDT — ADR-016 bench restructured: measured budget, disjoint split, 10 registered cells
+
+- **Stage / plugin / port:** Phase 0 parallel track · ADR-016 tool-call benchmark
+- **What changed:**
+  - Measured per-request latency (`timing_probe.py`): warm 0.32-1.30 s across six models,
+    falsifying the registered 24.2 s/request estimate by ~40x.
+  - **Withdrew** the ADR-016 03:56 EDT amendment as premise-falsified; added Amendment II
+    re-deriving the budget from measurement with a 5x safety factor + 70 s cold-load allowance.
+    Ceiling set to the operator-authorised 8 h overnight window.
+  - Task library expanded 47 -> 120 (verified: 120 unique ids, 0 duplicate goals,
+    71 terminal / 49 file_editor, 0 `_sdk_src` references).
+  - Added a **pre-registered disjoint split**: 40 screening / 80 confirmatory, content-addressed
+    by `sha256("oh-gui/toolcall/split/v1:" + task_id)`. Screening selects challengers; the
+    confirmatory test runs only on held-out tasks, so a model cannot be scored on the noise
+    that selected it.
+  - Registered 10 cells in two arms: confirmatory A-D (Holm-Bonferroni over k-1 = 3
+    baseline-vs-each comparisons), exploratory E-J (descriptive only, no p-values).
+  - Attainability gate now scores the **80-task confirmatory split**, not the 120 library:
+    8.65 expected discordant pairs at rho = 0.80 (was 5.08 at N = 47). All six manifest
+    arithmetic claims re-verified numerically against the implementation.
+  - Harness: `--mode screen|confirm`, resume via `--run-dir` (skips existing records instead of
+    raising), model-availability preflight (missing confirmatory = hard fail, exploratory = skip),
+    manifest-vs-filesystem drift check, per-cell progress with pass rate and elapsed.
+  - Probe results: `glm-4.7-flash:q4_K_M` and `lfm2.5:8b` PASS tool-calling.
+    `laguna-xs-2.1` and `ornith:35b` returned HTTP 412 (needs newer Ollama) — registered,
+    expected skip. Ollama upgrade deliberately **deferred**: it would risk an unattended 05:30
+    run and would change the tool-call templates being measured.
+- **Files touched:** `bench/toolcall/bench_toolcall.py`, `attainability.py`, `MANIFEST.md`,
+  `tests/test_attainability.py`, `tests/test_split.py` (new), `tasks/048-*.json`..`120-*.json`,
+  `adrs/ADR-016-decouple-baseline-benchmark-from-phase-0-exit.md`
+- **Ports / adapters affected:** none (bench track only)
+- **PORTING_LEDGER / ADR updated:** ADR-016 (Amendment II + withdrawal of Amendment I)
+- **Verification:** 29 bench tests pass; hard constraints `=== PASSED ===`; `validate_harness.py`
+  all checks pass; GUI `npm run gate` 174 tests + Playwright 28 non-live pass.
+  **Mutation-tested** the three new gates — split overlap, manifest task-count drift, and a 5th
+  cell promoted into the confirmatory arm each produced the expected red before restore.
+- **Stop-condition status:** in-progress — awaiting operator approval of the manifest, then the
+  capped GPU run.
