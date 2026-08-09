@@ -53,3 +53,7 @@ old one and mark the old one `Amended · superseded by ADR-###`.
 | ADR-016 | The benchmark gates a claim, not the code: decouple the baseline report from Phase 0 exit | Ratified |
 | ADR-017 | Three ambiguities in the Phase 1 exit criteria, resolved before any of them can be built to | Ratified |
 
+| ADR-018 | The hard-constraints checklist becomes executable: three tiers, one registry, mutation-tested | Ratified |
+| ADR-019 | Spec Wizard ships at the Phase 1→2 boundary; its restricted-capability primitive lands in Phase 1 | Ratified |
+| ADR-020 | Audit-log entries carry structured provenance from Phase 1; the Context Inspector resolves it in Phase 5 | Ratified |
+| ADR-021 | Agent Server DTOs are generated, not hand-written; `AuthorizeRequest` is PROVISIONAL until verified | Ratified |

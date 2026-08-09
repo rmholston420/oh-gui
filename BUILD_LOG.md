@@ -3052,3 +3052,68 @@ split.
 - **Stop-condition status:** slice 1 closed and on `main`. Phase 1 DoD **not** met.
   Full-spec read surfaced items absent from the SESSION_HANDOFF remaining list — recorded
   in KNOWN_ISSUES.md, same timestamp.
+
+## 2026-08-08 21:25 EDT — ADR-018/019/020/021 ratified; hard-constraints checker is now executable
+
+- **Stage / plugin / port:** Phase 1 · governance · no runtime port touched
+- **What changed:**
+  - **Four ADRs, not one bundle.** The four open questions (checker, wizard placement, §4.2.1
+    forward dependency, DTO boundary) were offered as one ADR. Filed separately because a bundle
+    cannot be amended in one part — reversing the wizard placement later would have forced
+    reopening the DTO ruling with it.
+  - **ADR-018 — the checker exists and runs.** `13-hard-constraints.md` claimed to be
+    "machine-checkable"; nothing read it. Now 72 gates parse into a registry with four tiers, and
+    the runner fails the build on spec↔registry drift, on a closed phase leaving a PHASE gate
+    unproven, on a WITNESS gate that names no recording artefact, and on a retired gate that
+    does not cite the ADR retiring it. 16 gates are enforced today; the other 56 are honestly
+    labelled deferred or operator-witnessed rather than quietly counted as passing.
+  - **One gate was retired, not satisfied.** "Risk badges display analyzer identity" is
+    unachievable at the pin: `SecurityAnalyzerBase.security_risk()` returns a bare enum and
+    `EnsembleSecurityAnalyzer` discards child attribution. Struck in place with the ADR-015
+    reasoning, because deleting it would erase the evidence that it was checked.
+  - **ADR-019** moves the Spec Wizard to the Phase 1→2 boundary and gives Phase 1 ownership of
+    the tool-less restricted-capability primitive that `04a §4.9.1` quarantine also needs — the
+    spec had the dependency backwards.
+  - **ADR-020** splits §4.2.1: Phase 1 captures a structured `provenance` array at decision time
+    (`null` ≠ `[]`, omission is a schema error); Phase 5's Context Inspector resolves it.
+  - **ADR-021** rules the DTO boundary in three classes and finds `AuthorizeRequest`
+    non-compliant. It is now marked `PROVISIONAL — UNVERIFIED` with a live interlock: no hook may
+    be installed while the marker stands, enforced by a constraint check *and* a middleware test,
+    both mutation-verified.
+- **Files touched:**
+  - `adrs/ADR-018-hard-constraints-runner.md`, `ADR-019-spec-wizard-phase-placement.md`,
+    `ADR-020-audit-log-provenance-reference.md`, `ADR-021-dto-generation-boundary.md`
+  - `adrs/README.md`; `adrs/ADR-014-authorization-enforcement-seam.md` (fifth verification item)
+  - `scripts/hard_constraints/{__init__,parse,checks,registry}.py`,
+    `scripts/check-hard-constraints.py`, `scripts/verify-local.sh` (`--constraints-only`)
+  - `scripts/tests/{conftest.py,test_check_hard_constraints.py}` (41 tests)
+  - `services/middleware/src/ohgui_middleware/ipc/schema.py`,
+    `services/middleware/tests/test_provisional_marker.py` (52 assertions total)
+  - `docs/specs/{13-hard-constraints,04-authorization,04a-prompt-injection,11-dev-plan,14-spec-wizard}.md`
+  - `PORTING_LEDGER.md`, `KNOWN_ISSUES.md`
+- **Ports / adapters affected:** none. No enforcement path was wired — ADR-021 explicitly forbids
+  wiring one until the envelope is captured.
+- **PORTING_LEDGER / ADR updated:** ADR-018, 019, 020, 021 added; ADR-014 amended;
+  `datamodel-code-generator` (MIT, PLANNED) logged.
+- **Stop-condition status:** met. Four decisions ruled, checker executable and self-tested,
+  KNOWN_ISSUES items 1/2/9/10 closed. The gate is green: 41 + 52 tests, 72 constraints, ruff clean.
+  Note the honest limit — a green run today proves the *runner* works, not that the 56 deferred
+  gates hold.
+
+### Mutation results (a test never seen to fail is not a test)
+
+Six mutants introduced and reverted; each killed only the tests that should have caught it:
+
+| Mutant | Killed by |
+|---|---|
+| closed-phase rule disabled | 2 runner tests |
+| orphan-gate detection disabled | 1 runner test |
+| gate ID made constant | 2 runner tests |
+| WITNESS artifact requirement dropped | 1 runner test |
+| hook installed while type is PROVISIONAL | `test_no_hook_is_installed_while_the_type_is_provisional` |
+| provisional flag cleared, docstring left marked | `test_marker_flag_and_docstring_agree` |
+
+Two real bugs surfaced from the tests themselves before mutation: a `KeyError` on an unknown
+check name, and `validate_registry()` red-flagging unused predicates against synthetic
+registries. A third find was a **vacuous test** — the `spec` fixture reused one tmp filename, so
+a rewording test was comparing a file with itself and could never have failed.

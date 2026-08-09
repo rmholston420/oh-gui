@@ -15,6 +15,7 @@
 #   scripts/verify-local.sh --headed     # watch the browser tests actually drive the UI
 #   scripts/verify-local.sh --middleware-only   # Python policy-plane gate only, then exit
 #   scripts/verify-local.sh --skip-middleware   # frontend gate only (Phase 0 behaviour)
+#   scripts/verify-local.sh --constraints-only  # ADR-018 hard-constraints checklist only
 
 set -uo pipefail
 
@@ -24,8 +25,10 @@ HEADED=""
 WALK=0
 MWONLY=0
 MWSKIP=0
+HCONLY=0
 for a in "$@"; do
   case "$a" in
+    --constraints-only) HCONLY=1; SERVE=0 ;;
     --no-serve)   SERVE=0 ;;
     --headed)     HEADED="--headed" ;;
     --walkthrough) WALK=1; HEADED="--headed"; SERVE=0 ;;
@@ -52,6 +55,59 @@ die()  { printf '\n%s  ABORTING: %s%s\n' "$R" "$1" "$Z"; exit 1; }
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO" || die "cannot cd to repo root"
 GUI="$REPO/apps/gui"
+MW="$REPO/services/middleware"
+MWVENV="$MW/.venv"
+
+# ------------------------------------------------------- hard constraints (ADR-018)
+# docs/specs/13-hard-constraints.md says "verify before every PR". Until ADR-018 it said so
+# to a human who could not have verified all 71 items in a sitting, which meant it was not
+# verified at all. This reconciles the checklist against its tier registry and runs every
+# predicate that can run against the tree as it stands.
+run_constraints_gate() {
+  step "Hard constraints  (ADR-018 — docs/specs/13-hard-constraints.md, all 71 gates)"
+  note "green = enforced by a predicate now · yellow = deferred to a named phase, or"
+  note "operator-witnessed · red = drift, a closed phase with an unproven gate, or a failure."
+  HCPY="$(command -v python3.13 || command -v python3.12 || command -v python3 || true)"
+  if [ -z "$HCPY" ]; then err "no python3 on PATH"; return 1; fi
+  if "$HCPY" "$REPO/scripts/check-hard-constraints.py" 2>&1 | sed 's/^/          /'; then
+    ok "checklist reconciles and every enforceable gate passes"
+  else
+    err "hard-constraints checklist FAILED — read the red lines above"
+  fi
+  # The runner is itself a gate, so it is mutation-tested: each rule is proven to fail when
+  # its violation is planted. A gate never seen to fail is not a gate.
+  #
+  # pytest comes from the middleware venv (colossus-python-env: never assume the interpreter
+  # first on PATH has it, and never pip-install into a system Python). The venv is created by
+  # the middleware gate; if it is not there yet, say so in yellow rather than failing — the
+  # checklist result above is still valid on its own.
+  HCPYTEST=""
+  if [ -x "$MWVENV/bin/pytest" ]; then
+    HCPYTEST="$MWVENV/bin/pytest"
+  elif "$HCPY" -c 'import pytest' >/dev/null 2>&1; then
+    HCPYTEST="$HCPY -m pytest"
+  fi
+  if [ -z "$HCPYTEST" ]; then
+    warn "pytest unavailable — the runner's own mutation tests did not run"
+    note "they live in the middleware venv; create it with:  scripts/verify-local.sh --middleware-only"
+  elif $HCPYTEST "$REPO/scripts/tests" -q -p no:cacheprovider >/tmp/ohgui_hc_test.log 2>&1; then
+    ok "$(grep -Eo '[0-9]+ passed' /tmp/ohgui_hc_test.log | tail -1) runner mutation tests"
+    note "each plants the violation its rule exists to catch, then asserts red"
+  else
+    err "the constraints runner's own tests failed — read /tmp/ohgui_hc_test.log"
+    tail -25 /tmp/ohgui_hc_test.log | sed 's/^/          /'
+  fi
+}
+
+if [ "$HCONLY" -eq 1 ]; then
+  printf '%s=== OH-GUI hard constraints ===%s\n' "$B" "$Z"
+  run_constraints_gate
+  printf '\n%s=== Summary (constraints only) ===%s\n' "$B" "$Z"
+  if [ "$FAILED" -eq 0 ]; then
+    printf '%s  PASSED%s with %d warning(s).\n' "$G" "$Z" "$WARNED"; exit 0
+  fi
+  printf '%s  %d FAILURE(S)%s\n' "$R" "$FAILED" "$Z"; exit 1
+fi
 
 # --walkthrough: skip the whole gate, just drive the wizard in a visible browser on this desktop.
 if [ "$WALK" -eq 1 ]; then
@@ -126,9 +182,6 @@ note "HEAD $(git log --oneline -1)"
 # services/middleware is the policy plane (ADR-001 item 3). It gets its OWN venv, created
 # here, so nothing is ever guessed from a shell prompt and no other project's venv is
 # touched (colossus-python-env discipline).
-MW="$REPO/services/middleware"
-MWVENV="$MW/.venv"
-
 run_middleware_gate() {
   step "Middleware gate  (Python policy plane — fail-closed authorization seam)"
 
@@ -234,6 +287,8 @@ run_middleware_gate() {
   note "every authorization currently denies, by construction. That is the intended state."
 }
 
+run_constraints_gate
+
 if [ "$MWSKIP" -eq 0 ]; then
   run_middleware_gate
 else
@@ -241,7 +296,7 @@ else
 fi
 
 if [ "$MWONLY" -eq 1 ]; then
-  printf '\n%s=== Summary (middleware only) ===%s\n' "$B" "$Z"
+  printf '\n%s=== Summary (constraints + middleware) ===%s\n' "$B" "$Z"
   if [ "$FAILED" -eq 0 ]; then
     printf '%s  PASSED%s with %d warning(s).\n' "$G" "$Z" "$WARNED"; exit 0
   else

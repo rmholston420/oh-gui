@@ -1,11 +1,29 @@
 # 13. Hard Constraints Checklist (Verify Before Every PR)
 
+> **EXECUTABLE 2026-08-08 by [ADR-018](../../adrs/ADR-018-hard-constraints-runner.md).**
+> This file is the **source of truth** and is reconciled by `scripts/check-hard-constraints.py`
+> against `scripts/hard_constraints/registry.py`, which assigns every gate below exactly one tier:
+> `STATIC` (a predicate runs against the tree now), `PHASE` (the surface does not exist yet; an
+> owning phase is named), `WITNESS` (no mechanical test exists; the recording artefact is named),
+> or `RETIRED` (struck, with the retiring ADR named). Adding a gate here without registering it
+> fails the build, and so does a registry entry matching no gate. Run it with
+> `./scripts/verify-local.sh --constraints-only`.
+>
+> Gates are **never** edited to make the runner green. The runner adapts to this file, not the
+> reverse. The one strike below predates the runner and implements an already-ratified ADR.
+
 - [ ] No UI path calls conversation.execute_tool() for anything above LOW risk, scoped correctly to LocalConversation.
 - [ ] Every reject action requires and passes a free-text reason to reject_pending_actions(reason).
 - [ ] Trust dial changes call set_confirmation_policy() and do not require conversation restart.
 - [ ] The "writes outside worktree" stop is implemented as a custom SecurityAnalyzerBase, NOT a custom ConfirmationPolicyBase.
 - [ ] A pending action's confirmation policy is locked to the policy in force when raised - mid-flight dial changes never retroactively (auto-)approve or (auto-)reject it.
-- [ ] Risk badges display analyzer identity, not just a risk level.
+- [ ] ~~Risk badges display analyzer identity, not just a risk level.~~ **RETIRED 2026-08-08
+      by [ADR-015](../../adrs/ADR-015-native-fidelity-boundary.md) Status amendment**, which
+      already removed the same requirement from `04-authorization.md` §4.2. Analyzer identity is
+      not merely unimplemented, it is **not recoverable**: `SecurityAnalyzerBase.security_risk()`
+      returns a bare four-value enum with no provenance carrier, and `EnsembleSecurityAnalyzer`
+      discards child attribution at the return boundary. This gate demanded a field ADR-015 proved
+      cannot be supplied without manufacturing it. See ADR-015 for the native substitutes.
 - [ ] Untrusted-content provenance badges are visually distinct from risk badges on authorization cards.
 - [ ] Every approval, rejection, and "relax for this class" grant is written to the audit log; relaxation grants expire at conversation end.
 - [ ] AgentErrorEvent, ConversationErrorEvent, and partial-streaming-failure states never share the same UI treatment.
@@ -103,3 +121,10 @@
 - [ ] No OH-GUI surface re-implements upstream semantics it could read; display mirrors are deleted,
       not tested.
 - [ ] Every `PORTING_LEDGER.md` entry carrying OpenHands data records its Native basis.
+
+## v4.5 additions (ADR-021 — the DTO generation boundary)
+
+- [ ] Every upstream-shaped type that is hand-authored rather than generated carries an ADR-015
+      native basis in its docstring - the artifact path and line it was read from, not the document
+      that described it. A type whose basis names documentation is marked
+      `PROVISIONAL - UNVERIFIED` and no enforcement path is wired to it.

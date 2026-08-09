@@ -76,8 +76,15 @@ reading prose instead of artifacts. This ADR's claims come from the sdists, whic
 - [ ] `tool_input` is confirmed to carry the arguments we intend to judge, for each tool class in
       the Phase 1 capability manifest — not just for `bash`.
 - [ ] A deny is present in the audit log with the operator-visible reason.
+- [ ] **The observed `pre_tool_use` envelope is captured verbatim and diffed field-by-field against
+      `ipc/schema.py:AuthorizeRequest`** — added 2026-08-08 by
+      [ADR-021](ADR-021-dto-generation-boundary.md). `AuthorizeRequest` was written from the
+      *documented* envelope, and ADR-015's whole point is that documentation is not verification.
+      It is marked `PROVISIONAL — UNVERIFIED` in source and **no hook may be installed while that
+      marker stands**, because a hook wired to a wrong field shape fails in the direction of
+      allowing what it meant to deny. Record the captured envelope in the ADR-021 evidence section.
 
-Until all four are executed and logged, §4.2's mechanism remains **assumed**.
+Until all five are executed and logged, §4.2's mechanism remains **assumed**.
 
 ## Rationale
 

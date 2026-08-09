@@ -14,6 +14,18 @@ Trust-class display (section 4.9) is a labeling layer, not a defense on its own.
 
 Required pattern: reuse the Spec Wizard's quarantine shape (14-spec-wizard.md section 14.10), generalized.
 
+> **AMENDED 2026-08-08 by [ADR-019](../../adrs/ADR-019-spec-wizard-phase-placement.md) and
+> [ADR-020](../../adrs/ADR-020-audit-log-provenance-reference.md).**
+>
+> - **The dependency direction is inverted.** "Reuse the Spec Wizard's shape" reads as though
+>   the wizard ships first, but the wizard is at the Phase 1→2 boundary and this section is in
+>   Phase 1. **Phase 1 builds the restricted-capability primitive**; the wizard is its second
+>   consumer, not its origin. §14.10 and this section describe the same mechanism, built once.
+> - **Audit logging** (bullet 4 below) writes into the structured `provenance` shape defined by
+>   ADR-020 in `04-authorization.md` §4.2.1 — stable `id`, `trust_class`, `source`, captured at
+>   invocation time. The "cross-linked from the Context Inspector" half is Phase 5; Phase 1
+>   records the IDs and does not render a cross-link.
+
 - Any content tagged third-party-untrusted MUST first pass through a quarantined summarization step: a dedicated, short-lived SDK Conversation/Agent instance with no tool access (no bash, no file-edit, no further MCP calls) that reads the untrusted content and returns only a plain-text summary or a small set of symbolic variables - never the raw untrusted bytes.
 - The privileged planning conversation only ever sees the quarantined summary or symbolic references, never the raw content.
 - Where summarization cannot be applied (a tool's raw structured output must be parsed exactly), fall back to an Action-Selector pattern: the untrusted content may only select from a hardcoded, pre-defined list of tool calls - it can never introduce a new free-form instruction into the agent's context.
