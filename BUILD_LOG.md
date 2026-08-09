@@ -4110,3 +4110,29 @@ The applied diff is now printed for every mutant.
   `add -A`, and check `git status --short` against an expected file list before every commit.
 - **Files touched:** BUILD_LOG.md (this entry); the badge files land in this commit.
 - **Stop-condition status:** `main` builds; bisecting across `9a24da0..d0c32c6` will not.
+
+## 2026-08-09 05:44 EDT — Follow-up composer: a run can now be steered instead of restarted
+
+- **Stage / plugin / port:** Phase 1 · GUI run surface · `agentServer` client
+- **What changed:** `useConversation` gains `send(message)` and `isSending`; `RunView` gains a
+  follow-up composer that appears once a conversation exists. The message posts to
+  `/conversations/{id}/events` with `run: true`, which resumes the agent loop — without that flag
+  the message is only appended and the agent never wakes. The composer is deliberately available
+  while `waiting_for_confirmation` and while paused, because the most useful correction is usually
+  the one made *before* approving a disliked action.
+- **Files touched:** `apps/gui/src/features/run/useConversation.ts`,
+  `apps/gui/src/features/run/RunView.tsx`, `apps/gui/src/features/run/followUp.test.tsx` (new)
+- **Ports / adapters affected:** none added; uses the existing `sendMessage` client method, which
+  had been implemented but never called by any UI.
+- **Verification:** 7 new tests; **7/7 mutants caught** (drop `run: true`, skip trim, allow empty,
+  send with no conversation, swallow errors, composer always visible, never clear textarea).
+  Full gate: 211 unit tests / 30 files, 49 browser tests, build clean.
+- **Two process notes:** (1) the first `no-trim` mutant silently failed to apply because my `sed`
+  pattern did not match the source; a mutant that does not apply looks exactly like a caught one
+  in a pass/fail summary, so I verified the substitution with `grep` before trusting the result.
+  (2) The composer's `aria-label` initially collided with its textarea's label, giving two nodes
+  the same accessible name — caught by the test, renamed the region to "Steer the run".
+- **Environment:** agent-server recreated with `~/dev/oh-gui` bind-mounted at `/workspace/project`,
+  so the GUI can now edit this repo. AppArmor teardown failure diagnosed in DEBUG_LOG.
+- **Stop-condition status:** self-coding blocker 2 of 3 closed. Remaining: workspace path is still
+  hardcoded (`types.ts:219`), and the audit-log panel is still unmounted.

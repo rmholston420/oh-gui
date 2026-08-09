@@ -54,6 +54,14 @@ export interface ConversationRun {
   error: string | null;
   isStarting: boolean;
   start(goal: string, trustStop?: TrustStopId): Promise<void>;
+  /**
+   * Send a follow-up instruction into a conversation that has already started.
+   * `run: true` resumes the agent loop, which is what makes this steering rather
+   * than a note appended to a transcript nobody reads:
+   * openhands_agent_server-1.41.0/openhands/agent_server/conversation_router.py
+   */
+  send(message: string): Promise<void>;
+  isSending: boolean;
   setTrustStop(trustStop: TrustStopId): Promise<void>;
   approve(reason?: string): Promise<void>;
   reject(reason: string): Promise<void>;
@@ -145,6 +153,7 @@ export function useConversation({
   const [status, setStatus] = useState<ConversationExecutionStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [nativeModelProfile, setNativeModelProfile] = useState<SdkNativeModelProfileFields>(() =>
@@ -243,6 +252,37 @@ export function useConversation({
     [api, preToolUseHookCommand],
   );
 
+  const send = useCallback(
+    async (message: string) => {
+      if (conversationId === null) {
+        setError('Start a run before sending a follow-up.');
+        return;
+      }
+      const trimmed = message.trim();
+      if (!trimmed) {
+        setError('A follow-up message cannot be empty.');
+        return;
+      }
+
+      setError(null);
+      setIsSending(true);
+      try {
+        await api.sendMessage(conversationId, {
+          role: 'user',
+          content: [{ type: 'text', text: trimmed }],
+          run: true,
+        });
+        setStatus('running');
+        await refresh();
+      } catch (caught) {
+        setError(messageFrom(caught));
+      } finally {
+        setIsSending(false);
+      }
+    },
+    [api, conversationId, refresh],
+  );
+
   const setTrustStop = useCallback(
     async (trustStop: TrustStopId) => {
       if (conversationId === null) return;
@@ -332,7 +372,9 @@ export function useConversation({
       elapsedSeconds,
       error,
       isStarting,
+      isSending,
       start,
+      send,
       setTrustStop,
       approve,
       reject,
@@ -346,11 +388,13 @@ export function useConversation({
       eventCount,
       events,
       isStarting,
+      isSending,
       nativeModelProfile,
       pendingActions,
       pause,
       approve,
       reject,
+      send,
       setTrustStop,
       start,
       status,

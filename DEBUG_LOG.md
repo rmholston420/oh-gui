@@ -1918,3 +1918,24 @@ gating" defect class in this repo.
 - **Files changed:** `apps/gui/tsconfig.app.json`,
   `apps/gui/src/__tests__/breakpoint-arithmetic.test.ts` (moved from `src/shell/`)
 - **Related BUILD_LOG entry:** 2026-08-09 05:26 EDT
+
+## 2026-08-09 05:16 EDT — `docker rm -f` fails with "could not kill container: permission denied"
+
+- **Symptom:** `Error response from daemon: cannot remove container "ohg-verify": could not kill
+  container: permission denied`, exit 1. The container shows `state=running restart=no`. A
+  subsequent `docker run` then fails with a name conflict while the stale container keeps serving
+  `/health`, so a health check reports success against the WRONG container.
+- **Affected stage / plugin / port:** Colossus environment · agent-server container
+- **Root cause:** stale AppArmor profiles. Docker is the snap build here; a snapd refresh left
+  unloaded profiles behind, so the daemon could not signal the container's process.
+- **Fix applied:** `sudo aa-remove-unknown`, then `docker rm -f ohg-verify` succeeds. No Docker
+  daemon restart is needed, which matters because other containers (`kosmos-valkey`,
+  `kosmos-adr010-searxng`) were running.
+- **Second defect this exposed (mine):** my paste block ran `docker rm -f ... 2>/dev/null`, hiding
+  the only diagnostic output, and then health-checked a port rather than the new container. It
+  printed `AGENT-SERVER UP` while describing the old container. **Never suppress stderr on a
+  teardown step, and verify identity, not liveness.**
+- **Snap constraint worth remembering:** snap-confined Docker only permits bind mounts under
+  `$HOME`, so a workspace path outside home will fail once the GUI makes it selectable.
+- **Files changed:** none (environment)
+- **Related BUILD_LOG entry:** 2026-08-09 05:44 EDT

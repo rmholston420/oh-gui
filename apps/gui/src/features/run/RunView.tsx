@@ -15,9 +15,15 @@ import ModelProfilePanel from '../model-profiles/ModelProfilePanel';
  */
 export default function RunView({ isReadOnlyViewport = false }: { isReadOnlyViewport?: boolean }) {
   const [goal, setGoal] = useState('');
+  const [followUp, setFollowUp] = useState('');
   const [trustStop, setTrustStop] = useState<TrustStopId>(DEFAULT_STOP);
   const run = useConversation();
   const canStart = !isReadOnlyViewport && !run.isStarting && run.conversationId === null;
+  // Steering is available whenever a conversation exists, including while it is
+  // waiting for confirmation or paused: the operator's most useful correction is
+  // usually the one made before approving the action they dislike.
+  const canSendFollowUp =
+    !isReadOnlyViewport && run.conversationId !== null && !run.isSending && followUp.trim() !== '';
 
   const onTrustStopChange = (nextStop: TrustStopId) => {
     setTrustStop(nextStop);
@@ -83,6 +89,40 @@ export default function RunView({ isReadOnlyViewport = false }: { isReadOnlyView
             {run.isStarting ? 'Starting…' : 'Start'}
           </button>
         </form>
+
+        {run.conversationId !== null && (
+          <form
+            className="mt-6 space-y-3 border-t border-slate-700 pt-6"
+            aria-label="Steer the run"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void run.send(followUp).then(() => setFollowUp(''));
+            }}
+          >
+            <label className="block text-sm font-medium" htmlFor="run-follow-up">
+              Follow-up instruction
+            </label>
+            <textarea
+              id="run-follow-up"
+              className="min-h-20 w-full rounded border border-slate-600 bg-night-950 p-3 text-sm outline-none focus:border-agent-active"
+              value={followUp}
+              onChange={(event) => setFollowUp(event.target.value)}
+              disabled={isReadOnlyViewport || run.isSending}
+              placeholder="Correct or extend the task without restarting the run."
+              aria-describedby="run-follow-up-description"
+            />
+            <p id="run-follow-up-description" className="text-sm text-slate-400">
+              This resumes the agent loop with your message appended to the same conversation.
+            </p>
+            <button
+              type="submit"
+              className="rounded border border-agent-active px-4 py-2 text-sm font-semibold text-agent-active disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={!canSendFollowUp}
+            >
+              {run.isSending ? 'Sending…' : 'Send follow-up'}
+            </button>
+          </form>
+        )}
 
         {run.status === 'waiting_for_confirmation' && (
           <section className="mt-6 space-y-4" aria-label="Pending authorization">
