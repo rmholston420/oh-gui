@@ -32,7 +32,13 @@ function docker(...args: string[]): string {
   return execFileSync('docker', args, { encoding: 'utf8', timeout: 60_000 });
 }
 
+/** As the agent-server's own user. Git refuses a repository owned by someone else. */
 function inContainer(script: string): string {
+  return docker('exec', CONTAINER, 'sh', '-c', script);
+}
+
+/** Root, for cleanup only: removing files a previous run may have left owned by root. */
+function inContainerAsRoot(script: string): string {
   return docker('exec', '-u', '0', CONTAINER, 'sh', '-c', script);
 }
 
@@ -62,12 +68,13 @@ test.describe('@live change review against agent-server', () => {
     ).toBe(true);
     step(`container has ${gitVersion}`);
 
-    step(`building a real repository at ${CONTAINER}:${REPO_DIR}`);
+    inContainerAsRoot(`rm -rf ${REPO_DIR}`);
+    step(`building a real repository at ${CONTAINER}:${REPO_DIR} as ${inContainer('id -un').trim()}`);
     // Committed first, then edited: `/api/changes` reports the working tree against HEAD, so a
     // repository with no commit reports nothing and the spec would pass vacuously.
     inContainer(
       [
-        `rm -rf ${REPO_DIR}`,
+        `rm -rf ${REPO_DIR} 2>/dev/null || true`,
         `mkdir -p ${REPO_DIR}`,
         `cd ${REPO_DIR}`,
         `git init -q`,
@@ -85,11 +92,19 @@ test.describe('@live change review against agent-server', () => {
         `git add -A`,
       ].join(' && '),
     );
-    step('repository built: 1 edited, 1 added, 1 removed, 1 untouched');
+    const ownership = inContainer(
+      `cd ${REPO_DIR} && git status --porcelain 2>&1 | head -3`,
+    ).trim();
+    expect(
+      ownership.includes('dubious ownership') || ownership.includes('fatal:'),
+      `the agent-server's user cannot read the repository it is about to be asked about, and the ` +
+        `router turns that into an empty list rather than an error:\n${ownership}`,
+    ).toBe(false);
+    step(`repository built and readable by the server's user; git status:\n${ownership}`);
   });
 
   test.afterAll(() => {
-    inContainer(`rm -rf ${REPO_DIR}`);
+    inContainerAsRoot(`rm -rf ${REPO_DIR}`);
   });
 
   test('the server reports exactly the working-tree changes', async ({ request }) => {
@@ -101,6 +116,12 @@ test.describe('@live change review against agent-server', () => {
     const byPath = Object.fromEntries(changes.map((change) => [change.path, change.status]));
     step(`server reported: ${JSON.stringify(byPath)}`);
 
+    expect(
+      changes.length,
+      'the server reported no changes at all. It returns `[]` both for a clean tree and for a ' +
+        'path it cannot read as a repository, so this is most likely a permission or ownership ' +
+        'problem rather than a genuinely clean tree.',
+    ).toBeGreaterThan(0);
     expect(byPath['edited.txt']).toBe('UPDATED');
     expect(byPath['added.txt']).toBe('ADDED');
     expect(byPath['removed.txt']).toBe('DELETED');

@@ -4622,3 +4622,14 @@ The applied diff is now printed for every mutant.
   `scripts/tests/test_api_paths.py`, `apps/gui/src/api/{agentServer.ts,types.ts}`,
   `apps/gui/e2e/change-review-live.spec.ts`
 - **Stop-condition status:** in-progress — change review still unwitnessed live.
+
+## 2026-08-09 08:00 EDT — Live change-review harness builds its repository as the server's user
+
+- **Stage / plugin / port:** Phase 1 · GUI · change review (spec 06) · e2e harness
+- **What changed:** repository built unprivileged rather than as root, plus a readability assertion
+  in `beforeAll` and a non-empty assertion in the first test, both of which name ownership as the
+  cause. The endpoints themselves were correct after the previous fix.
+- **Note for future specs in this repo:** `docker exec -u 0` is right when `docker cp` put the files
+  there, and wrong when the container creates them. The agent-server reads as its own user.
+- **Files touched:** `apps/gui/e2e/change-review-live.spec.ts`
+- **Stop-condition status:** in-progress — change review still unwitnessed live.

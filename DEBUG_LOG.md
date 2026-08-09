@@ -2101,3 +2101,26 @@ gating" defect class in this repo.
   `apps/gui/e2e/change-review-live.spec.ts`, `scripts/hard_constraints/api_paths.py` (new),
   `scripts/check-api-paths.py` (new), `scripts/tests/test_api_paths.py` (new)
 - **Related BUILD_LOG entry:** 2026-08-09 07:57 EDT
+
+## 2026-08-09 08:00 EDT — /api/git/changes returns 200 with `[]` for a repository built as root
+
+- **Symptom:** `server reported: {}` — HTTP 200, empty list, from a repository that demonstrably
+  had one edited, one added and one deleted file. `expect(byPath['edited.txt']).toBe('UPDATED')`
+  received `undefined`.
+- **Affected stage / plugin / port:** Phase 1 · GUI · change review · live e2e harness
+- **Root cause:** the test harness created the repository with `docker exec -u 0`, so it is owned by
+  root, while the agent-server process runs as an unprivileged user. Git refuses to operate on a
+  repository owned by another user ("detected dubious ownership"), which raises inside
+  `validate_git_repository`, which `_get_git_changes` catches as `GitRepositoryError` and converts
+  to `[]` (`git_router.py:47`). A permission failure is therefore delivered as a successful,
+  empty response, identical on the wire to a clean working tree.
+- **Why the `-u 0` was there:** it was copied from `plugins-live.spec.ts`, where it is correct —
+  that spec uses `docker cp`, which writes as root, so its cleanup must be root. This spec creates
+  files inside the container instead, so root was never needed and was actively harmful.
+- **Fix applied:** the repository is now built as the container's default user; root is used only to
+  remove leftovers from earlier runs. Two assertions were added so this cannot present as a mystery
+  again: `beforeAll` runs `git status` as the server's user and fails with the ownership text if git
+  rejects the repository, and the first test asserts a non-empty list with a message naming
+  permissions as the likely cause.
+- **Files changed:** `apps/gui/e2e/change-review-live.spec.ts`
+- **Related BUILD_LOG entry:** 2026-08-09 08:00 EDT
