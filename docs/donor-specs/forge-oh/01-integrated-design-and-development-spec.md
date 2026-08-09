@@ -9,7 +9,7 @@ plain-language event schema, and the Simple/Advanced mode split — was lost acr
 
 Filed unmodified so that any future OH-GUI spec claim can be diffed against the original intent
 rather than against a summary of it. Amendments belong in docs/specs/ and in ADRs, never here.
-See docs/specs/COVERAGE-forge-oh.md for the requirement-by-requirement mapping.
+See docs/specs/COVERAGE.md for the requirement-by-requirement mapping.
 -->
 
 # Local Autonomous Coding System: Integrated Design and Development Specification

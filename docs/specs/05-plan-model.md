@@ -18,15 +18,15 @@ Goal: id, title, success_criteria list, status, created_from_event_id
 Task: id, parent_id, title, description, status, dependencies list, assigned_agent, worktree_id, scope_paths list, risk_level, acceptance_criteria list, evidence list, revision
 Attempt: id, task_id, start_event_id, end_event_id, model, tool_calls list, changed_files list, test_runs list, outcome
 
-- Statuses: proposed, approved, queued, running, waiting-for-user, blocked, validating, completed, failed, superseded, canceled.
-- Construction is hybrid: consume agent-emitted plan events when available; fall back to heuristic folding for ACP agents without a plan schema.
-- Every evidence item inherits the trust class from 04a-prompt-injection.md. A plan built partly from third-party-untrusted evidence must surface that in the plan tree.
+- [REQ-05-001] Statuses: proposed, approved, queued, running, waiting-for-user, blocked, validating, completed, failed, superseded, canceled.
+- [REQ-05-002] Construction is hybrid: consume agent-emitted plan events when available; fall back to heuristic folding for ACP agents without a plan schema.
+- [REQ-05-003] Every evidence item inherits the trust class from 04a-prompt-injection.md. A plan built partly from third-party-untrusted evidence must surface that in the plan tree.
 
 ## 5.2.1 Plan-level provenance gate
 
-- If a Plan's aggregate evidence chain exceeds a configurable threshold (default 50 percent) tagged third-party-untrusted, task approval is blocked behind an explicit interstitial confirming the evidence chain has been reviewed.
-- Logged to 04-authorization.md section 4.2.1 with the computed percentage at approval time.
-- Threshold is project-configurable; current live percentage visible in the plan-tree header.
+- [REQ-05-004] If a Plan's aggregate evidence chain exceeds a configurable threshold (default 50 percent) tagged third-party-untrusted, task approval is blocked behind an explicit interstitial confirming the evidence chain has been reviewed.
+- [REQ-05-005] Logged to 04-authorization.md section 4.2.1 with the computed percentage at approval time.
+- [REQ-05-006] Threshold is project-configurable; current live percentage visible in the plan-tree header.
 
 ## 5.3 Drift detection - the differentiating feature
 
@@ -38,27 +38,27 @@ Approve the whole plan, edit task wording, reorder independent tasks, mark do-no
 
 ## 5.5 Rewind and fork-from-step
 
-- Truncate event log at event n, restore worktree commit, allow prompt edit, re-run.
-- Expose "fork from here" as a plan-tree gesture on any completed step.
-- Audit the shipped branch-a-conversation feature (v1.2.0) first - do not duplicate.
-- UX reference: microsoft/agdebugger's interactive message viewer and conversation-graph visualization (read source, see 12-portable-components.md).
-- Document non-rewindable side effects: files written outside worktree, network calls made, database writes, migrations applied.
-- Plan-versioning rule: rewinding forks the Plan object at the Task/Attempt boundary rather than mutating in place; pre-rewind revision remains inspectable, linked as superseded-by-rewind.
-- Non-determinism disclosure (v4.0, now conditional): if the active model profile's backend has deterministic-replay enabled (vLLM batch-invariant mode), the disclosure changes to "replay exactly." Otherwise retain "replay approximately." See 08-telemetry.md section 8.4 for the deterministic_replay field.
+- [REQ-05-007] Truncate event log at event n, restore worktree commit, allow prompt edit, re-run.
+- [REQ-05-008] Expose "fork from here" as a plan-tree gesture on any completed step.
+- [REQ-05-009] Audit the shipped branch-a-conversation feature (v1.2.0) first - do not duplicate.
+- [REQ-05-010] UX reference: microsoft/agdebugger's interactive message viewer and conversation-graph visualization (read source, see 12-portable-components.md).
+- [REQ-05-011] Document non-rewindable side effects: files written outside worktree, network calls made, database writes, migrations applied.
+- [REQ-05-012] Plan-versioning rule: rewinding forks the Plan object at the Task/Attempt boundary rather than mutating in place; pre-rewind revision remains inspectable, linked as superseded-by-rewind.
+- [REQ-05-013] Non-determinism disclosure (v4.0, now conditional): if the active model profile's backend has deterministic-replay enabled (vLLM batch-invariant mode), the disclosure changes to "replay exactly." Otherwise retain "replay approximately." See 08-telemetry.md section 8.4 for the deterministic_replay field.
 
 ## 5.5.1 Fork taxonomy - one primitive, three UI entry points
 
-- One underlying primitive - the v1.2.0 conversation-branch feature is the foundation.
-- Conversation view on fork: always opens a new conversation with a "forked from X, step N" banner.
-- Plan revisions form a DAG, not a tree - render with explicit merged-from links at diamond points; consider lifting agdebugger's graph component directly.
-- Merge-back position: explicit non-support for automatic merge-back; done manually via Compare mode's three-way merge viewer.
-- The DAG-capable data model ships as specified but UI renders as a simple linear list in the common single-fork case.
+- [REQ-05-014] One underlying primitive - the v1.2.0 conversation-branch feature is the foundation.
+- [REQ-05-015] Conversation view on fork: always opens a new conversation with a "forked from X, step N" banner.
+- [REQ-05-016] Plan revisions form a DAG, not a tree - render with explicit merged-from links at diamond points; consider lifting agdebugger's graph component directly.
+- [REQ-05-017] Merge-back position: explicit non-support for automatic merge-back; done manually via Compare mode's three-way merge viewer.
+- [REQ-05-018] The DAG-capable data model ships as specified but UI renders as a simple linear list in the common single-fork case.
 
 ## 5.6 Three layers of activity - never conflate
 
-1. Plan layer - what should happen.
-2. Narrative layer - human-readable account of what is happening and why.
-3. Event layer - raw actions/observations/timestamps, on demand.
+1. [REQ-05-019] Plan layer - what should happen.
+2. [REQ-05-020] Narrative layer - human-readable account of what is happening and why.
+3. [REQ-05-021] Event layer - raw actions/observations/timestamps, on demand.
 
 ## 5.7 Session Profile Card
 

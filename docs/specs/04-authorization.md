@@ -39,9 +39,9 @@
 
 Hard correction (final, do not re-litigate): ConfirmationPolicyBase.should_confirm() receives only a SecurityRisk enum value - path-scoping logic is architecturally impossible at the policy layer. The correct implementation is a custom SecurityAnalyzerBase subclass (whose security_risk(action) DOES receive the full action) that elevates any out-of-worktree write to **HIGH** (corrected from "at least MEDIUM" by ADR-006; see the correction block above), composed into EnsembleSecurityAnalyzer, paired with standard ConfirmRisky(). Do not subclass ConfirmationPolicyBase for this stop.
 
-- Must be settable per task type, not only globally.
-- Must be mutable mid-run without cancelling the conversation - wire directly to conversation.set_confirmation_policy().
-- Race-condition rule: if the trust dial is made stricter while an action is WAITING_FOR_CONFIRMATION, that pending action is evaluated against the policy in force at the time it was raised and is never retroactively auto-approved or auto-rejected.
+- [REQ-04-001] Must be settable per task type, not only globally.
+- [REQ-04-002] Must be mutable mid-run without cancelling the conversation - wire directly to conversation.set_confirmation_policy().
+- [REQ-04-003] Race-condition rule: if the trust dial is made stricter while an action is WAITING_FOR_CONFIRMATION, that pending action is evaluated against the policy in force at the time it was raised and is never retroactively auto-approved or auto-rejected.
 
 ### 4.1.1 Policy-lock visualization
 
@@ -50,12 +50,12 @@ Add a small lock icon and tooltip on any pending authorization card explaining a
 ## 4.2 Interrupt / authorization cards
 
 When the conversation enters WAITING_FOR_CONFIRMATION, render a rail-anchored card containing:
-- The exact command/patch/tool call about to execute.
-- The risk level, labelled as **the LLM's** assessment — `ActionEvent.security_risk`, whose native field description reads "The LLM's assessment of the safety risk of this action" (`sdk/event/llm_convertible/action.py:66-69`). Never render it as an unattributed verdict.
-- ~~which analyzer flagged it (pattern/policy-rail/LLM/GraySwan/ensemble) plus rationale~~ — **REMOVED 2026-08-08 by ADR-015 Status amendment.** Not native and **not recoverable**: `SecurityAnalyzerBase.security_risk()` returns a bare four-value enum with no provenance carrier (`sdk/security/analyzer.py:26`, `sdk/security/risk.py:13-23`), and `EnsembleSecurityAnalyzer` collects child verdicts into a *local* list and returns `max(concrete)`, discarding attribution at the return boundary (`sdk/security/ensemble.py:80-101`). Displaying it would be manufacturing it.
-- **Substituted for the above, all native:** the LLM's own account of the action — `ActionEvent.summary` (LLM-provided ~10-word explainability string), `thought`, and `reasoning_content` (`action.py:26-88`) — each labelled as the agent's account, not an analyzer's justification. Optionally the **configured** analyzer set from `EnsembleSecurityAnalyzer.analyzers` (`ensemble.py:64-68`), labelled as configuration, never as attribution.
-- ~~Blast radius: files, paths, network hosts, **credentials touched**~~ — **"credentials touched" REMOVED 2026-08-08 by [ADR-023](../../adrs/ADR-023-blast-radius-projection-table.md).** No field on any of the **37** `Action` subclasses in the pinned suite carries credentials, secrets, tokens, keys, environment, or auth material (`docs/evidence/tool-action-fields.json`, verified across `openhands-sdk`, `openhands-tools`, `openhands-workspace`, `openhands-agent-server`). Same category as the analyzer-identity removal above: not unverified, **non-existent**. No substitute — a heuristic over command text would be the manufacture ADR-015 clause 3 forbids.
-- **Blast radius: files, paths, network hosts.** **Classified DERIVED** under ADR-015: a per-tool projection over the native `ActionEvent.action`, `tool_call`, and `tool_name` (`action.py:40-56`). Subject to all five DERIVED conditions, including **(e)** — the native inputs must be displayed inline at their native field names so the operator can audit the derivation. One declared formula per tool class; a tool class with no declared projection renders `null`, not an empty blast radius. An empty list and an uncomputed list must never look alike.
+- [REQ-04-004] The exact command/patch/tool call about to execute.
+- [REQ-04-005] The risk level, labelled as **the LLM's** assessment — `ActionEvent.security_risk`, whose native field description reads "The LLM's assessment of the safety risk of this action" (`sdk/event/llm_convertible/action.py:66-69`). Never render it as an unattributed verdict.
+- [REQ-04-006] ~~which analyzer flagged it (pattern/policy-rail/LLM/GraySwan/ensemble) plus rationale~~ — **REMOVED 2026-08-08 by ADR-015 Status amendment.** Not native and **not recoverable**: `SecurityAnalyzerBase.security_risk()` returns a bare four-value enum with no provenance carrier (`sdk/security/analyzer.py:26`, `sdk/security/risk.py:13-23`), and `EnsembleSecurityAnalyzer` collects child verdicts into a *local* list and returns `max(concrete)`, discarding attribution at the return boundary (`sdk/security/ensemble.py:80-101`). Displaying it would be manufacturing it.
+- [REQ-04-007] **Substituted for the above, all native:** the LLM's own account of the action — `ActionEvent.summary` (LLM-provided ~10-word explainability string), `thought`, and `reasoning_content` (`action.py:26-88`) — each labelled as the agent's account, not an analyzer's justification. Optionally the **configured** analyzer set from `EnsembleSecurityAnalyzer.analyzers` (`ensemble.py:64-68`), labelled as configuration, never as attribution.
+- [REQ-04-008] ~~Blast radius: files, paths, network hosts, **credentials touched**~~ — **"credentials touched" REMOVED 2026-08-08 by [ADR-023](../../adrs/ADR-023-blast-radius-projection-table.md).** No field on any of the **37** `Action` subclasses in the pinned suite carries credentials, secrets, tokens, keys, environment, or auth material (`docs/evidence/tool-action-fields.json`, verified across `openhands-sdk`, `openhands-tools`, `openhands-workspace`, `openhands-agent-server`). Same category as the analyzer-identity removal above: not unverified, **non-existent**. No substitute — a heuristic over command text would be the manufacture ADR-015 clause 3 forbids.
+- [REQ-04-009] **Blast radius: files, paths, network hosts.** **Classified DERIVED** under ADR-015: a per-tool projection over the native `ActionEvent.action`, `tool_call`, and `tool_name` (`action.py:40-56`). Subject to all five DERIVED conditions, including **(e)** — the native inputs must be displayed inline at their native field names so the operator can audit the derivation. One declared formula per tool class; a tool class with no declared projection renders `null`, not an empty blast radius. An empty list and an uncomputed list must never look alike.
 
   **Projection table ratified by [ADR-023](../../adrs/ADR-023-blast-radius-projection-table.md)** (field names verified in the pinned image):
 
@@ -71,17 +71,17 @@ When the conversation enters WAITING_FOR_CONFIRMATION, render a rail-anchored ca
   **Everything else renders no projection**, including `TerminalAction` (carries only an opaque `command: str` — deriving a radius means parsing shell, which under-reports; see ADR-023 Finding 1) and `MCPToolAction` (carries only `data: dict[str, Any]`, shaped at runtime by the connected MCP server — no static field set exists to project over, ADR-023 Finding 4).
 
   **Option B (ratified):** a tool with no projection still shows its native inputs **verbatim and unparsed**, under a heading that names the native field and states that no projection was computed — never under a "blast radius" heading. Showing the operator a command is not telling them what it will do. A test must fail if a projected value and a raw native value render under the same heading or with the same affordance.
-- If upstream context is tagged untrusted per 04a-prompt-injection.md, display a distinct badge separate from the risk badge.
-- Three actions: Approve / Reject with reason (free-text required) / Approve and relax for this class.
-- Wire Reject directly to conversation.reject_pending_actions(reason).
-- UX pattern references (read source directly, see 12-portable-components.md): agentkitai/agentgate's dashboard/policy engine, CopilotKit's human-in-the-loop example.
+- [REQ-04-010] If upstream context is tagged untrusted per 04a-prompt-injection.md, display a distinct badge separate from the risk badge.
+- [REQ-04-011] Three actions: Approve / Reject with reason (free-text required) / Approve and relax for this class.
+- [REQ-04-012] Wire Reject directly to conversation.reject_pending_actions(reason).
+- [REQ-04-013] UX pattern references (read source directly, see 12-portable-components.md): agentkitai/agentgate's dashboard/policy engine, CopilotKit's human-in-the-loop example.
 
 ### 4.2.1 Authorization audit log
 
-- Every approval, rejection-with-reason, and "relax for this class" event is written to a visible, exportable authorization log.
-- Every "relax for this class" grant is session-scoped and expires automatically at conversation end.
-- The trust-dial widget displays a live badge count of currently-active relaxations for the session.
-- Cross-links to the Context Inspector's per-item provenance data.
+- [REQ-04-014] Every approval, rejection-with-reason, and "relax for this class" event is written to a visible, exportable authorization log.
+- [REQ-04-015] Every "relax for this class" grant is session-scoped and expires automatically at conversation end.
+- [REQ-04-016] The trust-dial widget displays a live badge count of currently-active relaxations for the session.
+- [REQ-04-017] Cross-links to the Context Inspector's per-item provenance data.
 
 > **AMENDED 2026-08-08 by [ADR-020](../../adrs/ADR-020-audit-log-provenance-reference.md).**
 > The cross-link above named a consumer that does not exist in Phase 1 — the Context Inspector
@@ -140,9 +140,9 @@ The trust-class tagging described there is necessary but, per Principle 8, insuf
 ## 4.10 Speculative execution - a trust-dial-adjacent mode (execution scope demoted)
 
 A "Speculative" mode: the agent spawns N parallel attempts in disposable worktrees with varied prompts/constraints, auto-prunes failures, surfaces only survivors.
-- Tracked separately in the audit log.
-- Respects the budget model.
-- Scope: control, audit-log wiring, budget pre-check ship in Phase 1; actual spawn mechanism ships in Phase 6.
+- [REQ-04-018] Tracked separately in the audit log.
+- [REQ-04-019] Respects the budget model.
+- [REQ-04-020] Scope: control, audit-log wiring, budget pre-check ship in Phase 1; actual spawn mechanism ships in Phase 6.
 
 ## 4.11 Stuck-state intervention surface (elevated priority)
 

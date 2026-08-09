@@ -46,19 +46,19 @@ Do not treat this as a greenfield build. planner-tab.tsx, changes-tab.tsx, commi
 > remote conversations only. The frontend reaches policy behaviour through the OH-GUI
 > middleware API, never by calling these directly.
 
-- Confirmation policies: AlwaysConfirm(), NeverConfirm(), ConfirmRisky(threshold=HIGH, confirm_unknown=True) - each implements should_confirm(risk) returning bool, receiving only a SecurityRisk enum value, never paths/hosts/text. ConfirmRisky takes an explicit threshold argument (default HIGH) and defaults confirm_unknown to True - both must be named explicitly in the trust-dial table.
-- Security analyzer risk levels: LOW/MEDIUM/HIGH/UNKNOWN, produced by PatternSecurityAnalyzer, PolicyRailSecurityAnalyzer, LLMSecurityAnalyzer (default), GraySwanAnalyzer, EnsembleSecurityAnalyzer (max-severity aggregation). Analyzers implement security_risk(action) - DOES receive the full action.
-- ConversationExecutionStatus: IDLE, RUNNING, PAUSED, WAITING_FOR_CONFIRMATION, FINISHED, ERROR, STUCK, DELETING. FINISHED/ERROR/STUCK are terminal; IDLE is NOT terminal.
-- conversation.reject_pending_actions(reason) - clears agent_waiting_for_confirmation, emits UserRejectObservation per pending action.
-- conversation.set_confirmation_policy() - callable at runtime, no restart required.
-- Security gap: conversation.execute_tool() bypasses BOTH the analyzer and confirmation policy. Scoped to LocalConversation only.
-- ask_agent(question) - thread-safe, stateless, no persistence, callable concurrently with run().
-- Event model: LLM-convertible (MessageEvent, ActionEvent, ObservationEvent, UserRejectObservation, AgentErrorEvent, SystemPromptEvent, CondensationSummaryEvent) vs internal-only (ConversationStateUpdateEvent, CondensationRequest, Condensation, PauseEvent). Multiple ActionEvents can share one llm_response_id.
-- StatsConversationStateUpdateEvent does NOT exist - use the generic ConversationStateUpdateEvent.
-- Three distinct terminal-failure classes, never collapse: AgentErrorEvent (non-terminal), ConversationErrorEvent (terminal), partial streaming failure (stream dies mid-emission).
-- StuckDetector already ships in the SDK. Confirmed thresholds: 4+ identical action-observation pairs, 3+ action-error pairs, 3+ consecutive monologue turns, 6+ alternating cycles, any context-window error.
-- Hook-based blocking primitives: state.block_action(reason) / state.block_message(reason).
-- switch_llm built-in tool already exists to let a conversation switch its bound LLM mid-run.
+- [REQ-00-001] Confirmation policies: AlwaysConfirm(), NeverConfirm(), ConfirmRisky(threshold=HIGH, confirm_unknown=True) - each implements should_confirm(risk) returning bool, receiving only a SecurityRisk enum value, never paths/hosts/text. ConfirmRisky takes an explicit threshold argument (default HIGH) and defaults confirm_unknown to True - both must be named explicitly in the trust-dial table.
+- [REQ-00-002] Security analyzer risk levels: LOW/MEDIUM/HIGH/UNKNOWN, produced by PatternSecurityAnalyzer, PolicyRailSecurityAnalyzer, LLMSecurityAnalyzer (default), GraySwanAnalyzer, EnsembleSecurityAnalyzer (max-severity aggregation). Analyzers implement security_risk(action) - DOES receive the full action.
+- [REQ-00-003] ConversationExecutionStatus: IDLE, RUNNING, PAUSED, WAITING_FOR_CONFIRMATION, FINISHED, ERROR, STUCK, DELETING. FINISHED/ERROR/STUCK are terminal; IDLE is NOT terminal.
+- [REQ-00-004] conversation.reject_pending_actions(reason) - clears agent_waiting_for_confirmation, emits UserRejectObservation per pending action.
+- [REQ-00-005] conversation.set_confirmation_policy() - callable at runtime, no restart required.
+- [REQ-00-006] Security gap: conversation.execute_tool() bypasses BOTH the analyzer and confirmation policy. Scoped to LocalConversation only.
+- [REQ-00-007] ask_agent(question) - thread-safe, stateless, no persistence, callable concurrently with run().
+- [REQ-00-008] Event model: LLM-convertible (MessageEvent, ActionEvent, ObservationEvent, UserRejectObservation, AgentErrorEvent, SystemPromptEvent, CondensationSummaryEvent) vs internal-only (ConversationStateUpdateEvent, CondensationRequest, Condensation, PauseEvent). Multiple ActionEvents can share one llm_response_id.
+- [REQ-00-009] StatsConversationStateUpdateEvent does NOT exist - use the generic ConversationStateUpdateEvent.
+- [REQ-00-010] Three distinct terminal-failure classes, never collapse: AgentErrorEvent (non-terminal), ConversationErrorEvent (terminal), partial streaming failure (stream dies mid-emission).
+- [REQ-00-011] StuckDetector already ships in the SDK. Confirmed thresholds: 4+ identical action-observation pairs, 3+ action-error pairs, 3+ consecutive monologue turns, 6+ alternating cycles, any context-window error.
+- [REQ-00-012] Hook-based blocking primitives: state.block_action(reason) / state.block_message(reason).
+- [REQ-00-013] switch_llm built-in tool already exists to let a conversation switch its bound LLM mid-run.
 
 GPU/accelerator telemetry portability gap (closed): nvidia-smi does not exist on Apple Silicon or AMD hardware. The telemetry adapter MUST abstract across nvidia-smi, rocm-smi, powermetrics, and /sys/class/thermal.
 

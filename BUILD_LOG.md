@@ -3663,3 +3663,27 @@ The applied diff is now printed for every mutant.
 - **ADR-014:** reviewed for ratification and **not ratified** — all four gate items require executing a
   hook against a live pinned agent-server, which needs Colossus. Recorded in the ADR.
 - **Stop-condition status:** met · runner `=== PASSED ===` exit 0
+
+## 2026-08-09 01:52 EDT — ADR-028: living specs get permanent requirement ids and a coverage register
+
+- **Stage / plugin / port:** Phase 1 · cross-cutting · spec governance
+- **What changed:** Plans change during implementation; the corpus and the code then drift silently.
+  Four instances were on record, including a dangling `COVERAGE-forge-oh.md` referenced by all 14
+  donor-spec headers and never created. ADR-028 makes drift mechanically detectable: every normative
+  statement in an enrolled spec carries a permanent `REQ-<spec>-<nnn>` id that is never renumbered or
+  reused, a generated register records one status per id, and dropping a requirement requires an ADR
+  rather than a log line.
+  Assigned 78 ids by hand across 5 enrolled specs — 00 (13), 01 (11), 04 (20), 04a (13), 05 (21).
+  Auto-generation across all 16 was rejected: it lands ids on non-requirements and misses real ones,
+  producing a register that looks authoritative and is not.
+  Amendment 1 addresses the operator's credit constraint: out-of-sequence ROI-driven work is
+  legitimate, but every skip must be a recorded `DEFERRED` with a named phase, and work stops at a
+  landable boundary rather than at exhaustion.
+- **Files touched:** `adrs/ADR-028-*.md` (new), `adrs/README.md`, `scripts/spec_coverage.py` (new),
+  `docs/specs/COVERAGE.md` (new, generated), `docs/specs/{00,01,04,04a,05}-*.md`,
+  `docs/donor-specs/forge-oh/*.md` (14, dangling reference corrected)
+- **Ports / adapters affected:** none
+- **PORTING_LEDGER / ADR updated:** ADR-028 ratified with amendment 1
+- **Stop-condition status:** met at a landable boundary · the four gates in decision 4 are recorded
+  DEFERRED to Phase 1 by amendment 1 clause 3, not half-built
+- **Verification:** `spec_coverage.py` validate exit 0 · constraints runner exit 0
