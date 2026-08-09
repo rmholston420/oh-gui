@@ -24,9 +24,22 @@ GREEN, RED, YELLOW, DIM, OFF = "\033[1;32m", "\033[1;31m", "\033[1;33m", "\033[2
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("run_dir", type=Path)
+    ap.add_argument("run_dir", type=Path, nargs="?",
+                    help="run directory; defaults to the newest run that actually contains the "
+                         "requested mode. Picking the newest directory outright selects an aborted "
+                         "stage that never wrote a replicate.")
     ap.add_argument("--mode", default="screen")
     args = ap.parse_args()
+
+    if args.run_dir is None:
+        root = Path.home() / ".oh-gui" / "bench_toolcall"
+        candidates = [d for d in sorted(root.glob("*/"), reverse=True)
+                      if any(d.glob(f"{args.mode}__cell-*.json"))]
+        if not candidates:
+            print(f"{RED}no run under {root} contains {args.mode} replicates{OFF}", file=sys.stderr)
+            return 1
+        args.run_dir = candidates[0]
+        print(f"{DIM}run: {args.run_dir}{OFF}")
 
     by_id = {task["id"]: task for task in load_tasks()}
     files = sorted(args.run_dir.glob(f"{args.mode}__cell-*.json"))
