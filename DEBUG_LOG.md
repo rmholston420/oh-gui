@@ -2074,3 +2074,30 @@ gating" defect class in this repo.
   the guard; reverting restored green. Verified, not assumed.
 - **Files changed:** `apps/gui/e2e/plugins-live.spec.ts`, `apps/gui/e2e/testids.spec.ts` (new)
 - **Related BUILD_LOG entry:** 2026-08-09 07:42 EDT
+
+## 2026-08-09 07:57 EDT — GET /api/changes -> HTTP 404; the route is /api/git/changes
+
+- **Symptom:** `Error: GET /api/changes -> HTTP 404` on the first live change-review run. Test 1 of
+  3 failed in 9 ms; tests 2 and 3 did not run. The container was healthy (`git version 2.47.3`,
+  repository built successfully), so the request was simply aimed at a path that does not exist.
+- **Affected stage / plugin / port:** Phase 1 · GUI · change review · agent-server HTTP client
+- **Root cause:** a FastAPI path is assembled from three places — the decorator, the router's own
+  `prefix=`, and the prefix of the router that includes it. I read `@git_router.get("/changes")`
+  and `api_router = APIRouter(prefix="/api")` and stopped, missing
+  `git_router = APIRouter(prefix="/git")` at `git_router.py:22`. The real routes are
+  `/api/git/changes` and `/api/git/diff`.
+- **Why nothing caught it:** a URL is a string. `tsc` cannot type it, the unit tests inject a fake
+  client and never touch a URL, and the live spec asserted the same wrong path the client used, so
+  the two agreed with each other and disagreed with the server. This is the second time in this
+  session that a value read from memory or read partially went unchallenged until the operator ran
+  it — after the fabricated `plugin-card-oh-gui` locator.
+- **Fix applied:** corrected both paths, and added a gate that makes the *class* unrepeatable:
+  `scripts/check-api-paths.py` parses the pinned SDK source, composes decorator + router prefix +
+  including-router prefix into 98 real routes, and fails when any path in `agentServer.ts` matches
+  none of them. Mutation-tested: reverting the path to `/changes` is reported as `/api/changes`
+  unresolved; four pytest cases pin it, including one asserting the parser finds client paths at all
+  so the check cannot pass vacuously.
+- **Files changed:** `apps/gui/src/api/agentServer.ts`, `apps/gui/src/api/types.ts`,
+  `apps/gui/e2e/change-review-live.spec.ts`, `scripts/hard_constraints/api_paths.py` (new),
+  `scripts/check-api-paths.py` (new), `scripts/tests/test_api_paths.py` (new)
+- **Related BUILD_LOG entry:** 2026-08-09 07:57 EDT

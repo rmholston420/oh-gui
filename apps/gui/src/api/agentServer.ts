@@ -149,17 +149,19 @@ export const agentServer: AgentServerClient = {
   },
 
   /**
-   * `GET /api/changes?path=<repo>` (`git_router.py:115`). `path` is the **repository directory**.
+   * `GET /api/git/changes?path=<repo>`. The path has **two** prefixes: `/api` on the including
+   * router (`api.py:428`) and `/git` on `git_router` itself (`git_router.py:22`). Reading only the
+   * `@git_router.get("/changes")` decorator yields `/api/changes`, which is a 404.. `path` is the **repository directory**.
    * A path that is not a git repository returns `[]`, not an error (`git_router.py:47`).
    */
   async listGitChanges(repoPath: string, ref?: string) {
     const query = new URLSearchParams({ path: repoPath });
     if (ref) query.set('ref', ref);
-    return requestJson<GitChange[]>(`/changes?${query.toString()}`);
+    return requestJson<GitChange[]>(`/git/changes?${query.toString()}`);
   },
 
   /**
-   * `GET /api/diff?path=<file>` (`git_router.py:131`). Here `path` is a **single file**, not the
+   * `GET /api/git/diff?path=<file>` (`git_router.py:22,131`). Here `path` is a **single file**, not the
    * repository -- the two endpoints spell the same parameter name differently, which is the kind
    * of asymmetry that only a reading of the router reveals.
    *
@@ -172,7 +174,7 @@ export const agentServer: AgentServerClient = {
     const query = new URLSearchParams({ path: filePath });
     if (options.ref) query.set('ref', options.ref);
     if (options.commit) query.set('commit', options.commit);
-    return requestJson<GitDiff>(`/diff?${query.toString()}`);
+    return requestJson<GitDiff>(`/git/diff?${query.toString()}`);
   },
 
   async listPlugins(request = {}) {

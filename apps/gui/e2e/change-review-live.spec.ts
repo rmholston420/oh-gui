@@ -4,6 +4,10 @@ import { expect, test } from '@playwright/test';
 /**
  * LIVE change review against the real Agent Server. Nothing is mocked.
  *
+ * The endpoints are `/api/git/changes` and `/api/git/diff`: `/api` from the including router and
+ * `/git` from `git_router` itself. The first version of this spec asked for `/api/changes` and got
+ * a 404 -- the decorator alone does not tell you the path.
+ *
  * A fixture cannot prove the two things that actually matter here. First, `/api/changes` and
  * `/api/diff` spell their `path` parameter the same way but mean different things -- a repository
  * directory and a single file. Second, `/api/diff` returns whole file contents rather than a
@@ -90,9 +94,9 @@ test.describe('@live change review against agent-server', () => {
 
   test('the server reports exactly the working-tree changes', async ({ request }) => {
     const response = await request.get(
-      `${AGENT_SERVER}/api/changes?path=${encodeURIComponent(REPO_DIR)}`,
+      `${AGENT_SERVER}/api/git/changes?path=${encodeURIComponent(REPO_DIR)}`,
     );
-    expect(response.ok(), `GET /api/changes -> HTTP ${response.status()}`).toBe(true);
+    expect(response.ok(), `GET /api/git/changes -> HTTP ${response.status()}`).toBe(true);
     const changes = (await response.json()) as { status: string; path: string }[];
     const byPath = Object.fromEntries(changes.map((change) => [change.path, change.status]));
     step(`server reported: ${JSON.stringify(byPath)}`);
@@ -108,9 +112,9 @@ test.describe('@live change review against agent-server', () => {
     request,
   }) => {
     const response = await request.get(
-      `${AGENT_SERVER}/api/diff?path=${encodeURIComponent(`${REPO_DIR}/edited.txt`)}`,
+      `${AGENT_SERVER}/api/git/diff?path=${encodeURIComponent(`${REPO_DIR}/edited.txt`)}`,
     );
-    expect(response.ok(), `GET /api/diff -> HTTP ${response.status()}`).toBe(true);
+    expect(response.ok(), `GET /api/git/diff -> HTTP ${response.status()}`).toBe(true);
     const diff = (await response.json()) as { original: string | null; modified: string | null };
 
     // Both sides complete, no `@@` hunk headers: the contract this feature is built on.

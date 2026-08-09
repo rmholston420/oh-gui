@@ -4608,3 +4608,17 @@ The applied diff is now printed for every mutant.
 - **Evidence:** 264 vitest pass (was 244; +11 diff, +9 panel), `tsc --noEmit` clean, testids guard
   green, 3 live tests enumerated.
 - **Stop-condition status:** in-progress -- unwitnessed until the live run.
+
+## 2026-08-09 07:57 EDT — Endpoint paths are now checked against the pinned SDK source
+
+- **Stage / plugin / port:** Phase 1 · GUI · agent-server HTTP client (cross-cutting gate)
+- **What changed:** `/api/changes` and `/api/diff` corrected to `/api/git/changes` and
+  `/api/git/diff` after a live 404. New gate `scripts/check-api-paths.py` composes every route the
+  pinned agent-server serves (decorator + `APIRouter(prefix=)` + including router) and fails on any
+  client path that resolves to none of them.
+- **Evidence:** 98 routes parsed, 4 client paths resolve, 4 pytest cases, mutation-tested by
+  restoring the bug and watching the gate report it. 264 vitest pass, `tsc` clean.
+- **Files touched:** `scripts/hard_constraints/api_paths.py`, `scripts/check-api-paths.py`,
+  `scripts/tests/test_api_paths.py`, `apps/gui/src/api/{agentServer.ts,types.ts}`,
+  `apps/gui/e2e/change-review-live.spec.ts`
+- **Stop-condition status:** in-progress — change review still unwitnessed live.

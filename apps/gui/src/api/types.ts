@@ -299,7 +299,7 @@ export interface PluginsResponse {
  */
 export type GitChangeStatus = 'MOVED' | 'ADDED' | 'DELETED' | 'UPDATED';
 
-/** Native: `GitChange`, `openhands/sdk/git/models.py:16`. Returned by `GET /api/changes`. */
+/** Native: `GitChange`, `openhands/sdk/git/models.py:16`. Returned by `GET /api/git/changes`. */
 export interface GitChange {
   readonly status: GitChangeStatus;
   /** POSIX path, serialised by `_serialize_path` (models.py:20). */
@@ -307,7 +307,7 @@ export interface GitChange {
 }
 
 /**
- * Native: `GitDiff`, `openhands/sdk/git/models.py:25`. Returned by `GET /api/diff`.
+ * Native: `GitDiff`, `openhands/sdk/git/models.py:25`. Returned by `GET /api/git/diff`.
  *
  * These are **whole file contents**, not a unified diff -- the server hands back both sides and
  * the client computes the difference. Either side is `null`: `original` for an added file,
