@@ -41,8 +41,18 @@ function PluginCard({ plugin }: { plugin: PluginInfo }) {
         <span className="font-mono text-xs text-slate-400">
           {plugin.version === '' ? 'no version declared' : `v${plugin.version}`}
         </span>
-        <span className="ml-auto rounded bg-slate-800 px-2 py-0.5 text-xs text-slate-300">
-          {skillCount === 1 ? '1 skill' : `${skillCount} skills`}
+        {/*
+          * The server reports `Plugin.get_all_skills()` (plugins_service.py:177), which is the
+          * bundled skills *plus* one keyword-triggered skill synthesised per command. For this
+          * repo's plugin that is 18 + 4 = 22. Calling it "22 skills" would misdescribe what is on
+          * disk; the response carries no flag distinguishing the two, and ADR-015 forbids guessing
+          * one from the names. So the count is reported as what it actually is.
+          */}
+        <span
+          className="ml-auto rounded bg-slate-800 px-2 py-0.5 text-xs text-slate-300"
+          title="Bundled skills plus one keyword-triggered skill per command."
+        >
+          {skillCount === 1 ? '1 agent-visible skill' : `${skillCount} agent-visible skills`}
         </span>
       </div>
 
@@ -63,7 +73,7 @@ function PluginCard({ plugin }: { plugin: PluginInfo }) {
             aria-expanded={showSkills}
             onClick={() => setShowSkills((open) => !open)}
           >
-            {showSkills ? 'Hide skills' : `Show ${skillCount === 1 ? 'skill' : 'skills'}`}
+            {showSkills ? 'Hide skills' : 'Show skills'}
           </button>
           {showSkills && (
             <ul className="mt-2 space-y-2" aria-label={`Skills in ${plugin.name}`}>
@@ -127,7 +137,9 @@ export default function PluginsPanel({ projectDir = null, listPlugins }: Plugins
         </button>
       </div>
       <p className="mt-1 text-xs text-slate-400">
-        Discovered by the agent-server in the user and project plugin directories. Read-only.
+        Discovered by the agent-server in the user and project plugin directories. Read-only. Each
+        plugin command also appears as a keyword-triggered skill, so the count exceeds the number of
+        skill directories on disk.
       </p>
 
       {state.status === 'loading' && (

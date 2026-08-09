@@ -29,7 +29,7 @@ describe('PluginsPanel', () => {
     render(<PluginsPanel listPlugins={respond([OH_GUI])} />);
     expect(await screen.findByText('oh-gui')).toBeInTheDocument();
     expect(screen.getByText('v0.1.0')).toBeInTheDocument();
-    expect(screen.getByText('2 skills')).toBeInTheDocument();
+    expect(screen.getByText('2 agent-visible skills')).toBeInTheDocument();
   });
 
   it('scans both the user and project directories, forwarding the project dir', async () => {
@@ -83,9 +83,17 @@ describe('PluginsPanel', () => {
     await waitFor(() => expect(listPlugins).toHaveBeenCalledTimes(2));
   });
 
+  it('calls the count agent-visible, because commands are counted as skills upstream', async () => {
+    // `get_all_skills()` adds one keyword-triggered skill per command. "N skills" would claim N
+    // skill directories exist on disk, which is false whenever the plugin ships a command.
+    render(<PluginsPanel listPlugins={respond([OH_GUI])} />);
+    await screen.findByText('oh-gui');
+    expect(screen.queryByText('2 skills')).not.toBeInTheDocument();
+  });
+
   it('renders a plugin that declares no version without inventing one', async () => {
     render(<PluginsPanel listPlugins={respond([{ ...OH_GUI, version: '', skills: [] }])} />);
     expect(await screen.findByText('no version declared')).toBeInTheDocument();
-    expect(screen.getByText('0 skills')).toBeInTheDocument();
+    expect(screen.getByText('0 agent-visible skills')).toBeInTheDocument();
   });
 });

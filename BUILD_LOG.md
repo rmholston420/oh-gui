@@ -4470,3 +4470,23 @@ The applied diff is now printed for every mutant.
 - **Evidence:** 236 vitest pass (was 228), `tsc --noEmit` clean, hard constraints green, 73 script
   tests green. Live Playwright run is operator-witnessed and pending.
 - **Stop-condition status:** met for Tier 2; live witness outstanding.
+
+## 2026-08-09 07:05 EDT — live run corrected two of my errors: skill count and teardown
+
+- **Stage / plugin / port:** Phase 1 · GUI · plugins surface
+- **Symptom 1:** live spec asserted `18 skills`; the server rendered `22 skills`.
+- **Root cause:** the server reports `Plugin.get_all_skills()` (`plugins_service.py:177`), which is
+  the 18 skill directories on disk **plus one keyword-triggered skill synthesised per command**, of
+  which this plugin ships 4. The server was right and my assertion was wrong. I had this number in
+  hand from the direct SDK load an hour earlier — `all: 22` — and still pinned 18.
+- **Fix:** the badge now reads "N agent-visible skills" and the panel says why the count exceeds the
+  directories on disk. `PluginInfo` carries no flag separating the two and ADR-015 forbids inferring
+  one from the names, so the count is reported as what it is rather than filtered into a guess.
+- **Symptom 2:** `afterAll` teardown failed with `Permission denied` on every copied file, and the
+  noise buried the real assertion failure.
+- **Root cause:** `docker cp` writes as root; the agent-server container runs unprivileged. Fixed
+  with `docker exec -u 0` for the cleanup only.
+- **Files changed:** `apps/gui/src/features/plugins/PluginsPanel.tsx`, `PluginsPanel.test.tsx`,
+  `apps/gui/e2e/plugins-live.spec.ts`
+- **Evidence:** 237 vitest pass, `tsc --noEmit` clean. Live re-run pending.
+- **Stop-condition status:** in-progress — awaiting the live witness.

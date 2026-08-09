@@ -56,7 +56,10 @@ test.describe('@live plugins panel against agent-server', () => {
   });
 
   test.afterAll(() => {
-    docker('exec', CONTAINER, 'rm', '-rf', PROJECT_DIR);
+    // `-u 0`: `docker cp` writes as root, and the agent-server container runs as a non-root user,
+    // so an unprivileged `rm -rf` fails on every copied file. Without this the teardown error
+    // masks the real test result.
+    docker('exec', '-u', '0', CONTAINER, 'rm', '-rf', PROJECT_DIR);
   });
 
   test('reports the oh-gui plugin and every skill it bundles', async ({ page }) => {
@@ -67,16 +70,17 @@ test.describe('@live plugins panel against agent-server', () => {
     await expect(card).toBeVisible({ timeout: 30_000 });
     step('plugin card rendered');
 
-    // Pinned to the count on disk. If a skill is added without updating this, the mismatch is the
-    // point: it means the live server disagrees with the repo about what ships.
-    await expect(card.getByText(/^\d+ skills$/)).toHaveText('18 skills');
+    // 22, not 18. The server reports `get_all_skills()`: the 18 skill directories on disk plus one
+    // keyword-triggered skill synthesised per command, of which this plugin ships 4. This spec
+    // originally asserted 18 and was wrong -- the live server was right.
+    await expect(card.getByText(/^\d+ agent-visible skills$/)).toHaveText('22 agent-visible skills');
     await expect(card).toContainText('v0.1.0');
 
     await card.getByRole('button', { name: /^Show skills$/ }).click();
     const skills = card.getByRole('list', { name: 'Skills in oh-gui' }).getByRole('listitem');
-    await expect(skills).toHaveCount(18);
+    await expect(skills).toHaveCount(22);
     await expect(skills.filter({ hasText: 'oh-gui-repo-navigation' })).toHaveCount(1);
-    step('all 18 skills listed live');
+    step('all 22 agent-visible skills listed live');
   });
 
   test('the installed endpoint does not report a project plugin', async ({ request }) => {
