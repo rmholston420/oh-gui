@@ -220,3 +220,34 @@ ceiling and refuses to dispatch if the projection exceeds it.
 
 A run violating this manifest or ADR-013 clauses 1–7 is exploratory only and
 must not support a model-selection claim.
+
+## Protocol amendment — 2026-08-09 06:14 EDT (screening evidence)
+
+**What changed.** `missing_required_arg:*` and `invalid_arg:*` are reclassified from unmeasurable
+tool-call failures (`resolved=None`) to measured quality failures (`resolved=False`).
+`resolved=None` now means only that the outcome could not be *observed*: no call, malformed
+envelope, or arguments that are not a JSON object.
+
+**Why.** `pass_rate` is computed over accepted trials. Folding argument errors to `None` removed a
+model's own errors from its own denominator, scoring it as though the instrument had failed. On
+the 40-task screening split this was the dominant effect, not a rounding one: 134 of 216 failures
+were observed model errors being discarded. Every cell reported 89-100% and the ranking was flat
+across a 44x parameter range, with `missing_required_arg:old_str` landing on exactly 5 tasks in
+seven different cells — a constant that model capability cannot produce.
+
+**Why this is not outcome-driven revision.** The design reserves a 40-task screening split
+disjoint from the 80-task confirmatory split so that design faults can be found and corrected
+before the confirmatory run, and the correction then tested on tasks that had no part in
+motivating it. That is the mechanism being used here. The amendment is declared before any
+confirmatory replicate is graded under it: the confirmatory stage was stopped mid-run and its
+partial output is discarded, not scored.
+
+**Effect on the registered calibration.** \(p_A=0.60\) and \(p_B=0.50\) were set against the old
+predicate, which inflated both. The amended predicate lowers observed acceptance and *raises* the
+measured-pair count, since fewer tasks fold to `null`. Discordance headroom therefore moves in the
+favourable direction and the attainability gate is re-run before the confirmatory stage rather
+than assumed.
+
+**Re-grading rather than re-running.** Each replicate persists the assistant `tool_calls`
+verbatim, so the screening run is rescored offline by `bench/toolcall/regrade.py` at zero GPU cost.
+Captured replicates are immutable; re-grades are written to `<run>/regraded/`.

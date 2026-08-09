@@ -4263,3 +4263,31 @@ The applied diff is now printed for every mutant.
   `adrs/README.md` (ADR-033 row; ADR-032 status corrected to Ratified), `PORTING_LEDGER.md`
 - **Stop-condition status:** ADR is Proposed and awaits the operator on the deferred-embeddings
   question. Adoption is gated on ADR-016 measurement, so nothing installs yet.
+
+## 2026-08-09 06:14 EDT — ADR-016 grading predicate amended; confirmatory stage stopped
+
+- **Stage / plugin / port:** Phase 0 · ADR-016 tool-call benchmark · grading predicate
+- **What changed:** argument errors reclassified from `resolved=None` to `resolved=False`.
+  `bench/toolcall/regrade.py` added so the completed screening run is rescored from persisted
+  `tool_calls` at zero GPU cost. MANIFEST gains a dated protocol amendment; ADR-016 gains a status
+  amendment.
+- **Files touched:** `bench/toolcall/grading.py`, `bench/toolcall/tests/test_grading.py`,
+  `bench/toolcall/regrade.py`, `bench/toolcall/MANIFEST.md`, `adrs/ADR-016-*.md`, `DEBUG_LOG.md`
+- **Mutation evidence:** the two tests encoding the old predicate went red on the change rather
+  than passing through it, and a third test now pins the `None`/`False` boundary from both sides.
+- **Stop-condition status:** confirmatory stage stopped and its partial output discarded. Next
+  action is the offline re-grade, then re-running the attainability gate under the amended
+  predicate before spending GPU time again.
+
+## 2026-08-09 06:14 EDT — ADR-034 drafted: the approval gate is pointer-aware
+
+- **Stage / plugin / port:** Phase 1 · authorization surface · `viewport.ts`, `AuthorizationCard`
+- **What changed:** the 900px read-only floor applied to every device, killing all authorization
+  controls on the operator's ordinary quarter-width window (860px on 3440x1440). ADR-034 splits
+  the gate along the two threats it always conflated: mis-tap is a pointer property (touch keeps
+  900px), unreadable evidence is a width property (mouse floors at 768px, the card's own
+  `max-w-3xl`). Unknown pointer capability resolves to the stricter floor.
+- **Files touched:** `adrs/ADR-034-approval-gate-is-pointer-aware.md`,
+  `apps/gui/src/features/authorization/viewport.ts`, `AuthorizationCard.tsx`,
+  `apps/gui/src/__tests__/authorization-card.test.tsx`
+- **Stop-condition status:** ADR Proposed; implementation in progress, tests being repaired.

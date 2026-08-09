@@ -68,10 +68,22 @@ def _result(*, resolved: bool | None, tool_call_failure: str | None = None,
 def grade_message(task: Mapping[str, Any], message: Mapping[str, Any] | None) -> dict[str, Any]:
     """Grade an assistant message against a task's declared predicate.
 
-    ``resolved=None`` is reserved for structural tool-call failures: no call,
-    malformed call envelope, or arguments that are not a JSON object. Missing or invalid required
-    arguments are also malformed tool calls. A valid call that selects the
-    wrong tool is a measured quality failure (``resolved=False``).
+    ``resolved=None`` is reserved for responses whose outcome could not be *observed*: no call at
+    all, a malformed call envelope, or arguments that are not a JSON object. In those cases the
+    instrument failed, not the model.
+
+    A well-formed call whose arguments are wrong is the opposite: fully observed, unambiguously the
+    model's doing, and the single most informative thing this benchmark measures. It is a quality
+    failure (``resolved=False``), exactly like selecting the wrong tool.
+
+    **Amended 2026-08-09 on screening evidence (ADR-016, MANIFEST "Protocol amendments").** The
+    original predicate folded `missing_required_arg:*` and `invalid_arg:*` to ``None``. Because
+    `pass_rate` is computed over accepted trials, that deleted a model's argument errors from its
+    own denominator instead of counting them against it. Screening showed the effect is dominant:
+    134 of 216 failures were observed model errors being discarded as instrument failures, which
+    compressed every cell to 89-100% and flattened the ranking across a 44x parameter range. The
+    amendment is made on the 40-task screening split and tested on the disjoint 80-task
+    confirmatory split, which is precisely what the split exists for.
     """
     if not isinstance(message, Mapping):
         return _result(resolved=None, tool_call_failure="missing_assistant_message")
@@ -103,8 +115,8 @@ def grade_message(task: Mapping[str, Any], message: Mapping[str, Any] | None) ->
         return _result(resolved=False, quality_failure="wrong_tool", tool_name=name)
     for arg in expected["required_args"]:
         if arg not in arguments:
-            return _result(resolved=None, tool_call_failure=f"missing_required_arg:{arg}", tool_name=name)
+            return _result(resolved=False, quality_failure=f"missing_required_arg:{arg}", tool_name=name)
     for arg, constraint in expected.get("arg_constraints", {}).items():
         if arg in arguments and not _constraint_matches(arguments[arg], constraint):
-            return _result(resolved=None, tool_call_failure=f"invalid_arg:{arg}", tool_name=name)
+            return _result(resolved=False, quality_failure=f"invalid_arg:{arg}", tool_name=name)
     return _result(resolved=True, tool_name=name)

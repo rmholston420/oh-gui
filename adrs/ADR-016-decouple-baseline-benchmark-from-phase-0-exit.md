@@ -1,5 +1,14 @@
 # ADR-016 — The benchmark gates a claim, not the code: decouple the baseline report from Phase 0 exit
 
+> **STATUS AMENDMENT (2026-08-09 06:14 EDT):** the grading predicate is amended on screening
+> evidence. Argument errors (`missing_required_arg:*`, `invalid_arg:*`) are measured quality
+> failures, not unmeasurable tool-call failures; `resolved=None` is reserved for responses whose
+> outcome could not be observed. The original predicate deleted a model's argument errors from its
+> own denominator, compressing all nine screening cells to 89-100% and flattening the ranking. The
+> screening split exists to catch exactly this before the confirmatory stage; the confirmatory run
+> was stopped mid-flight and its partial output discarded rather than scored. See
+> `bench/toolcall/MANIFEST.md`, "Protocol amendment — 2026-08-09".
+
 > **STATUS AMENDMENT (2026-08-09 03:56 EDT):** Clause 5's one-hour GPU cap superseded for the
 > tool-call benchmark only, raising it to 3.5 hours.
 >

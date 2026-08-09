@@ -1939,3 +1939,25 @@ gating" defect class in this repo.
   `$HOME`, so a workspace path outside home will fail once the GUI makes it selectable.
 - **Files changed:** none (environment)
 - **Related BUILD_LOG entry:** 2026-08-09 05:44 EDT
+
+## 2026-08-09 06:14 EDT — every benchmark cell reports 89-100% and the ranking is flat
+
+- **Symptom:** screening reported `pass_rate` 89-100% for all nine cells with
+  `tool_call_failures` of 19-27 out of 40 on each, including `qwen3.5:0.8b-q8_0` and
+  `qwen3.6:35b-a3b-mtp-coder`. `missing_required_arg:old_str` was exactly 5 in seven separate
+  cells and `insert_line` 2-3 in all of them. Wall clock was 7.1 min against a 69.9 min
+  projection.
+- **Affected stage / plugin / port:** Phase 0 · ADR-016 benchmark · `bench/toolcall/grading.py`
+- **Root cause:** `grade_message` returned `resolved=None` for `missing_required_arg:*` and
+  `invalid_arg:*`. `resolved=None` means unmeasurable and is excluded from the `pass_rate`
+  denominator, so a well-formed call with wrong arguments — fully observed, unambiguously the
+  model's error — was deleted from that model's score instead of counted against it. 134 of 216
+  failures were discarded this way, compressing every cell toward 100%. The identical per-cell
+  constants were the tell: capability differences cannot produce the same count in seven cells.
+- **Fix applied:** argument errors reclassified to `resolved=False` with a `quality_failure`
+  reason. `resolved=None` now covers only unobservable outcomes. Amendment recorded in the
+  MANIFEST and ADR-016; screening rescored offline via the persisted `tool_calls` rather than
+  re-run.
+- **Files changed:** `bench/toolcall/grading.py`, `bench/toolcall/tests/test_grading.py`,
+  `bench/toolcall/regrade.py`, `bench/toolcall/MANIFEST.md`, `adrs/ADR-016-*.md`
+- **Related BUILD_LOG entry:** 2026-08-09 06:14 EDT
