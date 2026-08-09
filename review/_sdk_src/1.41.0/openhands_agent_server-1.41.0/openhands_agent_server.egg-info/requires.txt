@@ -1,0 +1,14 @@
+aiosqlite>=0.19
+alembic>=1.13
+docker<8,>=7.1
+fastapi>=0.104
+openhands-sdk
+openai<3,>=2.33.0
+pydantic>=2
+sqlalchemy>=2
+uvicorn>=0.31.1
+websockets>=12
+wsproto>=1.2.0
+
+[posthog]
+posthog<7,>=6

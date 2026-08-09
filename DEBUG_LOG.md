@@ -1840,3 +1840,22 @@ gating" defect class in this repo.
 - **Rule tightened:** never `git add -A` while any subagent shares the working tree. Stage explicit paths matching the change being described, and run `git status --short` first to see what else is in flight.
 - **Files changed:** none (process record)
 - **Related BUILD_LOG entry:** 2026-08-09 03:16 EDT
+
+## 2026-08-09 03:31 EDT — constraints gate passed in the agent sandbox and failed in every fresh clone
+
+- **Symptom:** operator ran `npm run gate` after pulling and got `=== FAILED with 1 red condition(s) ===` on the gate "Every file under `review/_sdk_src/` is byte-identical to the published upstream artifact". The identical command in the agent sandbox printed `=== PASSED ===`.
+- **Affected stage / plugin / port:** tooling · `scripts/hard_constraints/checks.py::evidence_snapshot_matches_upstream`
+- **Root cause:** `.gitignore` line 8 is `*.egg-info/`, which matched 21 files inside the vendored SDK evidence snapshot (`review/_sdk_src/1.41.0/*/[pkg].egg-info/`). Those 21 files are recorded in `MANIFEST.sha256`, so the predicate's `recorded - present` arm fired for every one of them in a clean checkout. The agent sandbox had the files on disk as a side effect of having unpacked the sdists there, so the same predicate saw a complete snapshot and passed. The gate was therefore reporting the state of one machine's scratch space rather than the state of the repository.
+- **Fix applied:** added a negation after the ignore rule — `!review/_sdk_src/**/*.egg-info/` — and committed the 21 files. A published sdist genuinely ships its own `.egg-info`, so those files are part of the upstream artifact the snapshot is supposed to reproduce; the manifest was right and the ignore rule was wrong.
+- **Verification:** cloned the pushed repository into an empty directory and ran the constraints script there. Before the fix that clone reproduced the operator's red condition; after the fix it passes. Checked in a clone, not in the working tree, because the working tree is exactly what hid the defect.
+- **Files changed:** `.gitignore`, `review/_sdk_src/1.41.0/**/*.egg-info/*` (21 files)
+- **Related BUILD_LOG entry:** 2026-08-09 03:38 EDT
+
+## 2026-08-09 03:33 EDT — live e2e probe reported a healthy agent-server as dead
+
+- **Symptom:** `npm run watch:live` aborted in `beforeAll` with "agent-server is not answering at http://127.0.0.1:8000 (HTTP 422)". The server was running and healthy; `docker start ohg-verify` had succeeded moments earlier.
+- **Affected stage / plugin / port:** `apps/gui/e2e/live-run.spec.ts` · agent-server contract
+- **Root cause:** the probe used `GET /api/conversations` and asserted `response.ok()`. That route returns 422 on a bodyless GET — a rough edge already recorded in `docs/agent-server-contract.md`, which the probe was written in spite of. 422 proves the server is up; treating it as failure inverted the signal.
+- **Fix applied:** probe `GET /ready` instead. It is mounted at the root rather than under `/api` (`APIRouter(prefix="")` included with no prefix, `openhands/agent_server/server_details_router.py:17,97,103`), and it returns 503 until initialization completes, so a pass means the server can actually accept a conversation rather than merely that a socket is open.
+- **Files changed:** `apps/gui/e2e/live-run.spec.ts`
+- **Related BUILD_LOG entry:** 2026-08-09 03:38 EDT

@@ -32,22 +32,29 @@ test.describe('@live real conversation against agent-server', () => {
   test.describe.configure({ mode: 'serial', timeout: LIVE_TIMEOUT_MS });
 
   test.beforeAll(async ({ request }) => {
-    let reachable = false;
+    // `/health` and `/ready` are mounted at the ROOT, not under `/api`: the agent-server builds
+    // them on an `APIRouter(prefix="")` included with no prefix
+    // (`openhands/agent_server/server_details_router.py:17,97`). An earlier version of this probe
+    // used `GET /api/conversations`, which returns 422 on a bodyless GET — a documented rough edge
+    // in `docs/agent-server-contract.md`. That made a healthy server look dead.
+    //
+    // `/ready` is the one that matters: it 503s until initialization completes, so a pass here
+    // means the server can actually accept a conversation, not merely that a process is listening.
     let detail: string;
+    let ready = false;
     try {
-      // `/api/conversations` answers a bodyless GET; `/events` does not (it 422s), which is why
-      // the liveness probe is not pointed at the events route.
-      const response = await request.get(`${AGENT_SERVER}/api/conversations`, { timeout: 5_000 });
-      reachable = response.ok();
-      detail = `HTTP ${response.status()}`;
+      const response = await request.get(`${AGENT_SERVER}/ready`, { timeout: 5_000 });
+      ready = response.ok();
+      detail = `GET /ready -> HTTP ${response.status()}`;
     } catch (error) {
-      detail = error instanceof Error ? error.message : String(error);
+      detail = `GET /ready -> ${error instanceof Error ? error.message : String(error)}`;
     }
     expect(
-      reachable,
-      `agent-server is not answering at ${AGENT_SERVER} (${detail}).\n` +
-        'Start it, then re-run:\n' +
-        '  docker start ohg-verify\n',
+      ready,
+      `agent-server is not ready at ${AGENT_SERVER} (${detail}).\n` +
+        'Start it and wait for initialization, then re-run:\n' +
+        '  docker start ohg-verify\n' +
+        '  curl -s http://127.0.0.1:8000/ready\n',
     ).toBe(true);
   });
 
