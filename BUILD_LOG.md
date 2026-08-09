@@ -4571,3 +4571,15 @@ The applied diff is now printed for every mutant.
 - **Files touched:** `apps/gui/e2e/plugins-live.spec.ts`, `apps/gui/e2e/testids.spec.ts` (new)
 - **Evidence:** guard green; mutation-tested by renaming a real id, which it caught by name.
 - **Stop-condition status:** in-progress -- rail navigation still unwitnessed live.
+
+## 2026-08-09 07:44 EDT — rail navigation witnessed live, 3/3 green
+
+- **Stage / plugin / port:** Phase 1 · GUI · shell navigation
+- **What changed:** nothing; this records the operator-witnessed run that closes the slice.
+- **Evidence (operator's machine, headed, 1 worker):** `plugins-live --grep @live` **3 passed
+  (1.8s)**. Steps observed: navigation reachable at 1280px hosted in the command bar; plugins
+  surface reached by clicking; **run surface still mounted, not destroyed**; return to run;
+  navigation moves into the rail at 1800px with exactly one copy. `testids` guard green in 9ms.
+- **Properties now covered live:** Plugins is reachable without editing the URL at both sides of
+  the 1700px breakpoint, and a live conversation survives the trip to the plugin list.
+- **Stop-condition status:** **met.** Plugins panel reachable; Tier 1/2 complete and witnessed.
