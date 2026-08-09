@@ -2927,3 +2927,28 @@ split.
 - **PORTING_LEDGER / ADR updated:** none
 - **Stop-condition status:** met. Phase 0 verification is now reproducible by the operator; Phase 0
   stays open until the operator confirms it runs green on Colossus.
+
+## 2026-08-08 20:22 EDT — Wizard walkthrough test; clamp extracted after mutation testing exposed a fake test
+
+- **Stage / plugin / port:** Phase 0 · first-run wizard · no port touched
+- **What changed:**
+  1. Added `apps/gui/e2e/walkthrough.spec.ts` — Playwright drives the wizard as a person would:
+     forward through all 5 steps, back to 3 (default-stop assertions), back to 2 (live decision
+     table incl. the out-of-worktree LOW cell fixed earlier today), back to 1. Runs headed via
+     `scripts/verify-local.sh --walkthrough`.
+  2. Extracted the step-index clamp to `apps/gui/src/features/first-run/wizard-nav.ts` and added
+     `src/__tests__/wizard-nav.test.ts`.
+- **Why 2 happened:** mutation testing on the walkthrough. Making Back a no-op was caught. Deleting
+  the `Math.min` bounds clamp was **not** — the suite stayed green. Cause: the nav buttons carry
+  `disabled` at the bounds and React will not run the handler for them even after stripping the
+  attribute from the DOM (verified with both a Playwright force-click and an in-page `el.click()`).
+  The clamp was unreachable from any browser-level test, so the button-mashing test I had written
+  asserted nothing. Deleted it rather than leaving coverage theater in the suite, and moved the
+  clamp somewhere it is actually reachable.
+- **Verified by execution:** three clamp mutations (upper removed, lower removed, off-by-one) each
+  now fail the unit test. Gate: 31/31 Vitest, lint clean, build clean.
+- **Files touched:** `apps/gui/e2e/walkthrough.spec.ts` (new), `wizard-nav.ts` (new),
+  `src/__tests__/wizard-nav.test.ts` (new), `FirstRunWizard.tsx`, `scripts/verify-local.sh`,
+  `BUILD_LOG.md`, `DEBUG_LOG.md`
+- **PORTING_LEDGER / ADR updated:** none
+- **Stop-condition status:** met pending operator confirmation of the headed run.

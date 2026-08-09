@@ -1334,3 +1334,22 @@ the snap daemon. Recorded in `docs/forge-oh-port-survey.md`.
   - `apps/gui/src/features/first-run/trust-dial.ts`
   - `apps/gui/src/__tests__/trust-dial.test.ts`
 - **Related BUILD_LOG entry:** 2026-08-08 20:05 EDT
+
+## 2026-08-08 20:22 EDT — End-to-end test passed with the bounds clamp deleted
+
+- **Symptom:** Deleting `Math.min(STEPS.length - 1, n + 1)` from the wizard's Next handler left the
+  Playwright suite fully green. A button-mashing test written to cover exactly that case could not
+  distinguish the mutant from the original.
+- **Affected stage / plugin / port:** Phase 0 · first-run wizard · no port
+- **Root cause:** Two redundant defenses guard the step bounds — the `disabled` attribute on the
+  nav buttons, and the clamp inside the click handlers. `disabled` fires first and swallows the
+  click, so the handler never runs at the boundary and the clamp is unreachable from the DOM.
+  Confirmed the handler stays unreachable even after setting `el.disabled = false` and clicking,
+  both via Playwright `click({ force: true })` and an in-page `el.click()`; the counter did not
+  advance past 5 with the clamp removed. A UI-level test therefore cannot cover the clamp at all.
+- **Fix applied:** Extracted the clamp to `clampStep(next, count)` in `wizard-nav.ts`, unit-tested
+  it exhaustively over -20..40, and deleted the E2E test that proved nothing. Re-ran three
+  mutations (upper clamp, lower clamp, off-by-one) — all three now fail.
+- **Files changed:** `apps/gui/src/features/first-run/wizard-nav.ts`, `FirstRunWizard.tsx`,
+  `apps/gui/src/__tests__/wizard-nav.test.ts`, `apps/gui/e2e/walkthrough.spec.ts`
+- **Related BUILD_LOG entry:** 2026-08-08 20:22 EDT

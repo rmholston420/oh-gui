@@ -19,10 +19,12 @@ set -uo pipefail
 PORT="${OHGUI_PORT:-5173}"
 SERVE=1
 HEADED=""
+WALK=0
 for a in "$@"; do
   case "$a" in
-    --no-serve) SERVE=0 ;;
-    --headed)   HEADED="--headed" ;;
+    --no-serve)   SERVE=0 ;;
+    --headed)     HEADED="--headed" ;;
+    --walkthrough) WALK=1; HEADED="--headed"; SERVE=0 ;;
     *) echo "unknown flag: $a"; exit 2 ;;
   esac
 done
@@ -44,6 +46,15 @@ die()  { printf '\n%s  ABORTING: %s%s\n' "$R" "$1" "$Z"; exit 1; }
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO" || die "cannot cd to repo root"
 GUI="$REPO/apps/gui"
+
+# --walkthrough: skip the whole gate, just drive the wizard in a visible browser on this desktop.
+if [ "$WALK" -eq 1 ]; then
+  printf '%s=== Playwright will now click through the wizard in a visible window ===%s\n' "$B" "$Z"
+  note "5 steps forward, then back to 3, 2 and 1, asserting the screen at each stop."
+  note "Chromium opens on your desktop. Do not touch it; it drives itself."
+  cd "$GUI" || die "apps/gui missing"
+  exec npx playwright test walkthrough --headed --workers=1
+fi
 
 printf '%s=== OH-GUI local verification ===%s\n' "$B" "$Z"
 note "repo: $REPO"

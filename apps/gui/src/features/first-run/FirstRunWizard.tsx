@@ -1,4 +1,6 @@
 import { useState } from 'react';
+
+import { clampStep } from './wizard-nav';
 import {
   DEFAULT_CONFIRM_RISKY,
   DEFAULT_STOP,
@@ -229,7 +231,7 @@ export default function FirstRunWizard() {
         <button
           type="button"
           className="rounded border border-slate-500 px-4 py-2 text-sm disabled:opacity-40"
-          onClick={() => setI((n) => Math.max(0, n - 1))}
+          onClick={() => setI((n) => clampStep(n - 1, STEPS.length))}
           disabled={i === 0}
         >
           Back
@@ -237,7 +239,7 @@ export default function FirstRunWizard() {
         <button
           type="button"
           className="rounded border border-slate-400 bg-slate-800 px-4 py-2 text-sm disabled:opacity-40"
-          onClick={() => setI((n) => Math.min(STEPS.length - 1, n + 1))}
+          onClick={() => setI((n) => clampStep(n + 1, STEPS.length))}
           disabled={last}
         >
           Next
