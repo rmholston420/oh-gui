@@ -4501,3 +4501,16 @@ The applied diff is now printed for every mutant.
   the same reason the teardown does. It was failing loudly while the test itself passed.
 - **Files touched:** `apps/gui/e2e/plugins-live.spec.ts`
 - **Stop-condition status:** met. Tier 2 is complete and witnessed.
+
+## 2026-08-09 07:24 EDT — ADR-016 closed at screening; stale branches deleted
+
+- **Stage / plugin / port:** Phase 1 · governance
+- **What changed:** ADR-016 records its verdict as a closing amendment: **no change, A remains the
+  default.** Screening put A at 45.0% and B at 47.5% over 40 tasks — one task apart, which does not
+  distinguish two models, and no confirmatory GPU hour on the same 40 tasks would have. The
+  attainability gate existed to catch exactly this and did.
+- **Also:** deleted merged branches `phase-1/governance` and `phase-1/middleware-skeleton` (local
+  and origin). `main` is now the only branch on either side.
+- **Files touched:** `adrs/ADR-016-decouple-baseline-benchmark-from-phase-0-exit.md`, `adrs/README.md`
+- **ADR / ledger updated:** ADR-016 status line and index row
+- **Stop-condition status:** met — ADR-016 is closed.

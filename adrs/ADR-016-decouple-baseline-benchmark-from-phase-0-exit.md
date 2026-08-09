@@ -1,5 +1,16 @@
 # ADR-016 — The benchmark gates a claim, not the code: decouple the baseline report from Phase 0 exit
 
+> **CLOSED AT SCREENING (2026-08-09 07:10 EDT):** the benchmark is closed without a confirmatory GPU
+> run, and the answer is to change nothing. Screening over 40 tasks put A
+> (`qwen3.6:35b-a3b-mtp-coder`, the current default) at 45.0% and B (Devstral-Small-2507
+> UD-Q4_K_XL) at 47.5% — a gap of one task. One task on 40 does not distinguish two models, and no
+> amount of confirmatory GPU time on the same 40 tasks would make it distinguish them. **A remains
+> the default.** Buying an hour of GPU to separate a one-task gap would have been spending against
+> a decision that was already made; the attainability gate exists precisely to catch that, and it
+> caught it. The three grading amendments above stand as the durable output of this ADR: the
+> registered construct is tool-call ability, not phrasing recall.
+
+
 > **STATUS AMENDMENT 3 (2026-08-09 06:26 EDT):** exact-text matching on free-form `terminal`
 > commands is demoted from the accept/reject predicate to a reported secondary metric
 > (`command_exact`). `file_editor` `command` remains a hard enum check. Four of the nine tasks
@@ -36,7 +47,7 @@
 > it had been reasoned to. See "Amendment II — budget re-derived from measurement" below.
 > All original text is retained unaltered for the record.
 
-**Status:** Ratified · Amended 2026-08-09 (twice; first amendment withdrawn)
+**Status:** Ratified · Amended 2026-08-09 (twice; first amendment withdrawn) · **Closed at screening 2026-08-09 — verdict: no change, A remains default**
 **Lock-in phase:** Phase 0 / Phase 1 boundary
 **Supersedes:** — (amends the Consequences of ADR-013)
 
