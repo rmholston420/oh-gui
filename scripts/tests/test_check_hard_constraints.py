@@ -92,6 +92,10 @@ def repo_copy(tmp_path: Path, monkeypatch) -> Path:
     )
     monkeypatch.setattr(checks, "PINS", dest / "docs" / "UPSTREAM_PINS.md")
     monkeypatch.setattr(checks, "LEDGER", dest / "PORTING_LEDGER.md")
+    monkeypatch.setattr(checks, "EVIDENCE_ROOT", dest / "review" / "_sdk_src")
+    monkeypatch.setattr(
+        checks, "BUILD_ROOTS", (dest / "apps", dest / "services", dest / "bench")
+    )
     return dest
 
 
@@ -384,13 +388,50 @@ def test_ledger_records_native_basis_catches_a_missing_basis(repo_copy):
     assert checks.ledger_records_native_basis() is not None
 
 
+def _arm_provisional(repo: Path) -> None:
+    """Set a provisionality flag back to True so the interlock has something to guard.
+
+    `AUTHORIZE_REQUEST_PROVISIONAL` was legitimately cleared on 2026-08-08, which left this
+    gate with nothing to fire on. The earlier version of this test asserted a red against the
+    live tree and so began failing the moment the flag cleared - it was testing the tree's
+    state, not the gate's behaviour. It now arms the condition itself.
+    """
+    (_mw(repo) / "provisional_mutant.py").write_text(
+        "SOME_TYPE_PROVISIONAL = True\n", encoding="utf-8"
+    )
+
+
 def test_provisional_types_not_wired_catches_a_hook_install(repo_copy):
-    """The interlock: AuthorizeRequest is provisional today, so a hook must not be installable."""
+    """The interlock: while any type is provisional, no hook may be installable."""
     assert checks.provisional_types_not_wired() is None
+    _arm_provisional(repo_copy)
+    assert checks.provisional_types_not_wired() is None, "armed but no hook yet: still green"
     (_mw(repo_copy) / "bad.py").write_text(
         "def setup(conv):\n    conv.add_hook(HookType.COMMAND, cmd)\n", encoding="utf-8"
     )
     assert checks.provisional_types_not_wired() is not None
+
+
+def test_provisional_types_not_wired_is_disarmed_only_by_the_flag(repo_copy):
+    """A hook is fine once nothing is provisional - which is the tree's real state today.
+
+    This is the half that proves the gate is not simply a ban on the word `add_hook`.
+    """
+    (_mw(repo_copy) / "bad.py").write_text(
+        "def setup(conv):\n    conv.add_hook(HookType.COMMAND, cmd)\n", encoding="utf-8"
+    )
+    assert checks.provisional_types_not_wired() is None
+
+
+def test_provisional_types_not_wired_ignores_a_cleared_flag(repo_copy):
+    """`= False` must not arm it. The old prose-keyed version could not tell the difference."""
+    (_mw(repo_copy) / "provisional_mutant.py").write_text(
+        "SOME_TYPE_PROVISIONAL = False\n", encoding="utf-8"
+    )
+    (_mw(repo_copy) / "bad.py").write_text(
+        "def setup(conv):\n    conv.add_hook(HookType.COMMAND, cmd)\n", encoding="utf-8"
+    )
+    assert checks.provisional_types_not_wired() is None
 
 
 def test_provisional_types_not_wired_allows_a_hook_once_the_marker_clears(repo_copy):
@@ -436,6 +477,111 @@ def test_no_shared_visibility_toggle_catches_a_relic(repo_copy):
     assert checks.no_shared_visibility_toggle() is None
     (_gui(repo_copy) / "Bad.ts").write_text("export const shareAll = true\n", encoding="utf-8")
     assert checks.no_shared_visibility_toggle() is not None
+
+
+# ------------------------------------------------- ADR-026 extension-only posture (D5.1-D5.4)
+
+
+def _evidence_pkg(repo: Path) -> Path:
+    return repo / "review" / "_sdk_src" / "1.41.0" / "openhands_sdk-1.41.0"
+
+
+def test_evidence_snapshot_not_imported_catches_a_build_source_reaching_for_it(repo_copy):
+    """The snapshot is evidence. A build source that names it has started treating it as a dep."""
+    assert checks.evidence_snapshot_not_imported() is None
+    (_gui(repo_copy) / "Bad.ts").write_text(
+        "import { HookDecision } from '../../../review/_sdk_src/1.41.0/x';\n", encoding="utf-8"
+    )
+    assert checks.evidence_snapshot_not_imported() is not None
+
+
+def test_openhands_not_pinned_to_fork_catches_a_git_dependency(repo_copy):
+    pyproject = repo_copy / "services" / "middleware" / "pyproject.toml"
+    assert checks.openhands_not_pinned_to_fork() is None
+    pyproject.write_text(
+        pyproject.read_text(encoding="utf-8")
+        + '\n[tool.mutant]\nopenhands-sdk = { git = "git+https://example.invalid/fork" }\n',
+        encoding="utf-8",
+    )
+    assert checks.openhands_not_pinned_to_fork() is not None
+
+
+def test_openhands_not_pinned_to_fork_catches_a_local_path(repo_copy):
+    """The quieter half. A relative path is how a fork arrives without looking like one."""
+    pyproject = repo_copy / "services" / "middleware" / "pyproject.toml"
+    assert checks.openhands_not_pinned_to_fork() is None
+    pyproject.write_text(
+        pyproject.read_text(encoding="utf-8")
+        + '\n[tool.mutant]\nopenhands-sdk = { path = "../../vendor/openhands-sdk" }\n',
+        encoding="utf-8",
+    )
+    assert checks.openhands_not_pinned_to_fork() is not None
+
+
+def test_evidence_snapshot_matches_upstream_catches_an_edited_file(repo_copy):
+    target = _evidence_pkg(repo_copy) / "openhands" / "sdk" / "hooks" / "types.py"
+    assert checks.evidence_snapshot_matches_upstream() is None
+    target.write_text(target.read_text(encoding="utf-8") + "\n# helpfully clarified\n", "utf-8")
+    assert checks.evidence_snapshot_matches_upstream() is not None
+
+
+def test_evidence_snapshot_matches_upstream_catches_an_unrecorded_addition(repo_copy):
+    """An added file passes a per-file hash loop. The manifest is a set, not just a checksum."""
+    assert checks.evidence_snapshot_matches_upstream() is None
+    (_evidence_pkg(repo_copy) / "helper.py").write_text("x = 1\n", encoding="utf-8")
+    assert checks.evidence_snapshot_matches_upstream() is not None
+
+
+def test_evidence_snapshot_matches_upstream_catches_a_deletion(repo_copy):
+    assert checks.evidence_snapshot_matches_upstream() is None
+    (_evidence_pkg(repo_copy) / "openhands" / "sdk" / "hooks" / "types.py").unlink()
+    assert checks.evidence_snapshot_matches_upstream() is not None
+
+
+def test_evidence_snapshot_matches_upstream_catches_a_missing_manifest(repo_copy):
+    """Without this, deleting the manifest would be the cheapest way to silence the gate."""
+    assert checks.evidence_snapshot_matches_upstream() is None
+    (repo_copy / "review" / "_sdk_src" / "1.41.0" / "MANIFEST.sha256").unlink()
+    assert checks.evidence_snapshot_matches_upstream() is not None
+
+
+def test_cited_evidence_paths_resolve_catches_a_missing_file(repo_copy):
+    assert checks.cited_evidence_paths_resolve() is None
+    (repo_copy / "adrs" / "ADR-999-mutant.md").write_text(
+        "See `review/_sdk_src/1.41.0/openhands_sdk-1.41.0/openhands/sdk/hooks/nope.py:12`.\n",
+        encoding="utf-8",
+    )
+    assert checks.cited_evidence_paths_resolve() is not None
+
+
+def test_cited_evidence_paths_resolve_catches_a_line_past_end_of_file(repo_copy):
+    """The defect worth catching. Re-vendor at a new version and every path still exists."""
+    assert checks.cited_evidence_paths_resolve() is None
+    (repo_copy / "adrs" / "ADR-999-mutant.md").write_text(
+        "See `review/_sdk_src/1.41.0/openhands_sdk-1.41.0/openhands/sdk/hooks/types.py:99999`.\n",
+        encoding="utf-8",
+    )
+    assert checks.cited_evidence_paths_resolve() is not None
+
+
+# ------------------------------------- ADR-015 amendment 2 (PRESENT-BUT-UNCONSUMED fields)
+
+
+def test_unconsumed_native_fields_not_wired_catches_a_gui_reference(repo_copy):
+    """`allowed_tools` exists upstream and nothing upstream reads it. Neither may we."""
+    assert checks.unconsumed_native_fields_not_wired() is None
+    (_gui(repo_copy) / "Bad.ts").write_text(
+        "export const allowlist = skill.allowed_tools ?? [];\n", encoding="utf-8"
+    )
+    assert checks.unconsumed_native_fields_not_wired() is not None
+
+
+def test_unconsumed_native_fields_not_wired_catches_a_middleware_reference(repo_copy):
+    assert checks.unconsumed_native_fields_not_wired() is None
+    (_mw(repo_copy) / "bad.py").write_text(
+        "def gate(skill):\n    return skill.allowed_tools\n", encoding="utf-8"
+    )
+    assert checks.unconsumed_native_fields_not_wired() is not None
 
 
 # ---------------------------------------------------------------------------- coverage

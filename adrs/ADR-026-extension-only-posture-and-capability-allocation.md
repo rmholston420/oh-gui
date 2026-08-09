@@ -74,8 +74,8 @@ Verified present in the pinned 1.41.0 artifact. Tiers 1-4 are upstream's; 5-6 ar
 `Skill` is loaded by trigger: `KeywordTrigger`, `TaskTrigger`, `PathTrigger`
 (`review/_sdk_src/1.41.0/openhands_sdk-1.41.0/openhands/sdk/skills/trigger.py:19,29,39`), installed and toggled by
 `install_skill` / `enable_skill`
-(`.../openhands/sdk/skills/installed.py:114,151`), and sourced from a marketplace
-(`install_skills_from_marketplace`, `.../skills/installed.py:200`).
+(`review/_sdk_src/1.41.0/openhands_sdk-1.41.0/openhands/sdk/skills/installed.py:114,151`), and sourced from a marketplace
+(`install_skills_from_marketplace`, `review/_sdk_src/1.41.0/openhands_sdk-1.41.0/openhands/sdk/skills/installed.py:200`).
 
 **Use for anything whose failure mode is "the agent did it worse", not "the agent did something
 forbidden".** House conventions, per-language idioms, the planning method, the review checklist as
@@ -87,15 +87,15 @@ model reads; it is one distracted turn away from being unread.
 #### Tier 2 — Hook
 
 Six events: `PreToolUse`, `PostToolUse`, `UserPromptSubmit`, `SessionStart`, `SessionEnd`, `Stop`
-(`.../openhands/sdk/hooks/types.py:9-17`). Three kinds: `COMMAND` (subprocess), `PROMPT` (LLM
+(`review/_sdk_src/1.41.0/openhands_sdk-1.41.0/openhands/sdk/hooks/types.py:9-17`). Three kinds: `COMMAND` (subprocess), `PROMPT` (LLM
 evaluation, marked future), `AGENT` (agent with tool access)
-(`.../openhands/sdk/hooks/config.py:39-44`). Bounded by `timeout: int = 60` and
-`max_iterations: int = 3` (`.../hooks/config.py:62-63`). Configured from
+(`review/_sdk_src/1.41.0/openhands_sdk-1.41.0/openhands/sdk/hooks/config.py:39-44`). Bounded by `timeout: int = 60` and
+`max_iterations: int = 3` (`review/_sdk_src/1.41.0/openhands_sdk-1.41.0/openhands/sdk/hooks/config.py:62-63`). Configured from
 `{workspace}/.openhands/hooks.json` (`.../openhands_agent_server-1.41.0/openhands/agent_server/hooks_service.py:36`).
 
 **The decisive constraint — a hook cannot ask.** `HookDecision` has exactly two members, `ALLOW`
 and `DENY`; `ASK` exists only as a commented-out line marked *"Future: prompt user for confirmation
-before proceeding"* (`.../openhands/sdk/hooks/types.py:35-40`).
+before proceeding"* (`review/_sdk_src/1.41.0/openhands_sdk-1.41.0/openhands/sdk/hooks/types.py:35-40`).
 
 Two consequences, and they are the most load-bearing findings in this ADR:
 
@@ -116,10 +116,10 @@ verdict is a spectrum rather than yes/no.
 #### Tier 3 — Subagent
 
 An `AgentDefinition` is markdown-with-frontmatter, discovered at `project`, `user`, `builtin`,
-`plugin`, or `programmatic` level (`.../openhands/sdk/subagent/schema.py:23`), carrying `tools`,
+`plugin`, or `programmatic` level (`review/_sdk_src/1.41.0/openhands_sdk-1.41.0/openhands/sdk/subagent/schema.py:23`), carrying `tools`,
 `skills`, `model`, `hooks`, `mcp_config`, `condenser`, `max_iteration_per_run`,
 `max_budget_per_run`, and `permission_mode` ∈ {`always_confirm`, `never_confirm`, `confirm_risky`}
-(`.../subagent/schema.py:26-45`).
+(`review/_sdk_src/1.41.0/openhands_sdk-1.41.0/openhands/sdk/subagent/schema.py:26-45`).
 
 **This is where the Forge-OH inventions belonged.** The mapping is exact and it is the strongest
 available argument for this ADR's whole method:
@@ -141,9 +141,9 @@ interrogator. A role with its own budget and tool set is a subagent, not harness
 #### Tier 4 — Plugin
 
 `Plugin` bundles `manifest`, `skills`, `hooks`, `mcp_config`, `agents`, and `commands`
-(`.../openhands/sdk/plugin/plugin.py:39,58-73`), manifested from `.plugin/` or `.claude-plugin/`
-(`.../plugin/plugin.py:35`), with a native install/enable/update lifecycle
-(`.../openhands/sdk/plugin/installed.py:57,95,136`).
+(`review/_sdk_src/1.41.0/openhands_sdk-1.41.0/openhands/sdk/plugin/plugin.py:39,58-73`), manifested from `.plugin/` or `.claude-plugin/`
+(`review/_sdk_src/1.41.0/openhands_sdk-1.41.0/openhands/sdk/plugin/plugin.py:35`), with a native install/enable/update lifecycle
+(`review/_sdk_src/1.41.0/openhands_sdk-1.41.0/openhands/sdk/plugin/installed.py:57,95,136`).
 
 **A plugin is packaging, not behaviour.** Nothing is ever "implemented as a plugin" — it is
 implemented in tier 1, 2, or 3 and *shipped* in a plugin. Our agent-side footprint is exactly one
@@ -185,13 +185,13 @@ of this list, one defensible step at a time.
 
 Approval is `ConfirmationPolicyBase` — `AlwaysConfirm`, `NeverConfirm`, or
 `ConfirmRisky(threshold: SecurityRisk = HIGH)`
-(`.../openhands/sdk/security/confirmation_policy.py:9,27,35,43-44`) — selected per role by
-`permission_mode` (`.../subagent/schema.py:39,43`).
+(`review/_sdk_src/1.41.0/openhands_sdk-1.41.0/openhands/sdk/security/confirmation_policy.py:9,27,35,43-44`) — selected per role by
+`permission_mode` (`review/_sdk_src/1.41.0/openhands_sdk-1.41.0/openhands/sdk/subagent/schema.py:39,43`).
 
 The trust dial of spec 04 §4.1 is therefore **a mapping from task type to a confirmation policy and
 a risk threshold**, computed in tier 5, expressed in tier 3, rendered in tier 6. It is not a set of
 hooks. Any future amendment proposing hook-based approval must first overturn
-`.../hooks/types.py:40`.
+`review/_sdk_src/1.41.0/openhands_sdk-1.41.0/openhands/sdk/hooks/types.py:40`.
 
 ## Consequences
 

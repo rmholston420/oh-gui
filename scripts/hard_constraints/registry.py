@@ -91,7 +91,10 @@ REGISTRY: dict[str, Entry] = {
     "511048a366": _p("Phase 1", "§6.4.1"),
     "b897f98382": _p("Phase 1", "§8.5"),
     "685ead09a4": _p("Phase 4"),
-    "861e753d64": _p("Phase 1"),
+    # 861e753d64 was this gate's pre-ADR-022 wording. ADR-022 rewrote the line to name the
+    # 900px breakpoint explicitly, which changed the hash. The requirement did not change owner,
+    # so the new id inherits Phase 1 rather than being re-argued.
+    "52fa900820": _p("Phase 1", "reworded by ADR-022; was 861e753d64"),
     "9f90f0abcb": _p("Phase 1", "lens mechanism added to Phase 1 by ADR-017"),
     "fe4db434ff": _p("Phase 5"),
     "651484fb0d": _p("Phase 5"),
@@ -144,6 +147,14 @@ REGISTRY: dict[str, Entry] = {
     "4b7a517724": _s("ledger_records_native_basis"),
     # -------------------------------------------------------------------- v4.5 additions
     "2b305a5b8a": _s("provisional_types_not_wired"),
+    # ---- ADR-026 (extension-only posture). All four are STATIC: each is decidable from the
+    # working tree alone, so none of them may be deferred to a phase.
+    "1acdd1a4d7": _s("evidence_snapshot_not_imported"),
+    "43049c8f68": _s("openhands_not_pinned_to_fork"),
+    "ba75ea5a14": _s("evidence_snapshot_matches_upstream"),
+    "4b173c05b1": _s("cited_evidence_paths_resolve"),
+    # ---- ADR-015 amendment 2 (PRESENT-BUT-UNCONSUMED).
+    "e2fbb01781": _s("unconsumed_native_fields_not_wired"),
 }
 
 

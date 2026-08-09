@@ -135,6 +135,11 @@ def upstream_source_not_vendored() -> str | None:
             rel = path.relative_to(REPO_ROOT)
             if rel.parts[0] in {".git", "node_modules", "docs", "bench", "adrs"}:
                 continue
+            # ADR-026 D1.3: `review/_sdk_src/` is evidence, not a dependency. Safe only
+            # because three gates fence it - not-imported, matches-upstream, and
+            # citations-resolve. Remove any one and this exemption becomes a fork.
+            if rel.parts[:2] == ("review", "_sdk_src"):
+                continue
             if "node_modules" in rel.parts or ".venv" in rel.parts:
                 continue
             return f"upstream source tree present in repo at {rel}"
@@ -254,6 +259,12 @@ def agent_server_dtos_generated() -> str | None:
     return None
 
 
+#: A declared provisionality flag, e.g. `AUTHORIZE_REQUEST_PROVISIONAL = True`.
+_PROVISIONAL_FLAG_RE = re.compile(
+    r"\s*([A-Z0-9_]*PROVISIONAL[A-Z0-9_]*)\s*=\s*(True|False)\s*$"
+)
+
+
 def provisional_types_not_wired() -> str | None:
     """A type marked `PROVISIONAL — UNVERIFIED` may not have a hook wired to it (ADR-021).
 
@@ -262,12 +273,20 @@ def provisional_types_not_wired() -> str | None:
     shape fails in the direction of allowing what it meant to deny, so the marker is a hard
     interlock and not a comment: while any provisional type stands, no hook installation may
     appear anywhere in the middleware.
+
+    Amended 2026-08-09. This originally keyed on the comment string "PROVISIONAL - UNVERIFIED".
+    When AUTHORIZE_REQUEST_PROVISIONAL was legitimately cleared to False on 2026-08-08 the
+    comment went with it and the gate became structurally incapable of firing - green forever,
+    for the same reason a checked `- [x]` gate used to vanish from the registry. A gate keyed on
+    prose is a gate that a reword disarms. It now reads the declared boolean, which is the state.
     """
     marked: list[str] = []
     for path in _sources(MW_SRC, PY):
         text = path.read_text(encoding="utf-8", errors="replace")
-        if "PROVISIONAL — UNVERIFIED" in text or "PROVISIONAL - UNVERIFIED" in text:
-            marked.append(str(path.relative_to(REPO_ROOT)))
+        for lineno, line in enumerate(text.splitlines(), 1):
+            m = _PROVISIONAL_FLAG_RE.match(line)
+            if m and m.group(2) == "True":
+                marked.append(f"{path.relative_to(REPO_ROOT)}:{lineno} {m.group(1)}")
     if not marked:
         return None
     installs = _grep(
@@ -301,6 +320,11 @@ def ledger_records_native_basis() -> str | None:
     offenders = []
     for block in blocks:
         title = block.splitlines()[0].strip()
+        # A REJECTED entry adopted nothing, so it carries no OpenHands data and has no
+        # native basis to record. Demanding one makes the ledger unable to record a
+        # refusal, and the refusals are the entries most worth keeping.
+        if re.search(r"[-\u2014]\s*REJECTED\b", title):
+            continue
         carries_oh = re.search(r"openhands|agent-server|agent-canvas", block, re.IGNORECASE)
         if carries_oh and not re.search(r"\*\*Native basis", block, re.IGNORECASE):
             offenders.append(title)
@@ -356,6 +380,170 @@ def no_shared_visibility_toggle() -> str | None:
     return None
 
 
+# ------------------------------------------------------- ADR-026: extension-only posture
+
+#: Read-only upstream source, committed so ADR-015 citations resolve offline. Never built,
+#: never imported, never edited.
+EVIDENCE_ROOT = REPO_ROOT / "review" / "_sdk_src"
+
+#: Roots that become running software. Documentation may discuss the snapshot freely; these
+#: may not name it at all, because shipped code has no legitimate reason to name a path it is
+#: forbidden to read.
+BUILD_ROOTS = (REPO_ROOT / "apps", REPO_ROOT / "services", REPO_ROOT / "bench")
+
+
+def evidence_snapshot_not_imported() -> str | None:
+    """ADR-026 D5.1 - the build never reaches the evidence snapshot."""
+    offenders: list[str] = []
+    for root in BUILD_ROOTS:
+        for path in _sources(root, (".ts", ".tsx", ".js", ".jsx", ".py", ".json", ".toml", ".sh")):
+            if ".venv" in path.parts or "node_modules" in path.parts:
+                continue
+            try:
+                text = path.read_text(encoding="utf-8")
+            except (UnicodeDecodeError, OSError):
+                continue
+            if "_sdk_src" in text:
+                offenders.append(str(path.relative_to(REPO_ROOT)))
+    if offenders:
+        return "build sources referencing the evidence snapshot: " + "; ".join(sorted(offenders))
+    return None
+
+
+#: The three ways a fork arrives while still looking like a pin.
+_FORK_PIN_RE = re.compile(
+    r"git\+|git@|github\.com[:/]|\bfile:|\blink:|\bportal:|(?<![\w.])\.\./|^\s*path\s*=",
+    re.IGNORECASE,
+)
+
+
+def openhands_not_pinned_to_fork() -> str | None:
+    """ADR-026 D5.2 - OpenHands is consumed at a published version, never from a fork."""
+    offenders: list[str] = []
+    for manifest in (MW_PYPROJECT, GUI_PKG, MW_PYPROJECT.parent / "requirements.txt"):
+        if not manifest.is_file():
+            continue
+        for lineno, line in enumerate(manifest.read_text(encoding="utf-8").splitlines(), 1):
+            if "openhands" not in line.lower():
+                continue
+            if _FORK_PIN_RE.search(line):
+                offenders.append(
+                    f"{manifest.relative_to(REPO_ROOT)}:{lineno} {line.strip()}"
+                )
+    if offenders:
+        return "OpenHands resolved from a fork or local path: " + "; ".join(offenders)
+    return None
+
+
+def evidence_snapshot_matches_upstream() -> str | None:
+    """ADR-026 D5.3 - no file under `review/_sdk_src/` was edited since it was vendored."""
+    if not EVIDENCE_ROOT.is_dir():
+        return None
+    import hashlib
+
+    problems: list[str] = []
+    for version_dir in sorted(x for x in EVIDENCE_ROOT.iterdir() if x.is_dir()):
+        manifest = version_dir / "MANIFEST.sha256"
+        if not manifest.is_file():
+            problems.append(f"{version_dir.name}: no MANIFEST.sha256")
+            continue
+        recorded: dict[str, str] = {}
+        for line in manifest.read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                digest, _, name = line.partition("  ")
+                recorded[name.strip()] = digest.strip()
+        present = {
+            "./" + str(f.relative_to(version_dir)).replace("\\", "/")
+            for f in version_dir.rglob("*")
+            if f.is_file() and f.name != "MANIFEST.sha256"
+        }
+        for missing in sorted(set(recorded) - present):
+            problems.append(f"{version_dir.name}: {missing} recorded but absent")
+        for extra in sorted(present - set(recorded)):
+            problems.append(f"{version_dir.name}: {extra} present but unrecorded")
+        for name in sorted(set(recorded) & present):
+            if hashlib.sha256((version_dir / name[2:]).read_bytes()).hexdigest() != recorded[name]:
+                problems.append(f"{version_dir.name}: {name} modified since vendoring")
+    if problems:
+        return "evidence snapshot drift: " + "; ".join(problems[:6]) + (
+            f" (+{len(problems) - 6} more)" if len(problems) > 6 else ""
+        )
+    return None
+
+
+#: A citation of vendored evidence: a snapshot path ending .py, plus a line or range.
+_CITATION_RE = re.compile(r"(review/_sdk_src/[\w./+-]+\.py):(\d+)(?:[-,](\d+))?")
+
+
+def cited_evidence_paths_resolve() -> str | None:
+    """ADR-026 D5.4 - every cited snapshot path exists **at the cited line**.
+
+    Stronger than existence on purpose. The defect this was written for was a whole tree that
+    was never committed; the likelier future defect is quieter - the tree is re-vendored at a
+    new version, every file still exists, and every line number now points somewhere else.
+    """
+    offenders: list[str] = []
+    for root in (REPO_ROOT / "adrs", REPO_ROOT / "docs"):
+        for md in _sources(root, (".md",)):
+            for lineno, line in enumerate(md.read_text(encoding="utf-8").splitlines(), 1):
+                for m in _CITATION_RE.finditer(line):
+                    rel_path, start, end = m.group(1), int(m.group(2)), m.group(3)
+                    target = REPO_ROOT / rel_path
+                    where = f"{md.relative_to(REPO_ROOT)}:{lineno}"
+                    if not target.is_file():
+                        offenders.append(f"{where} cites missing {rel_path}")
+                        continue
+                    n = len(target.read_text(encoding="utf-8", errors="replace").splitlines())
+                    cited = max(start, int(end) if end else start)
+                    if cited > n:
+                        offenders.append(f"{where} cites {rel_path}:{cited} but it has {n} lines")
+    if offenders:
+        return "unresolvable evidence citations: " + "; ".join(offenders[:6]) + (
+            f" (+{len(offenders) - 6} more)" if len(offenders) > 6 else ""
+        )
+    return None
+
+
+# --------------------------------- ADR-015 amendment 2: PRESENT-BUT-UNCONSUMED fields
+
+#: Declared in the vendored upstream artifacts, read by nothing in them. Each entry is the
+#: field and the evidence of its inertness. A field leaves this list only by re-verification
+#: against a specific SDK version that finds a real consumer - never because someone needs it.
+UNCONSUMED_NATIVE_FIELDS: dict[str, str] = {
+    "allowed_tools": (
+        "declared at skills/skill.py:271 and plugin/types.py:271; all 24 occurrences across "
+        "the four 1.41.0 packages are declaration, parse, or re-serialization - no read site"
+    ),
+}
+
+
+def unconsumed_native_fields_not_wired() -> str | None:
+    """ADR-015 amendment 2 - a field upstream never reads is not a contract we may build on.
+
+    Deliberately a substring match. The failure guarded against is someone reaching for a
+    plausible-looking native field in a hurry, and that reach looks the same whether it is
+    typed, stringly-keyed, or a comment promising to wire it up later.
+    """
+    offenders: list[str] = []
+    for root in (GUI_SRC, MW_SRC):
+        for path in _sources(root, (".ts", ".tsx", ".py")):
+            try:
+                text = path.read_text(encoding="utf-8")
+            except (UnicodeDecodeError, OSError):
+                continue
+            for lineno, line in enumerate(text.splitlines(), 1):
+                for field in UNCONSUMED_NATIVE_FIELDS:
+                    if field in line:
+                        offenders.append(
+                            f"{path.relative_to(REPO_ROOT)}:{lineno} references `{field}`"
+                        )
+    if offenders:
+        return "PRESENT-BUT-UNCONSUMED fields wired into OH-GUI: " + "; ".join(offenders[:6]) + (
+            f" (+{len(offenders) - 6} more)" if len(offenders) > 6 else ""
+        )
+    return None
+
+
 REGISTRY_CHECKS = {
     "no_framer_motion": no_framer_motion,
     "no_copypaste_libs_as_deps": no_copypaste_libs_as_deps,
@@ -373,4 +561,9 @@ REGISTRY_CHECKS = {
     "no_coauthored_by_trailer": no_coauthored_by_trailer,
     "no_phase_6_surface": no_phase_6_surface,
     "no_shared_visibility_toggle": no_shared_visibility_toggle,
+    "evidence_snapshot_not_imported": evidence_snapshot_not_imported,
+    "openhands_not_pinned_to_fork": openhands_not_pinned_to_fork,
+    "evidence_snapshot_matches_upstream": evidence_snapshot_matches_upstream,
+    "cited_evidence_paths_resolve": cited_evidence_paths_resolve,
+    "unconsumed_native_fields_not_wired": unconsumed_native_fields_not_wired,
 }

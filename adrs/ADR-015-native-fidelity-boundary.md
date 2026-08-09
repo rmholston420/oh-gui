@@ -1,6 +1,6 @@
 # ADR-015 — Native-fidelity boundary: OH-GUI exposes only verified native fields, and the upstream code is the source of truth
 
-**Status:** Ratified · amended 2026-08-08 (OPEN sub-question resolved — see Status amendment)
+**Status:** Ratified · amended 2026-08-08 (OPEN sub-question resolved) · amended 2026-08-09 (PRESENT-BUT-UNCONSUMED added to the register — see Status amendment 2)
 **Lock-in phase:** Phase 0 — binding immediately on every port, surface, and spec amendment
 **Supersedes:** —
 
@@ -106,6 +106,81 @@ becomes visible rather than merely differently coloured. This is why the authori
 Clause 1 is not softened by this amendment. DERIVED is a bounded exception whose every input is
 still subject to clause 1 verification, and the two requirements that could not meet that bar were
 removed from the spec rather than accommodated.
+
+## Status amendment 2 — 2026-08-09 01:14 EDT — a third failure mode: the field that exists and does nothing
+
+Clause 1 of this ADR asks one question of every field: *does it exist natively?* Verification of
+`Skill.allowed_tools` shows that question is not sufficient. The field exists, is typed, is
+documented in its own `Field(description=...)`, parses two spellings, and survives serialization —
+and **nothing in the shipped 1.41.0 artifacts ever reads it.** It passes clause 1 and is still
+unsafe to build on.
+
+So the register gains a third classification alongside NATIVE and DERIVED.
+
+### Finding 5 — `allowed_tools` is present, typed, documented, and inert
+
+Declared in two places:
+
+- `review/_sdk_src/1.41.0/openhands_sdk-1.41.0/openhands/sdk/skills/skill.py:271` — on `Skill`,
+  described as "List of pre-approved tools for this skill," with a validator at
+  `skills/skill.py:299-309` accepting a space-delimited string or a list, and frontmatter mapping
+  of both `allowed-tools` and `allowed_tools` at `skills/skill.py:524-537`.
+- `review/_sdk_src/1.41.0/openhands_sdk-1.41.0/openhands/sdk/plugin/types.py:271` — on
+  `CommandDefinition` (a slash command), parsed from frontmatter at `plugin/types.py:308-342` and
+  propagated into a generated `Skill` at `plugin/types.py:392`.
+
+An exhaustive search of all four shipped packages (`openhands_sdk`, `openhands_tools`,
+`openhands_workspace`, `openhands_agent_server`) for `allowed_tools`, `allowed-tools`, and
+`allowedTools` returns **24 occurrences, every one of them a declaration, a parse, or a
+re-serialization.** There is no read site. No tool executor, confirmation policy, security
+analyzer, or agent consults it. Setting it changes nothing about what a tool call is permitted to
+do.
+
+Two further traps in the same field:
+
+1. **Its name says restriction; its description says approval.** "Pre-approved" is
+   confirmation-bypass semantics — *these need no operator prompt* — not gating semantics — *only
+   these may run.* Those are opposite behaviours, and the field's identifier argues for the one its
+   own documentation contradicts. Had a consumer existed, reading the name would still have been
+   wrong.
+2. **It is the exact shape of an attractive nuisance.** A tool allowlist per skill is a thing our
+   harness genuinely wants. The field is already there, already typed, already round-trips through
+   the plugin format. Wiring an enforcement path to it would have looked like using a native
+   contract while in fact inventing one — the precise Forge-OH failure this ADR exists to prevent,
+   made harder to spot because the field name would appear in a native artifact when audited.
+
+**Scope of the claim, stated precisely.** This is a claim about the four packages vendored at
+`review/_sdk_src/1.41.0/`, which are what we build against. A downstream OpenHands product outside
+those artifacts may consume the field. That possibility does not license us to rely on it: ADR-026
+D1 says we compose the published artifacts, so a behaviour absent from them is absent from our
+system.
+
+### Decision — the register gains PRESENT-BUT-UNCONSUMED
+
+A field is **PRESENT-BUT-UNCONSUMED** when it is declared in a verified upstream artifact but has
+no read site in that artifact — only declaration, parsing, and serialization.
+
+- Such a field **may be recorded** in the native register, with its declaration site and the
+  evidence of the absent consumer.
+- Such a field **may not be read, written, displayed, or enforced against** by any OH-GUI surface.
+  It is not a contract. It is an announcement of a contract someone may write later.
+- Clause 1 is amended accordingly: verifying a field means locating **both its declaration and its
+  consumer.** A declaration alone is necessary and not sufficient. Where a register entry cannot
+  name a consumer, it is classified PRESENT-BUT-UNCONSUMED and no enforcement path is wired to it.
+- Should a future SDK version add a consumer, the entry is re-verified at that version and
+  reclassified NATIVE. Version-pinned re-verification, never assumption.
+
+This mirrors the treatment `PROVISIONAL - UNVERIFIED` already receives under ADR-021, and the
+mechanism is the same: name the defect in the register, and make the register enforceable so the
+name cannot quietly rot.
+
+### Enforcement
+
+A new hard constraint in `docs/specs/13-hard-constraints.md` and a matching STATIC check
+(`unconsumed_native_fields_not_wired`) fail the gate if any OH-GUI source references a field on the
+PRESENT-BUT-UNCONSUMED list. The list starts with `allowed_tools`. Rationale for enforcing rather
+than merely documenting: a documented prohibition against a field that is *useful and already
+typed* survives exactly as long as nobody is in a hurry.
 
 ## Context
 

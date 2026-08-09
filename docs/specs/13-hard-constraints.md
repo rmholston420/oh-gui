@@ -47,8 +47,8 @@
 - [ ] Budget ceiling is denominated correctly per provider and is orthogonal to the trust dial.
 - [ ] Kinetic-feedback/motion treatments never relax a diff-performance gate or an accessibility gate.
 - [ ] Authorization-card actions above read-only are unavailable below the 900px breakpoint (**done** —
-  `AuthorizationCard` + `e2e/authorization-narrow.spec.ts`, ADR-022); hunk-level swipe review
-  remains available (**not done** — no diff surface exists yet; unchecked until it does).
+      `AuthorizationCard` + `e2e/authorization-narrow.spec.ts`, ADR-022); hunk-level swipe review
+      remains available (**not done** — no diff surface exists yet; unchecked until it does).
 - [ ] Vibe Mode and Pro Mode share one data model; switching lenses never triggers a route change, data refetch, or loss of in-progress input.
 - [ ] Notifications for the five specified event types write to the inbox as the record of truth, independent of desktop-notification delivery success.
 - [ ] Air-gapped mode passes CI under network-namespace isolation with all network-dependent features disabled.
@@ -133,3 +133,20 @@
       native basis in its docstring - the artifact path and line it was read from, not the document
       that described it. A type whose basis names documentation is marked
       `PROVISIONAL - UNVERIFIED` and no enforcement path is wired to it.
+
+## v4.6 additions (ADR-026 — the extension-only posture)
+
+- [ ] No file under `apps/`, `services/`, or `bench/` references the vendored evidence snapshots
+      under `review/_sdk_src/`. They are evidence to cite, never a dependency to import.
+- [ ] No dependency declaration resolves OpenHands to a fork, git URL, or local path. Upstream is
+      consumed at its published version.
+- [ ] Every file under `review/_sdk_src/` is byte-identical to the published upstream artifact it
+      came from, verified against a committed hash manifest.
+- [ ] Every `review/_sdk_src/` path cited by an ADR or spec exists **at the cited line**. A citation
+      that cannot be opened is not evidence.
+
+## v4.7 additions (ADR-015 amendment 2 — PRESENT-BUT-UNCONSUMED)
+
+- [ ] No OH-GUI surface reads, writes, displays, or enforces against a field classified
+      PRESENT-BUT-UNCONSUMED — declared in a verified upstream artifact but with no consumer in it.
+      A declaration is not a contract.

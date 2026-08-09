@@ -15,7 +15,12 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SPEC_PATH = REPO_ROOT / "docs" / "specs" / "13-hard-constraints.md"
 
-_ITEM_RE = re.compile(r"^- \[ \] (?P<body>.*)$")
+#: A gate line. `- [x]` is matched as well as `- [ ]`: before 2026-08-09 only the unchecked
+#: form was parsed, so marking a gate done **deleted it from enforcement** and orphaned its
+#: registry entry. ADR-018 exists to stop deferral becoming disposal; completion must not be
+#: a second disposal route. The mark is not part of gate identity, so recognising `[x]`
+#: re-registers the affected gate at its original ID rather than minting a new one.
+_ITEM_RE = re.compile(r"^- \[(?P<mark>[ xX])\] (?P<body>.*)$")
 _CONT_RE = re.compile(r"^ {6}(?P<body>\S.*)$")
 _RETIRED_RE = re.compile(r"~~(?P<struck>.*?)~~")
 
@@ -28,6 +33,9 @@ class Gate:
     text: str
     line: int
     retired: bool
+    #: `True` when the spec line is `- [x]`. Satisfied gates still require a registry entry;
+    #: the mark records that the requirement is met, not that it stopped being a requirement.
+    checked: bool = False
 
     @property
     def short(self) -> str:
@@ -68,9 +76,10 @@ def parse(spec_path: Path | None = None) -> list[Gate]:
     gates: list[Gate] = []
     pending: list[str] | None = None
     pending_line = 0
+    pending_checked = False
 
     def flush() -> None:
-        nonlocal pending, pending_line
+        nonlocal pending, pending_line, pending_checked
         if pending is None:
             return
         text = _normalize(" ".join(pending))
@@ -80,9 +89,11 @@ def parse(spec_path: Path | None = None) -> list[Gate]:
                 text=text,
                 line=pending_line,
                 retired=bool(_RETIRED_RE.search(text)),
+                checked=pending_checked,
             )
         )
         pending = None
+        pending_checked = False
 
     for lineno, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
         item = _ITEM_RE.match(raw)
@@ -90,6 +101,7 @@ def parse(spec_path: Path | None = None) -> list[Gate]:
             flush()
             pending = [item.group("body")]
             pending_line = lineno
+            pending_checked = item.group("mark").lower() == "x"
             continue
         cont = _CONT_RE.match(raw)
         if cont and pending is not None:
@@ -103,5 +115,5 @@ def parse(spec_path: Path | None = None) -> list[Gate]:
 
 if __name__ == "__main__":  # pragma: no cover - developer aid for registry authoring
     for g in parse():
-        flag = "RETIRED" if g.retired else "       "
+        flag = "RETIRED" if g.retired else ("DONE   " if g.checked else "       ")
         print(f'    "{g.gate_id}": ,  # {flag} L{g.line} {g.short}')
