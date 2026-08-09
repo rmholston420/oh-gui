@@ -4490,3 +4490,14 @@ The applied diff is now printed for every mutant.
   `apps/gui/e2e/plugins-live.spec.ts`
 - **Evidence:** 237 vitest pass, `tsc --noEmit` clean. Live re-run pending.
 - **Stop-condition status:** in-progress — awaiting the live witness.
+
+## 2026-08-09 07:07 EDT — live plugins spec green (operator-witnessed)
+
+- **Stage / plugin / port:** Phase 1 · GUI · plugins surface
+- **Result:** 2 passed in 1.5s, headed, against the real agent-server. The panel rendered `oh-gui`
+  v0.1.0 with 22 agent-visible skills, all 22 listed, and `/api/plugins/installed` confirmed not to
+  report the project plugin.
+- **Also fixed:** the setup's own `rm -rf` of the previous run's staged tree now runs as root for
+  the same reason the teardown does. It was failing loudly while the test itself passed.
+- **Files touched:** `apps/gui/e2e/plugins-live.spec.ts`
+- **Stop-condition status:** met. Tier 2 is complete and witnessed.

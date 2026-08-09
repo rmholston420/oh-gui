@@ -1,4 +1,4 @@
-# Kosmos Session Handoff — 2026-08-09 07:03 EDT
+# Kosmos Session Handoff — 2026-08-09 07:07 EDT
 
 ## Current build-sequencing position
 - **Stage / phase:** Phase 1 · agent context + GUI surfaces
@@ -16,10 +16,13 @@
   were absent. New `scripts/tests/test_plugin_manifest.py` reads the accepted keys out of the
   pinned SDK source rather than restating them; 4 mutants caught.
 - `20cc2ca` read-only Plugins panel at `?surface=plugins` + live Playwright spec.
+- `9dba244` count is 22 agent-visible skills, not 18 — the server reports `get_all_skills()`, which
+  adds one keyword-triggered skill per command. The live run was right; my assertion was wrong.
+- Live spec green, operator-witnessed.
 
 ## Remaining before the current Definition of Done
-- **Operator witness owed:** `cd apps/gui && npx playwright test plugins-live --grep @live --headed
-  --workers=1 --reporter=list`. The spec stages `.agents` into `ohg-verify` itself.
+- ~~Operator witness for the plugins panel~~ — **done 07:07 EDT, 2 passed headed against the live
+  agent-server.** Tier 2 is complete.
 - Record the ADR-016 verdict as a closing amendment (decision made: change nothing; A stays
   default. A=45.0%, B=47.5% on 40 tasks — one task apart, no confirmatory GPU run).
 - Assign requirement IDs across the remaining Phase 1 specs; four drift gates + mutation tests.

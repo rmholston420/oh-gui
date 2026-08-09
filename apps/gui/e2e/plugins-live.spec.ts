@@ -50,7 +50,9 @@ test.describe('@live plugins panel against agent-server', () => {
     // Two steps, not one: `docker cp` onto an existing directory path is refused by the snap
     // build's AppArmor profile with "Operation not permitted", and a plain `mv` into place fails
     // the same way. Copying to the final path directly is the form that works.
-    docker('exec', CONTAINER, 'sh', '-c', `rm -rf ${PROJECT_DIR}; mkdir -p ${PROJECT_DIR}`);
+    // `-u 0` here too: this removes a *previous* run's staged tree, which was written as root by
+    // `docker cp`. Unprivileged it fails on every file and buries the real result in red text.
+    docker('exec', '-u', '0', CONTAINER, 'sh', '-c', `rm -rf ${PROJECT_DIR}; mkdir -p ${PROJECT_DIR}`);
     docker('cp', '../../.agents', `${CONTAINER}:${PROJECT_DIR}/.agents`);
     step('staged');
   });
