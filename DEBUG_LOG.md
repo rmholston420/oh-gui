@@ -1713,3 +1713,23 @@ change. A per-spec run is reported as a per-spec run.
 - **Related BUILD_LOG entry:** 2026-08-09 01:29 EDT
 - **Defect class:** third instance of *a gate that quietly stops gating*, after `- [x]` deleting a gate
   from the registry and the four reds that shipped at `68f8ffd` before constraints ran in `npm run gate`.
+
+## 2026-08-09 01:56 EDT — a blind sed rewrote the historical record
+
+- **Symptom:** After fixing the 14 donor-spec headers, a grep still reported `COVERAGE-forge-oh`
+  in two files. I ran `sed -i` across every match without reading them.
+- **Affected stage / plugin / port:** Phase 1 · spec governance · ADR-028
+- **Root cause:** The two remaining hits were not dangling references. They were **prose naming the
+  old path** — ADR-028's Context section citing the defect, and a BUILD_LOG entry describing it. The
+  sed rewrote both to `COVERAGE.md`, which made the ADR say the header pointed at the file it now
+  points at (so the defect it documents reads as no defect at all), and **edited an append-only
+  log**, breaking the discipline in the project instructions.
+- **Fix applied:** Restored the original strings in both files. The donor-spec headers stay
+  corrected; only the two prose mentions were reverted.
+- **Files changed:** `BUILD_LOG.md`, `adrs/ADR-028-*.md`
+- **Related BUILD_LOG entry:** 2026-08-09 01:52 EDT
+- **Lesson:** A reference-resolution gate must distinguish a *link* from a *mention of a name*. The
+  gate specced in ADR-028 decision 4 would have had this same bug had I built it from this session's
+  reasoning — it must key on link syntax and on paths it is asked to resolve, never on bare strings.
+  Recorded here so the gate is built against it. Second-order lesson: "grep found more hits" is not
+  a finding, it is a prompt to read them.

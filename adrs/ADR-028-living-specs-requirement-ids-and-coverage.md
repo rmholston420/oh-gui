@@ -18,7 +18,7 @@ important information." Three instances surfaced in the 2026-08-08/09 session al
 2. A 44-component stack list was supplied more than once; a scan found its memory/retrieval layer
    adopted nowhere, the MCP tool tier dropped wholesale, and graph visualisation absent from every
    surface.
-3. Every donor-spec provenance header points at `docs/specs/COVERAGE.md`, which was never
+3. Every donor-spec provenance header points at `docs/specs/COVERAGE-forge-oh.md`, which was never
    created. Fourteen files carry a reference to a document that does not exist.
 
 A fourth instance is the same defect in executable form: `provisional_types_not_wired` keyed on a
@@ -91,7 +91,7 @@ single-user constraint, and because a tracker is one more surface to drift from.
 - Four checks added to `scripts/hard_constraints/`, registered as enforced Phase 1 gates, each with
   a mutant proving it can fail.
 - `docs/specs/13-hard-constraints.md` gains the four gate rows.
-- The 14 donor-spec provenance headers pointing at `COVERAGE.md` are corrected to
+- The 14 donor-spec provenance headers pointing at `COVERAGE-forge-oh.md` are corrected to
   `COVERAGE.md`, resolving a live dangling reference.
 - A new OH-GUI skill carries the edit ritual: assign IDs on touch, regenerate the register, never
   renumber, drop only by ADR.
