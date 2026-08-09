@@ -31,8 +31,10 @@ describe('SurfaceNav', () => {
 
   it('advertises only surfaces that exist', () => {
     render(<SurfaceNav current="run" onSelect={() => {}} />);
-    // A rail row per unbuilt spec item would be a to-do list posing as navigation.
-    expect(screen.getAllByRole('button')).toHaveLength(2);
+    // A rail row per unbuilt spec item would be a to-do list posing as navigation. This count is
+    // deliberately exact: it fails when a surface is added, forcing the question of whether the
+    // new entry is backed by something built.
+    expect(screen.getAllByRole('button')).toHaveLength(3);
     expect(screen.queryByRole('button', { name: /worktree|automation|plan tree/i })).toBeNull();
   });
 });

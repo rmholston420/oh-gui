@@ -12,7 +12,7 @@
  * destinations that do not exist yet: a disabled row for every unbuilt spec item would be a
  * to-do list wearing navigation's clothes.
  */
-export type Surface = 'run' | 'plugins';
+export type Surface = 'run' | 'changes' | 'plugins';
 
 export interface SurfaceNavProps {
   readonly current: Surface;
@@ -28,7 +28,10 @@ interface NavItem {
 const GROUPS: ReadonlyArray<{ heading: string; items: readonly NavItem[] }> = [
   {
     heading: 'Workspace',
-    items: [{ surface: 'run', label: 'Run', hint: 'The active conversation and its actions' }],
+    items: [
+      { surface: 'run', label: 'Run', hint: 'The active conversation and its actions' },
+      { surface: 'changes', label: 'Changes', hint: 'Files the agent changed in the working tree' },
+    ],
   },
   {
     heading: 'Settings',

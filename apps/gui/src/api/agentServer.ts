@@ -1,4 +1,6 @@
 import type {
+  GitChange,
+  GitDiff,
   ConfirmationResponseRequest,
   ListPluginsRequest,
   PluginsResponse,
@@ -144,6 +146,33 @@ export const agentServer: AgentServerClient = {
       throw new AgentServerRequestError('GET', path, response.status, await readFailureDetail(response));
     }
     return response.text();
+  },
+
+  /**
+   * `GET /api/changes?path=<repo>` (`git_router.py:115`). `path` is the **repository directory**.
+   * A path that is not a git repository returns `[]`, not an error (`git_router.py:47`).
+   */
+  async listGitChanges(repoPath: string, ref?: string) {
+    const query = new URLSearchParams({ path: repoPath });
+    if (ref) query.set('ref', ref);
+    return requestJson<GitChange[]>(`/changes?${query.toString()}`);
+  },
+
+  /**
+   * `GET /api/diff?path=<file>` (`git_router.py:131`). Here `path` is a **single file**, not the
+   * repository -- the two endpoints spell the same parameter name differently, which is the kind
+   * of asymmetry that only a reading of the router reveals.
+   *
+   * `ref` and `commit` are mutually exclusive; sending both is a 400 (`git_router.py:141`).
+   */
+  async getGitDiff(filePath: string, options: { ref?: string; commit?: string } = {}) {
+    if (options.ref && options.commit) {
+      throw new Error("getGitDiff: 'ref' and 'commit' are mutually exclusive (git_router.py:141)");
+    }
+    const query = new URLSearchParams({ path: filePath });
+    if (options.ref) query.set('ref', options.ref);
+    if (options.commit) query.set('commit', options.commit);
+    return requestJson<GitDiff>(`/diff?${query.toString()}`);
   },
 
   async listPlugins(request = {}) {

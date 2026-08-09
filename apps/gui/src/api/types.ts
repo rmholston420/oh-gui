@@ -291,3 +291,30 @@ export interface ListPluginsRequest {
 export interface PluginsResponse {
   readonly plugins: readonly PluginInfo[];
 }
+
+
+/**
+ * Native: `GitChangeStatus`, `openhands/sdk/git/models.py:9`. Exactly these four values -- there is
+ * no RENAMED, COPIED, or UNTRACKED in the SDK enum, so the UI must not invent one.
+ */
+export type GitChangeStatus = 'MOVED' | 'ADDED' | 'DELETED' | 'UPDATED';
+
+/** Native: `GitChange`, `openhands/sdk/git/models.py:16`. Returned by `GET /api/changes`. */
+export interface GitChange {
+  readonly status: GitChangeStatus;
+  /** POSIX path, serialised by `_serialize_path` (models.py:20). */
+  readonly path: string;
+}
+
+/**
+ * Native: `GitDiff`, `openhands/sdk/git/models.py:25`. Returned by `GET /api/diff`.
+ *
+ * These are **whole file contents**, not a unified diff -- the server hands back both sides and
+ * the client computes the difference. Either side is `null`: `original` for an added file,
+ * `modified` for a deleted one. A path outside a git repository yields both `null` rather than an
+ * error (`git_router.py:112`), so "no diff" and "not a repo" look identical over the wire.
+ */
+export interface GitDiff {
+  readonly modified: string | null;
+  readonly original: string | null;
+}

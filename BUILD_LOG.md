@@ -4583,3 +4583,28 @@ The applied diff is now printed for every mutant.
 - **Properties now covered live:** Plugins is reachable without editing the URL at both sides of
   the 1700px breakpoint, and a live conversation survives the trip to the plugin list.
 - **Stop-condition status:** **met.** Plugins panel reachable; Tier 1/2 complete and witnessed.
+
+## 2026-08-09 07:52 EDT — Change review: see what the agent changed, without leaving the GUI
+
+- **Stage / plugin / port:** Phase 1 · GUI · change review (spec 06)
+- **What changed:** new `features/change-review` — file list from `GET /api/changes`, per-file diff
+  from `GET /api/diff`, reachable from navigation under Workspace as **Changes**.
+- **Native contract (ADR-015), read from SDK source, not docs:**
+  - `GET /api/changes?path=<repo dir>` -> `list[GitChange]` (`git_router.py:115`);
+    `GitChangeStatus` is exactly MOVED/ADDED/DELETED/UPDATED (`sdk/git/models.py:9`).
+  - `GET /api/diff?path=<single file>&ref=|commit=` -> `GitDiff{original, modified}`
+    (`git_router.py:131`). The two endpoints spell `path` identically and mean different things.
+  - `ref` and `commit` are mutually exclusive; the client refuses both rather than eliciting a 400.
+- **Whole files, not a unified diff.** The server returns both sides complete, so the diff is
+  computed client-side: `diff.ts`, an LCS line diff with hunking (~130 lines, no dependency).
+- **Honesty constraint:** a path outside a repository returns `[]` / both-null rather than an error
+  (`git_router.py:47,112`), so the UI says "clean, or not a git repository" instead of asserting the
+  one thing the response cannot distinguish.
+- **Cost discipline:** diffs are fetched on first expand, never on mount. A run touching forty files
+  would otherwise fire forty requests nobody asked for.
+- **Files touched:** `src/features/change-review/{diff.ts,diff.test.ts,ChangeReviewPanel.tsx,ChangeReviewPanel.test.tsx}`,
+  `src/api/{types.ts,agentServer.ts}`, `src/shell/SurfaceNav.tsx`, `SurfaceNav.test.tsx`,
+  `src/App.tsx`, `e2e/change-review-live.spec.ts`
+- **Evidence:** 264 vitest pass (was 244; +11 diff, +9 panel), `tsc --noEmit` clean, testids guard
+  green, 3 live tests enumerated.
+- **Stop-condition status:** in-progress -- unwitnessed until the live run.
