@@ -1,10 +1,12 @@
-# OH-GUI Project Skills
+# OH-GUI Plugin Skills
 
-Skills in this directory are discovered natively by the OpenHands SDK as **project skills**
-(`openhands/sdk/skills/__init__.py` → `load_project_skills`, which reads `.agents/skills/`).
-User-scope skills live in `~/.openhands/skills/` and are not tracked here.
+These skills are the `skills/` contribution of the **`oh-gui` plugin**, discovered by the OpenHands
+SDK from `.agents/plugins/` (`openhands/sdk/plugin/discovery.py` → `load_project_plugins`,
+`PROJECT_PLUGINS_SUBDIRS`). They were briefly placed at `.agents/skills/` and moved here so the
+agent-side footprint is one installable, uninstallable unit, per REQ-15-006.
 
-This is a native SDK path, not an OH-GUI convention. Nothing in this repo loads these files.
+Both paths are native. Do not populate both — a skill present in `.agents/skills/` *and* in a
+plugin's `skills/` is discovered twice.
 
 ## OH-GUI-native
 

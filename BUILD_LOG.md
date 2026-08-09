@@ -4393,3 +4393,21 @@ The applied diff is now printed for every mutant.
 - **Mutation evidence:** an unattributed `ADR-099` on the line *below* an exempt donor line is
   still red, pinning that the exemption cannot launder a fabrication elsewhere in the file. 65 pass.
 - **Stop-condition status:** met.
+
+## 2026-08-09 06:52 EDT — agent-side footprint packaged as the single `oh-gui` plugin (REQ-15-006)
+
+- **Stage / plugin / port:** Phase 1 · agent context · `oh-gui` plugin
+- **What changed:** `.agents/skills/` moved to `.agents/plugins/oh-gui/skills/` and wrapped in a
+  plugin manifest, so the agent-side footprint is one installable and uninstallable unit as
+  REQ-15-006 requires. Added four slash commands: `/gates`, `/handoff`, `/debug`, `/port`, each
+  encoding a standing operating rule as a one-word invocation.
+- **Correction to my own prior commit:** placing the skills at `.agents/skills/` was native but not
+  spec-conformant. REQ-15-006 was already on the books when I wrote them there.
+- **Native fidelity note:** the manifest path is `.plugin/plugin.json`
+  (`PLUGIN_MANIFEST_DIRS`, `plugin.py:35`). The `Plugin` class docstring says `.agents/plugin.json`
+  and is wrong. Followed the source, per ADR-015.
+- **Files touched:** `.agents/plugins/oh-gui/**` (24 files), `PORTING_LEDGER.md`
+- **Verification:** manifest keys validated against `PluginManifest`; all four command files parse
+  with only recognized frontmatter keys; 18 skills carry a `SKILL.md`. Full SDK load could not run
+  in this sandbox (vendored SDK needs `litellm`), so an in-container load check is owed.
+- **Stop-condition status:** met for packaging; in-container load verification outstanding.

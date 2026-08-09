@@ -1,0 +1,8 @@
+{
+  "name": "oh-gui",
+  "version": "0.1.0",
+  "description": "OH-GUI's agent-side footprint: repo navigation, live-workflow e2e discipline, operational-log discipline, and a set of domain-neutral engineering skills. Installing this plugin is the whole agent-side install; uninstalling it is the whole uninstall.",
+  "author": {
+    "name": "rmholston420"
+  }
+}

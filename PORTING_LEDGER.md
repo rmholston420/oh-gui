@@ -503,13 +503,16 @@ chain, and §4.2 is about the account, so the conclusion leads.
 - **Source:** https://github.com/rmholston420/Forge-OH
 - **Commit / Version:** df73ebed2d6d9df9397f7e95dd1eb66bd3dd98b2
 - **License:** MIT
-- **Kosmos location:** `.agents/skills/`
+- **Kosmos location:** `.agents/plugins/oh-gui/skills/`
 - **Port(s):** none — content only; no adapter or formal port is involved.
-- **Native basis:** `.agents/skills/` is the project-skill discovery path and
-  `~/.openhands/skills/` the user-scope path, both read from the pinned SDK source at
-  `review/_sdk_src/1.41.0/openhands_sdk-1.41.0/openhands/sdk/skills/__init__.py`
-  (`load_project_skills` / `load_user_skills`). Nothing in OH-GUI loads these files; the SDK
-  does. No OH-GUI-invented directory, key, or field is introduced.
+- **Native basis:** the skills ship inside the `oh-gui` plugin at `.agents/plugins/oh-gui/`, which
+  the SDK discovers via `PROJECT_PLUGINS_SUBDIRS` in
+  `review/_sdk_src/1.41.0/openhands_sdk-1.41.0/openhands/sdk/plugin/discovery.py`. The manifest sits
+  at `.plugin/plugin.json` per `PLUGIN_MANIFEST_DIRS` in `plugin.py:35` — **not** the
+  `.agents/plugin.json` shown in that module's own class docstring, which is wrong. Manifest keys
+  are exactly `PluginManifest`'s fields. Commands are markdown with `description` and
+  `argument_hint` frontmatter per `CommandDefinition.load`. Nothing in OH-GUI loads any of this; the
+  SDK does. No OH-GUI-invented directory, key, or field is introduced.
 - **Modifications:**
   - 15 domain-neutral skills copied from `misc/user-scope-skills/` unchanged except for five
     donor-specific references scrubbed in `skill-authoring` and `planning` (BFF router paths and
