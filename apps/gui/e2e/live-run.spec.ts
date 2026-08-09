@@ -23,6 +23,18 @@ import { expect, test, type Page } from '@playwright/test';
 const AGENT_SERVER = 'http://127.0.0.1:8000';
 const LIVE_TIMEOUT_MS = 240_000;
 
+/**
+ * These tests wait on a real model, so a silent terminal is indistinguishable from a hang. Every
+ * phase announces itself with elapsed seconds. Reporters only print on test completion; worker
+ * stdout is forwarded immediately, which is why progress goes through console.log.
+ */
+const T0 = Date.now();
+function step(message: string): void {
+  const seconds = ((Date.now() - T0) / 1000).toFixed(0).padStart(4);
+  // eslint-disable-next-line no-console
+  console.log(`\x1b[36m[${seconds}s]\x1b[0m ${message}`);
+}
+
 // File scope, not describe scope: Playwright rejects `test.use()` inside a describe block, and the
 // failure mode is nasty — it does not fail this file, it fails collection for the whole directory,
 // so every other spec silently reports "0 tests" and the suite goes green by finding nothing.
@@ -82,6 +94,7 @@ test.describe('@live real conversation against agent-server', () => {
     // The shell must be present and must not have swallowed the run surface.
     await expect(page.getByRole('heading', { name: 'Agent Server workspace' })).toBeVisible();
 
+    step(`starting run: ${goal.slice(0, 60)}...`);
     await page.getByLabel('Goal').fill(goal);
     // "Ask always" maps to AlwaysConfirm(), so the first tool call is guaranteed to pause. Without
     // this the run may finish before a human could act, and the approval path would go untested
@@ -92,14 +105,17 @@ test.describe('@live real conversation against agent-server', () => {
     // Proof the server accepted the conversation: the id stops being 'unavailable'.
     const conversationId = page.locator('dt', { hasText: 'Conversation' }).locator('+ dd');
     await expect(conversationId).not.toHaveText('unavailable', { timeout: 60_000 });
+    step(`conversation accepted by the server: ${await conversationId.textContent()}`);
   }
 
   /** Wait for the model to actually produce a pending action, not merely for the poll to tick. */
   async function waitForPendingAction(page: Page) {
+    step('waiting for the model to emit a tool call (up to 180s)...');
     await expect(page.getByRole('region', { name: 'Pending authorization' })).toBeVisible({
       timeout: 180_000,
     });
     await expect(page.getByTestId('approve').first()).toBeEnabled({ timeout: 30_000 });
+    step('pending action arrived and is approvable');
   }
 
   test('streams real events and approves a real pending action', async ({ page }) => {
@@ -176,6 +192,7 @@ test.describe('@live real conversation against agent-server', () => {
     await page.getByLabel('Follow-up instruction').fill(
       'Now run exactly: echo OHGUI_STEERED. Then call finish.',
     );
+    step('sending follow-up into the same conversation');
     await page.getByRole('button', { name: 'Send follow-up' }).click();
 
     // Proof the server accepted the steer rather than the GUI merely clearing its textarea: the
@@ -206,6 +223,7 @@ test.describe('@live real conversation against agent-server', () => {
     await waitForPendingAction(page);
     await page.getByTestId('approve').first().click();
 
+    step('approved; checking the audit log recorded it');
     const history = page.getByRole('region', { name: 'Authorization history' });
     await expect(history).toBeVisible({ timeout: 60_000 });
     // The record must carry the decision and the command that was authorized, or it is not
