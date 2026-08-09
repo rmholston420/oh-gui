@@ -3668,7 +3668,7 @@ The applied diff is now printed for every mutant.
 
 - **Stage / plugin / port:** Phase 1 · cross-cutting · spec governance
 - **What changed:** Plans change during implementation; the corpus and the code then drift silently.
-  Four instances were on record, including a dangling `COVERAGE-forge-oh.md` referenced by all 14
+  Four instances were on record, including a dangling `COVERAGE.md` referenced by all 14
   donor-spec headers and never created. ADR-028 makes drift mechanically detectable: every normative
   statement in an enrolled spec carries a permanent `REQ-<spec>-<nnn>` id that is never renumbered or
   reused, a generated register records one status per id, and dropping a requirement requires an ADR
