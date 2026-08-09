@@ -9,6 +9,7 @@ import type { AgentServerEvent } from './api/types';
 import RunView from './features/run/RunView';
 import Shell from './shell/Shell';
 import SurfaceNav, { type Surface } from './shell/SurfaceNav';
+import ChangeReviewPanel from './features/change-review/ChangeReviewPanel';
 import { useRailVisible } from './shell/useRailVisible';
 import type { SdkNativeModelProfileFields } from './features/model-profiles/model-profile';
 
@@ -159,7 +160,11 @@ export default function App() {
  */
 function Workspace() {
   const [surface, setSurface] = useState<Surface>('run');
-  const projectDir = new URLSearchParams(window.location.search).get('projectDir');
+  const query = new URLSearchParams(window.location.search);
+  const projectDir = query.get('projectDir');
+  // The repository as the **agent-server container** sees it. Defaults to `projectDir` because in
+  // practice they are the same directory; kept separable because nothing in the contract says so.
+  const repoPath = query.get('repoPath') ?? projectDir;
 
   // Below 1700px the rail is `display: none`, which removes it from the accessibility tree —
   // navigation mounted only there is unreachable, not merely cramped. So the nav moves into the
@@ -194,6 +199,15 @@ function Workspace() {
         <>
           <div hidden={surface !== 'run'} data-testid="surface-run">
             <RunView isReadOnlyViewport={isReadOnlyViewport} />
+          </div>
+          <div
+            hidden={surface !== 'changes'}
+            className="mx-auto max-w-5xl p-6"
+            data-testid="surface-changes"
+          >
+            {/* Mounted on demand, like Plugins: the panel fetches on mount and a background
+                request against the agent-server on every app load is not free. */}
+            {surface === 'changes' && <ChangeReviewPanel repoPath={repoPath} />}
           </div>
           <div
             hidden={surface !== 'plugins'}

@@ -2124,3 +2124,26 @@ gating" defect class in this repo.
   permissions as the likely cause.
 - **Files changed:** `apps/gui/e2e/change-review-live.spec.ts`
 - **Related BUILD_LOG entry:** 2026-08-09 08:00 EDT
+
+## 2026-08-09 08:03 EDT — Changes nav button rendered nothing; App.tsx was never wired
+
+- **Symptom:** live test 3 failed with `getByTestId('change-row')` resolving to 0 elements for 15 s,
+  after the step log confirmed `opened change review from the navigation`. Tests 1 and 2 passed, so
+  the server, the endpoints and the repository were all correct — only the screen was empty.
+- **Affected stage / plugin / port:** Phase 1 · GUI · change review · App composition
+- **Root cause:** the patch that added `'changes'` to the `Surface` union and mounted
+  `ChangeReviewPanel` in `App.tsx` was a single Python heredoc with three anchors. The third anchor
+  was written as a single line, `<div hidden={surface !== 'plugins'}`, while the file has it split
+  across lines by the formatter. The `assert` raised, the script exited before `write_text`, and the
+  SurfaceNav change — already written earlier in the same script — persisted alone. The bash wrapper
+  did not use `set -e`, so a failed interpreter was reported as success.
+- **Why nothing caught it:** `tsc` was clean because both files are independently valid. All 264
+  unit tests passed because the panel tests render the panel directly and the nav tests render the
+  nav directly; nothing owned the seam between them. The nav button existed and did nothing.
+- **Fix applied:** wiring completed, and `src/shell/surfaceWiring.test.ts` added — it reads both
+  source files and fails when the `Surface` union declares a surface `App.tsx` does not render, or
+  one the nav does not list. Mutation-tested by breaking the wiring and watching it fail. A third
+  case asserts the union is found at all, so a rename cannot make the guard vacuous. All patch
+  scripts now run under `set -euo pipefail`.
+- **Files changed:** `apps/gui/src/App.tsx`, `apps/gui/src/shell/surfaceWiring.test.ts` (new)
+- **Related BUILD_LOG entry:** 2026-08-09 08:03 EDT

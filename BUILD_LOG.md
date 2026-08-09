@@ -4633,3 +4633,16 @@ The applied diff is now printed for every mutant.
   there, and wrong when the container creates them. The agent-server reads as its own user.
 - **Files touched:** `apps/gui/e2e/change-review-live.spec.ts`
 - **Stop-condition status:** in-progress — change review still unwitnessed live.
+
+## 2026-08-09 08:03 EDT — Change review mounted in the workspace, with a guard on the nav/App seam
+
+- **Stage / plugin / port:** Phase 1 · GUI · change review (spec 06)
+- **What changed:** `ChangeReviewPanel` mounted under `surface === 'changes'` in `App.tsx`, on
+  demand rather than at load, reading `?repoPath=` and falling back to `?projectDir=`. New
+  `surfaceWiring.test.ts` fails when navigation offers a surface the workspace cannot render.
+- **Evidence:** 267 vitest pass (264 + 3), `tsc` clean, testids guard green, mutation-tested by
+  removing the wiring. Live tests 1 and 2 already witnessed green on the operator's machine:
+  server reported `{added.txt: ADDED, edited.txt: UPDATED, removed.txt: DELETED}`, and the diff
+  endpoint confirmed whole-file original/modified rather than a unified diff.
+- **Files touched:** `apps/gui/src/App.tsx`, `apps/gui/src/shell/surfaceWiring.test.ts`
+- **Stop-condition status:** in-progress — test 3 unwitnessed.
