@@ -3592,3 +3592,36 @@ The applied diff is now printed for every mutant.
   (revert the contrast fix) fails the narrow gate.
 - **Stop-condition status:** met. §4.2 still owes the untrusted badge (04a), the §4.2.1 audit log,
   and wiring Reject.
+
+## 2026-08-09 00:51 EDT — ADR-026 ratified: extension-only posture and the six-tier capability allocation map; 1.41.0 SDK source snapshot committed
+
+- **Stage / plugin / port:** Phase 0 · cross-cutting · no port
+- **What changed:**
+  - Authored and ratified ADR-026 in response to two operator directives ("we do not want to modify
+    OpenHands, we want to build on top of it" and "i leave it to your judgement to decide what should
+    be a skill, a hook, a plugin, or part of the harness or GUI"). Fixes the extension-only posture
+    (D1), enumerates the six tiers verified present in 1.41.0 (D2), sets the lowest-tier-wins
+    preference order (D3), locates approval on `ConfirmationPolicyBase` + `permission_mode` (D4), and
+    adds four enforceable checks to the ADR-018 registry (D5).
+  - Key native-fidelity finding: `HookDecision` has only `ALLOW`/`DENY`; `ASK` is a commented-out
+    future line. A hook is structurally incapable of asking the operator, which corroborates ADR-014
+    with the executable evidence it was gated on, and means spec 04 §4.2's authorization card was
+    never implementable as a hook.
+  - Second finding: all five Forge-OH inventions have exact native homes on `AgentDefinition`
+    (`maxCost`→`max_budget_per_run`, `maxSteps`→`max_iteration_per_run`, `toolAllowlist`→`tools`,
+    `systemPrompt`→markdown body, `loopGuard`→`Stop` hook or critic).
+  - Committed `review/_sdk_src/1.41.0/` (4 packages, 446 `.py`, 5.6 MB) with a provenance README.
+    ADR-015 had been citing this path since 2026-08-08 but it was never committed.
+  - Committed `docs/donor-specs/forge-oh/` (3 donor specs of record, filed verbatim).
+- **Files touched:**
+  - `adrs/ADR-026-extension-only-posture-and-capability-allocation.md` (new, 247 lines)
+  - `adrs/README.md` (index row)
+  - `review/_sdk_src/README.md`, `review/_sdk_src/1.41.0/**` (new)
+  - `docs/donor-specs/forge-oh/0{1,2,3}-*.md` (new)
+  - `BUILD_LOG.md`, `DEBUG_LOG.md`
+- **Ports / adapters affected:** none yet; D5 checks are owed to the ADR-018 registry
+- **PORTING_LEDGER / ADR updated:** ADR-026 (new). No ledger entry — nothing was vendored as code;
+  `review/_sdk_src/` is evidence and is prohibited from being imported (D1.3).
+- **Stop-condition status:** in-progress. Owed next: ADR-014 status change on the `HookDecision`
+  evidence; D5 checks implemented and mutation-tested; proposed `docs/specs/15-middleware-harness.md`
+  written against this allocation.

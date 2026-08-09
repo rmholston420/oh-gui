@@ -1666,3 +1666,26 @@ demo data existed. The card's other e2e specs render the same demo actions, so t
 the specs most likely to be affected by that change, and they were the ones not run. Rule going
 forward: a full-suite count may only be quoted from a full-suite run made after the last source
 change. A per-spec run is reported as a per-spec run.
+
+## 2026-08-09 00:51 EDT — six ADR/spec citations pointed at a path that was never committed
+
+- **Symptom:** `adrs/ADR-015-native-fidelity-boundary.md` and `docs/forge-oh-review/02-bff-services.md`
+  contain six citations of the form `review/_sdk_src/1.41.0/openhands_sdk-1.41.0/openhands/sdk/...:NN`.
+  `find . -type d -name _sdk_src` returned nothing and `git log -- review` was empty: the directory
+  has never existed in this repository at any commit.
+- **Affected stage / plugin / port:** Phase 0 · ADR-015 evidence chain · no port
+- **Root cause:** the 1.41.0 source tree was extracted into an ephemeral agent sandbox
+  (`/tmp/captest/`) and cited from there, while the citation strings were written as if the tree were
+  in-repo. Nothing verified the two agreed. The sandbox is discarded between sessions, so from the
+  moment ADR-015 was pushed, its central evidence was unopenable by any reader — including future
+  sessions of the agent that wrote it. This is the exact failure the operator named: "you have no
+  real persistent memory, and you have no access to my local machine, i can only work with you via
+  github." Anything not in git did not survive.
+- **Fix applied:** committed `review/_sdk_src/1.41.0/` (446 `.py`, 5.6 MB, `__pycache__` excluded)
+  with a provenance README marking it read-only, never-imported, additive-by-version. All six
+  citations now resolve. ADR-026 D5.4 adds a standing check that every cited `review/_sdk_src/` path
+  exists **at the cited line**, chosen over a mere file-existence check so that line drift is caught
+  too. ADR-026's own ten citations were verified resolvable and verbatim before commit.
+- **Files changed:** `review/_sdk_src/README.md`, `review/_sdk_src/1.41.0/**`,
+  `adrs/ADR-026-extension-only-posture-and-capability-allocation.md`
+- **Related BUILD_LOG entry:** 2026-08-09 00:51 EDT
