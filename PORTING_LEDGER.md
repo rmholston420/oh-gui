@@ -474,6 +474,13 @@ chain, and §4.2 is about the account, so the conclusion leads.
 - **OH-GUI location:** none — declared in OpenHands MCP configuration, no source in this tree
 - **Port(s):** none. An MCP server is a capability of the agent, not a dependency of our code, so
   it is not wrapped behind a port (ADR-033 clause 1, ADR-026 lowest-tier-wins).
+- **Native basis** (ADR-015 clause 8): stdio MCP servers are a first-class native surface, not an
+  OH-GUI invention. `MCPTransport` admits `"stdio"` and stdio servers require a `command` at
+  `review/_sdk_src/1.41.0/openhands_sdk-1.41.0/openhands/sdk/mcp/config.py:493,542-543`. Servers
+  are merged into an agent through `Plugin.add_mcp_config_to` at
+  `review/_sdk_src/1.41.0/openhands_sdk-1.41.0/openhands/sdk/plugin/loader.py:101`, over
+  `agent.mcp_config` at `loader.py:78`. Nothing here is adapted or reshaped by OH-GUI: we supply a
+  declaration the harness already consumes.
 - **Modifications:** none
 - **ADR:** [ADR-033](adrs/ADR-033-code-index-is-an-mcp-server-not-a-vendored-index.md)
 - **Logged:** 2026-08-09 06:03 EDT
