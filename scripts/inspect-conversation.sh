@@ -25,7 +25,7 @@ for k in ("blocked_actions","blocked_messages"):
 '
 
 step "event kind tally"
-curl -s "$API/conversations/$CID/events?limit=200" | python3 -c '
+curl -s "$API/conversations/$CID/events/search?limit=200" | python3 -c '
 import sys,json,collections
 raw=sys.stdin.read()
 try: d=json.loads(raw)

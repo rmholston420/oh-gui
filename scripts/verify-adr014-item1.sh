@@ -20,6 +20,8 @@ CANARY=$WD/canary.txt
 DENY='sh -c '"'"'printf {"decision":"deny","reason":"ADR-014 item 1 deny"}; exit 2'"'"''
 
 step "preflight"
+# Agent.tools must be populated or the agent only gets finish/think and the run errors
+# with "Tool 'bash' not found" - which looks like a clean deny but is an unarmed test.
 docker ps -q --filter "name=$CTR" | grep -q . || { fail "container $CTR not running"; exit 1; }
 [ "$(curl -s -o /dev/null -w '%{http_code}' "$API/../openapi.json")" = "200" ] || warn "openapi not 200"
 ok "container up, agent-server reachable"
@@ -32,9 +34,10 @@ REQ=$(MODEL="$MODEL" OLLAMA="$OLLAMA" WD="$WD" CANARY="$CANARY" DENY="$DENY" pyt
 import json, os
 print(json.dumps({
   "workspace": {"kind": "LocalWorkspace", "working_dir": os.environ["WD"]},
-  "agent": {"kind": "Agent", "llm": {
-      "model": os.environ["MODEL"], "base_url": os.environ["OLLAMA"],
-      "api_key": "ollama", "native_tool_calling": True}},
+  "agent": {"kind": "Agent",
+      "llm": {"model": os.environ["MODEL"], "base_url": os.environ["OLLAMA"],
+              "api_key": "ollama", "native_tool_calling": True},
+      "tools": [{"name": "TerminalTool"}, {"name": "FileEditorTool"}]},
   "hook_config": {"pre_tool_use": [{"matcher": "*", "hooks": [
       {"type": "command", "command": os.environ["DENY"], "timeout": 20}]}]},
   "initial_message": {"role": "user", "content": [{"type": "text", "text":
