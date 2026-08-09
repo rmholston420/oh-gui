@@ -4448,3 +4448,25 @@ The applied diff is now printed for every mutant.
 - **Mutation evidence:** underscore key CAUGHT, unread command key CAUGHT, unread manifest key
   CAUGHT, `.agents/skills/` reintroduced alongside the plugin CAUGHT. 73 pass.
 - **Stop-condition status:** met — in-container verification debt from the prior entry is cleared.
+
+## 2026-08-09 06:59 EDT — Plugins panel (read-only); `/plugins/installed` is the wrong endpoint
+
+- **Stage / plugin / port:** Phase 1 · GUI · plugins surface · agent-server plugins API
+- **What changed:** read-only Plugins panel at `?surface=plugins`. Lists each discovered plugin with
+  version, description, install path, file count, and an expandable skill list.
+- **Contract correction:** the panel calls `POST /api/plugins`, not `GET /plugins/installed`.
+  `/installed` reports only registry-managed installs done through `POST /plugins/install`; a plugin
+  discovered from `.agents/plugins/` never appears there. Verified live: `/api/plugins` returned
+  `oh-gui` with 18 skills while `/api/plugins/installed` returned `{"plugins": []}`. Had I built the
+  panel on the endpoint whose name matched the intent, it would have rendered an empty list against
+  a working server. Both routes are under `/api`; the router prefix is not in the router itself.
+- **Deliberately out of scope:** install, uninstall, refresh, marketplace, and enable/disable.
+  `POST /plugins` accepts a git URL and fetches remote code into the agent's context. That is
+  arbitrary code execution reached from a GUI button and belongs with the authorization posture, not
+  beside a refresh icon. It needs an ADR before any of it is wired.
+- **Files touched:** `apps/gui/src/features/plugins/PluginsPanel.tsx` (new), `PluginsPanel.test.tsx`
+  (new, 8), `apps/gui/e2e/plugins-live.spec.ts` (new, live), `apps/gui/src/api/agentServer.ts`,
+  `apps/gui/src/api/types.ts`, `apps/gui/src/App.tsx`
+- **Evidence:** 236 vitest pass (was 228), `tsc --noEmit` clean, hard constraints green, 73 script
+  tests green. Live Playwright run is operator-witnessed and pending.
+- **Stop-condition status:** met for Tier 2; live witness outstanding.

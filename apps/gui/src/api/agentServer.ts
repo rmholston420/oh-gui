@@ -1,5 +1,7 @@
 import type {
   ConfirmationResponseRequest,
+  ListPluginsRequest,
+  PluginsResponse,
   ConfirmationPolicy,
   ConversationInfo,
   EventPage,
@@ -74,6 +76,7 @@ export interface AgentServerClient {
   getEventCount(conversationId: string): Promise<number>;
   searchEvents(conversationId: string): Promise<EventPage>;
   readWorkspaceFile(conversationId: string, filePath: string): Promise<string>;
+  listPlugins(request?: ListPluginsRequest): Promise<PluginsResponse>;
 }
 
 export const agentServer: AgentServerClient = {
@@ -141,5 +144,12 @@ export const agentServer: AgentServerClient = {
       throw new AgentServerRequestError('GET', path, response.status, await readFailureDetail(response));
     }
     return response.text();
+  },
+
+  async listPlugins(request = {}) {
+    // POST, not GET: the endpoint takes a body selecting which local sources to scan
+    // (plugins_router.py:222). `project_dir` is resolved by the agent-server inside its own
+    // container, so it is a container path, not a host path.
+    return requestJson<PluginsResponse>('/plugins', jsonPost(request));
   },
 };

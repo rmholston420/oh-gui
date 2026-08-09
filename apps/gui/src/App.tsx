@@ -3,6 +3,7 @@ import AuthorizationCard, {
 } from './features/authorization/AuthorizationCard';
 import FirstRunWizard from './features/first-run/FirstRunWizard';
 import ModelProfilePanel from './features/model-profiles/ModelProfilePanel';
+import PluginsPanel from './features/plugins/PluginsPanel';
 import type { AgentServerEvent } from './api/types';
 import RunView from './features/run/RunView';
 import Shell from './shell/Shell';
@@ -109,6 +110,20 @@ export default function App() {
               events={MODEL_PROFILE_DEMO_EVENTS}
               isReadOnlyViewport={isReadOnlyViewport}
             />
+          </div>
+        )}
+      </Shell>
+    );
+  }
+
+  if (surface === 'plugins') {
+    // `project_dir` is resolved inside the agent-server's container, so it is a container path.
+    // `?projectDir=` lets the headed run point at wherever the workspace is mounted.
+    return (
+      <Shell lens={query.get('lens') === 'pro' ? 'pro' : 'vibe'}>
+        {() => (
+          <div className="mx-auto max-w-4xl p-6">
+            <PluginsPanel projectDir={query.get('projectDir')} />
           </div>
         )}
       </Shell>

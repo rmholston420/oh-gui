@@ -247,3 +247,47 @@ export function defaultStartRequest(
 
   return request;
 }
+
+/**
+ * A skill bundled inside a plugin.
+ *
+ * Native: `PluginSkillSummary`, openhands_agent_server-1.41.0/openhands/agent_server/
+ * plugins_service.py:144-148. Only `name` is guaranteed; `description` is nullable upstream.
+ */
+export interface PluginSkillSummary {
+  readonly name: string;
+  readonly description: string | null;
+}
+
+/**
+ * A locally-available plugin.
+ *
+ * Native: `PluginInfo`, plugins_router.py:72-85. Returned by `POST /api/plugins`, which reports
+ * plugins discovered in the user and project directories.
+ *
+ * This is deliberately not `InstalledPluginResponse`. `GET /plugins/installed` reports only the
+ * registry-managed installs performed through `POST /plugins/install`; a plugin discovered from
+ * `.agents/plugins/` never appears there. Verified live against the pinned agent-server: with the
+ * repo's own `oh-gui` plugin on disk, `/api/plugins` returned it with 18 skills while
+ * `/api/plugins/installed` returned `{"plugins": []}`.
+ */
+export interface PluginInfo {
+  readonly name: string;
+  readonly version: string;
+  readonly description: string;
+  readonly path: string;
+  readonly skills: readonly PluginSkillSummary[];
+  readonly files: readonly string[];
+}
+
+/** Native: `PluginsRequest`, plugins_router.py:58-69. */
+export interface ListPluginsRequest {
+  readonly load_user?: boolean;
+  readonly load_project?: boolean;
+  readonly project_dir?: string | null;
+}
+
+/** Native: `PluginsResponse`, plugins_router.py:87-90. */
+export interface PluginsResponse {
+  readonly plugins: readonly PluginInfo[];
+}
