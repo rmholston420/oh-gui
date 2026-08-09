@@ -4646,3 +4646,20 @@ The applied diff is now printed for every mutant.
   endpoint confirmed whole-file original/modified rather than a unified diff.
 - **Files touched:** `apps/gui/src/App.tsx`, `apps/gui/src/shell/surfaceWiring.test.ts`
 - **Stop-condition status:** in-progress — test 3 unwitnessed.
+
+## 2026-08-09 08:05 EDT — Change review witnessed live, 3/3
+
+- **Stage / plugin / port:** Phase 1 · GUI · change review (spec 06)
+- **Witnessed on Colossus, headed, against `ohg-verify`:** 3 passed (1.7s).
+  - Server reported `{added.txt: ADDED, edited.txt: UPDATED, removed.txt: DELETED}` and, correctly,
+    nothing for the untouched file.
+  - `/api/git/diff` confirmed whole-file `original`/`modified` with no `@@` headers — the contract
+    the client-side diff exists to serve.
+  - The operator opened Changes from the navigation, saw three files, expanded `edited.txt` and read
+    a diff the server never computed (`TWO CHANGED`, +1/−1), then expanded `added.txt` and saw it
+    render with no original side rather than as an error.
+- **Cost of the three red runs, for the record:** wrong route prefix (read the decorator, not the
+  router), repository built as root (git refuses foreign ownership, router converts that to `[]`),
+  and a half-applied patch that left a dead nav button. Each is now held by a gate:
+  `check-api-paths.py`, a readability assertion in `beforeAll`, and `surfaceWiring.test.ts`.
+- **Stop-condition status:** **MET.** Change review is native, reachable, and witnessed.
