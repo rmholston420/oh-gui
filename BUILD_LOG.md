@@ -3687,3 +3687,26 @@ The applied diff is now printed for every mutant.
 - **Stop-condition status:** met at a landable boundary · the four gates in decision 4 are recorded
   DEFERRED to Phase 1 by amendment 1 clause 3, not half-built
 - **Verification:** `spec_coverage.py` validate exit 0 · constraints runner exit 0
+
+## 2026-08-09 02:05 EDT — ADR-029: the decision boundary is the plan, and Vibe/Pro are its defaults
+
+- **Stage / plugin / port:** Phase 1 · authorization slice · spec governance
+- **What changed:** Resolved the two red spec conflicts and the yellow one in a single ADR, since
+  all three turn on one mechanism. Key correction: REQ-01-004 says "expose decision boundaries",
+  **not** per-action approval — the per-action reading came from §4.2's card, so the real conflict
+  was card granularity vs autonomous Vibe, not principle vs product. Authorization unit is now the
+  plan and its envelope; envelopes must be mechanically checkable (paths/hosts/tool classes);
+  enforcement is a COMMAND hook by exit code because AGENT hooks fall open; envelope width is the
+  existing trust dial at plan scope; Vibe/Pro are default dial positions over one data model, so
+  REQ-01-009 and REQ-01-011 are reaffirmed unchanged; review budget is denominated in cards raised,
+  not lines of diff.
+- **Files touched:** `adrs/ADR-029-*.md` (new, 134 lines), `adrs/README.md`,
+  `docs/specs/01-principles.md` (clarification block), `docs/specs/COVERAGE.md` (6 rows)
+- **Ports / adapters affected:** none; no new port
+- **PORTING_LEDGER / ADR updated:** ADR-029 ratified
+- **Stop-condition status:** met · decision 3 cannot be marked verified until ADR-014's four items
+  execute against a live pinned agent-server on Colossus
+- **Verification:** hook citations re-read against pinned source before commit — `HookDecision` has
+  ALLOW/DENY with ASK commented out (`types.py:35-40`), invalid decisions fall open with a warning
+  (`executor.py:343-352`). Three referenced ADR filenames were wrong on first write and were
+  corrected against `ls`. `spec_coverage.py` exit 0 · constraints runner exit 0

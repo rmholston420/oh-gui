@@ -39,14 +39,14 @@ the enrolled set when it is next edited. Specs not listed carry no ids yet.
 | REQ-01-001 | SPECCED |  | Precision in, precision out - scaffold structured intent capture; never ship a bare chat b... |
 | REQ-01-002 | SPECCED |  | First output is a sketch, not a final answer - every surface must make review effortless. |
 | REQ-01-003 | SPECCED |  | Iterate in bounded sections - default all agent requests to scoped, section-by-section cha... |
-| REQ-01-004 | SPECCED |  | Expose decision boundaries; do not maximize autonomy. |
+| REQ-01-004 | SPECCED | ADR-029 | Boundary unit is the plan, not the action (ADR-029 d.1). Clarified, not dropped. |
 | REQ-01-005 | SPECCED |  | Proactivity has a disruption cost - pay it down with visible presence/context cues, not si... |
-| REQ-01-006 | SPECCED |  | The review budget is finite (~400 lines/session, configurable) - design batching and pacin... |
+| REQ-01-006 | DROPPED | ADR-029 | ~400-line budget superseded for plan-level review by ADR-029 d.6; survives in 06-change-review. |
 | REQ-01-007 | SPECCED |  | Friction is budgeted and spent deliberately; the low-risk path must feel instant. Input ec... |
 | REQ-01-008 | SPECCED |  | Provenance is a first-class governing concern. Every context/action/authorization decision... |
-| REQ-01-009 | SPECCED |  | Two depth layers, one system, never two products. Vibe Mode (default) and Pro Mode as sema... |
+| REQ-01-009 | SPECCED | ADR-029 | Reaffirmed unchanged by ADR-029 d.5. Vibe/Pro are dial defaults over one data model. |
 | REQ-01-010 | SPECCED |  | Design for one capable local model, not a fleet. Every surface assuming multiple simultane... |
-| REQ-01-011 | SPECCED |  | (v4.3, ADR-003) Design two lenses for one operator at different times, not for |
+| REQ-01-011 | SPECCED | ADR-029 | Reaffirmed unchanged by ADR-029 d.5. Two lenses, one operator, different hours. |
 
 ## 04-authorization.md
 
@@ -62,8 +62,8 @@ the enrolled set when it is next edited. Specs not listed carry no ids yet.
 | REQ-04-008 | SPECCED |  | ~~Blast radius: files, paths, network hosts, **credentials touched**~~ — **"credentials to... |
 | REQ-04-009 | SPECCED |  | **Blast radius: files, paths, network hosts.** **Classified DERIVED** under ADR-015: a per... |
 | REQ-04-010 | SPECCED |  | If upstream context is tagged untrusted per 04a-prompt-injection.md, display a distinct ba... |
-| REQ-04-011 | SPECCED |  | Three actions: Approve / Reject with reason (free-text required) / Approve and relax for t... |
-| REQ-04-012 | SPECCED |  | Wire Reject directly to conversation.reject_pending_actions(reason). |
+| REQ-04-011 | DEFERRED | Phase 1 | Cards rescoped by ADR-029 d.1 to envelope escapes. Not wired; DEMO_ACTIONS only. |
+| REQ-04-012 | DEFERRED | Phase 1 | Reject not wired to conversation.reject_pending_actions(reason). |
 | REQ-04-013 | SPECCED |  | UX pattern references (read source directly, see 12-portable-components.md): agentkitai/ag... |
 | REQ-04-014 | SPECCED |  | Every approval, rejection-with-reason, and "relax for this class" event is written to a vi... |
 | REQ-04-015 | SPECCED |  | Every "relax for this class" grant is session-scoped and expires automatically at conversa... |

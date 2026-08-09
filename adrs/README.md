@@ -63,3 +63,4 @@ old one and mark the old one `Amended · superseded by ADR-###`.
 | ADR-026 | We build on top of OpenHands, never into it: extension-only posture and the six-tier capability allocation map (skill → hook → subagent → plugin → middleware → GUI, lowest tier wins) | Ratified |
 | ADR-027 | OpenHands is the harness; our middleware is only its residue. Tier 5 renamed, native-first becomes a burden of proof, and second harnesses (LangGraph, CrewAI, AutoGen) are refused | Ratified |
 | ADR-028 | Living specs: every normative statement carries a permanent REQ id, a generated coverage register tracks its status, and dropping a requirement requires an ADR | Ratified |
+| ADR-029 | The decision boundary is the plan, not the action: envelopes are mechanically checkable, enforced in COMMAND hooks, and Vibe/Pro are default dial positions over one system | Ratified |

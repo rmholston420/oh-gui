@@ -14,3 +14,15 @@
     different people. Vibe Mode is for supervising a routine run; Pro Mode is for
     debugging a stuck one. Every Phase 1-5 exit criterion must still be demonstrable in
     both lenses - that requirement survives the removal of the household premise.
+
+> **CLARIFIED 2026-08-09 by [ADR-029](../../adrs/ADR-029-plan-level-decision-boundary-and-lens-defaults.md).**
+>
+> - **REQ-01-004** names *decision boundaries*, not per-action approval. The authorization unit
+>   is the **plan and its envelope**; actions inside an approved envelope execute without a card,
+>   and only an envelope escape raises one. This was misread as requiring a card per action, which
+>   would have put the principle in conflict with Vibe Mode. It does not.
+> - **REQ-01-006**'s ~400-line budget is **superseded for plan-level review**: the budget is
+>   denominated in **cards raised per session**, not lines of diff. The line budget survives only
+>   where a diff is the artifact under review (`06-change-review.md`).
+> - **REQ-01-009 and REQ-01-011 are reaffirmed unchanged.** Vibe and Pro are default positions on
+>   the trust dial over one data model — no capability exists in one lens and not the other.
