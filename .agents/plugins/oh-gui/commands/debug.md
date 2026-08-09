@@ -1,6 +1,6 @@
 ---
 description: Diagnose an error, searching DEBUG_LOG.md before investigating.
-argument_hint: "<error text or symptom>"
+argument-hint: "<error text or symptom>"
 ---
 
 Before investigating anything:

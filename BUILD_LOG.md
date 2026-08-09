@@ -4430,3 +4430,21 @@ The applied diff is now printed for every mutant.
 - **Mutation evidence:** the same number unquoted in a log is still red, and backticked in a spec is
   still red. 68 pass; hard constraints and log timestamps both green **before** this commit.
 - **Stop-condition status:** met.
+
+## 2026-08-09 06:52 EDT — plugin verified against the real SDK; `argument-hint` defect found and gated
+
+- **Stage / plugin / port:** Phase 1 · agent context · `oh-gui` plugin
+- **What changed:** installed `openhands-sdk==1.41.0` in a throwaway venv and actually loaded the
+  plugin. `Plugin.load` returns 18 skills and 4 commands, 22 including command-derived; a project
+  scan of the repo root discovers exactly `['oh-gui']`.
+- **Defect found:** both commands declared `argument_hint`. The loader reads `argument-hint` or
+  `argumentHint` (`CommandDefinition.load`, `types.py`). The underscore key raised nothing and was
+  discarded, so both hints were silently absent. Fixed; both hints now bind.
+- **Root cause of my missing it:** the validator I ran before committing checked frontmatter keys
+  against an allowed-set I had typed from memory instead of reading out of the loader. A validator
+  that encodes the author's assumption cannot catch the author's assumption.
+- **Files touched:** `.agents/plugins/oh-gui/commands/debug.md`,
+  `.agents/plugins/oh-gui/commands/port.md`, `scripts/tests/test_plugin_manifest.py` (new)
+- **Mutation evidence:** underscore key CAUGHT, unread command key CAUGHT, unread manifest key
+  CAUGHT, `.agents/skills/` reintroduced alongside the plugin CAUGHT. 73 pass.
+- **Stop-condition status:** met — in-container verification debt from the prior entry is cleared.

@@ -1,6 +1,6 @@
 ---
 description: Vendor an upstream component instead of hand-building it.
-argument_hint: "<component or capability>"
+argument-hint: "<component or capability>"
 ---
 
 Hand-building something upstream already solved is the default failure mode. Before writing code:
