@@ -22,6 +22,8 @@ DENY='sh -c '"'"'printf {"decision":"deny","reason":"ADR-014 item 1 deny"}; exit
 step "preflight"
 # Agent.tools must be populated or the agent only gets finish/think and the run errors
 # with "Tool 'bash' not found" - which looks like a clean deny but is an unarmed test.
+# Naming a tool is not enough: the server only knows a ToolDefinition after its module has
+# been imported, so tool_module_qualnames must accompany tools (conversation_service.py:1382).
 docker ps -q --filter "name=$CTR" | grep -q . || { fail "container $CTR not running"; exit 1; }
 [ "$(curl -s -o /dev/null -w '%{http_code}' "$API/../openapi.json")" = "200" ] || warn "openapi not 200"
 ok "container up, agent-server reachable"
@@ -38,6 +40,8 @@ print(json.dumps({
       "llm": {"model": os.environ["MODEL"], "base_url": os.environ["OLLAMA"],
               "api_key": "ollama", "native_tool_calling": True},
       "tools": [{"name": "TerminalTool"}, {"name": "FileEditorTool"}]},
+  "tool_module_qualnames": {"TerminalTool": "openhands.tools.terminal",
+                            "FileEditorTool": "openhands.tools.file_editor"},
   "hook_config": {"pre_tool_use": [{"matcher": "*", "hooks": [
       {"type": "command", "command": os.environ["DENY"], "timeout": 20}]}]},
   "initial_message": {"role": "user", "content": [{"type": "text", "text":
