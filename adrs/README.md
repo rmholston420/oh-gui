@@ -60,4 +60,5 @@ old one and mark the old one `Amended · superseded by ADR-###`.
 | ADR-023 | Blast radius is a per-tool projection; the terminal and MCP tools have none, and show raw native inputs instead | Ratified (option B) · amended 2026-08-09 (wire discriminator is `action.kind`, mangled; four statuses) |
 | ADR-024 | Agent Canvas alignment: hold the typescript-client at 1.37.0, defer `canvas_extensions` | Ratified · amended |
 | ADR-025 | Agent Canvas is a primary donor, reused at source level, never a runtime dependency; suite exposure is a north star, not a gate | Ratified |
-| ADR-026 | We build on top of OpenHands, never into it: extension-only posture and the six-tier capability allocation map (skill → hook → subagent → plugin → harness → GUI, lowest tier wins) | Ratified |
+| ADR-026 | We build on top of OpenHands, never into it: extension-only posture and the six-tier capability allocation map (skill → hook → subagent → plugin → middleware → GUI, lowest tier wins) | Ratified |
+| ADR-027 | OpenHands is the harness; our middleware is only its residue. Tier 5 renamed, native-first becomes a burden of proof, and second harnesses (LangGraph, CrewAI, AutoGen) are refused | Ratified |

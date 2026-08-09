@@ -1,6 +1,16 @@
 # ADR-014 — The SDK hook is a deny gate, not a policy plane: where Phase 1 enforcement lives
 
 **Status:** Proposed — ratification gated on executable verification (see Verification gate)
+
+> **RATIFICATION REVIEW 2026-08-09 01:38 EDT.** Reviewed for ratification and **not ratified.**
+> The static shape is now verified — `scripts/extract_image_sdk.py` pulls `openhands.sdk.hooks.types`
+> from the pinned image, proves it matches the pinned upstream sdist, and executes it to serialize a
+> real envelope, which is why `AUTHORIZE_REQUEST_PROVISIONAL` was cleared to `False` on 2026-08-08.
+> That clears nothing in the gate below. All four items require a hook to *execute against a live
+> pinned agent-server* and be asserted on the destination state; none has been run. Ratifying on the
+> static evidence would repeat the ADR-001 Amendment #1 error the gate was written to prevent —
+> mistaking a read artifact for an observed behaviour. Items 1–4 are executable only on Colossus
+> (no container runtime in the agent sandbox); the commands are staged in `SESSION_HANDOFF.md`.
 **Lock-in phase:** Phase 1 (Authorization slice)
 **Supersedes:** —
 

@@ -1689,3 +1689,27 @@ change. A per-spec run is reported as a per-spec run.
 - **Files changed:** `review/_sdk_src/README.md`, `review/_sdk_src/1.41.0/**`,
   `adrs/ADR-026-extension-only-posture-and-capability-allocation.md`
 - **Related BUILD_LOG entry:** 2026-08-09 00:51 EDT
+
+## 2026-08-09 01:30 EDT — `provisional_types_not_wired` had silently stopped being able to fail
+
+- **Symptom:** `test_provisional_types_not_wired_catches_a_hook_install` failed — the check returned
+  `None` after a hook install was planted in the middleware copy. Pre-existed the session's changes
+  (reproduced on `git stash` at HEAD `7182770`).
+- **Affected stage / plugin / port:** Phase 1 · hard-constraints runner · `scripts/hard_constraints/checks.py`
+- **Root cause:** The check scanned middleware sources for the literal comment string
+  `PROVISIONAL — UNVERIFIED` / `PROVISIONAL - UNVERIFIED` and returned early when it found none. On
+  2026-08-08 `AUTHORIZE_REQUEST_PROVISIONAL` was legitimately cleared to `False` in
+  `services/middleware/src/ohgui_middleware/ipc/schema.py` and the comment was rewritten with it. From
+  that commit the gate was structurally incapable of firing — permanently green, guarding nothing. The
+  companion test `..._allows_a_hook_once_the_marker_clears` still passed, because a dead gate passes the
+  green half of every pair. **A gate keyed on prose is a gate that a reword disarms.**
+- **Fix applied:** The check now matches a declared boolean — `_PROVISIONAL_FLAG_RE`, any
+  `[A-Z0-9_]*PROVISIONAL[A-Z0-9_]* = True|False` assignment — and arms on `True`. State, not commentary.
+  The failing test was itself part of the defect: it asserted a red against the live tree, so it was
+  testing the tree's state rather than the gate's behaviour and began failing the moment the flag cleared
+  for good reasons. It now arms the condition itself, and two new tests cover the other directions —
+  a hook is allowed when nothing is provisional, and `= False` does not arm.
+- **Files changed:** `scripts/hard_constraints/checks.py`, `scripts/tests/test_check_hard_constraints.py`
+- **Related BUILD_LOG entry:** 2026-08-09 01:29 EDT
+- **Defect class:** third instance of *a gate that quietly stops gating*, after `- [x]` deleting a gate
+  from the registry and the four reds that shipped at `68f8ffd` before constraints ran in `npm run gate`.

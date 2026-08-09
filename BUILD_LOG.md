@@ -3625,3 +3625,41 @@ The applied diff is now printed for every mutant.
 - **Stop-condition status:** in-progress. Owed next: ADR-014 status change on the `HookDecision`
   evidence; D5 checks implemented and mutation-tested; proposed `docs/specs/15-middleware-harness.md`
   written against this allocation.
+
+## 2026-08-09 01:29 EDT — Donor specs filed, ADR-026 D5 enforced, provisional interlock re-armed
+
+- **Stage / plugin / port:** Phase 1 · governance · hard-constraints runner
+- **What changed:** Filed 14 donor specs verbatim under `docs/donor-specs/forge-oh/` with provenance
+  headers, sha256-verified byte-identical to the operator's uploads. Landed ADR-026 D5 as five enforced
+  gates. Re-armed `provisional_types_not_wired`, which had been dead since 2026-08-08.
+- **Files touched:** `docs/donor-specs/forge-oh/*.md` (14 new), `review/_sdk_src/1.41.0/MANIFEST.sha256`,
+  `scripts/hard_constraints/{checks,parse,registry}.py`, `scripts/tests/test_check_hard_constraints.py`,
+  `adrs/ADR-015-*.md`, `adrs/ADR-026-*.md`, `docs/specs/13-hard-constraints.md`, `apps/gui/package.json`
+- **Ports / adapters affected:** none
+- **PORTING_LEDGER / ADR updated:** ADR-015 amendment 2 (PRESENT-BUT-UNCONSUMED)
+- **Stop-condition status:** met · runner `=== PASSED ===` exit 0, 21 enforced · 55 tests passed
+- **Commit:** `5ae70fa`
+
+## 2026-08-09 01:40 EDT — ADR-027: OpenHands is the harness; 44-component stack register
+
+- **Stage / plugin / port:** Phase 1 · cross-cutting · component selection
+- **What changed:** The operator observed that a spec calls OpenHands the agent harness. Three donor
+  specs confirm it independently, and measured against the five-layer harness definition in
+  `08-ideal-aca-v8.md:54`, OpenHands 1.41.0 supplies four of five layers outright. ADR-026's tier 5 was
+  named "Harness", which licensed building a second harness inside the first — the Forge-OH failure.
+  ADR-027 renames it "Middleware (harness residue)", makes native-first a burden of proof, and refuses
+  second harnesses outright.
+  Scanned the operator's 44-component stack list against live specs, donor specs, and code. Found the
+  memory/retrieval layer adopted nowhere, the MCP tool tier dropped wholesale, and graph visualisation
+  absent from every surface. Discharged the native-first burden for the memory layer by reading the SDK:
+  `sdk/context/memory.py` is a 97-line flat `MEMORY.md` loader on a 6000-char budget with no embedding,
+  vector store, or semantic recall anywhere in the four packages — a real gap, not a duplication.
+  Recorded all 44 with a status in `docs/specs/16-stack-layers.md`.
+- **Files touched:** `adrs/ADR-027-openhands-is-the-harness.md` (new), `adrs/ADR-026-*.md`,
+  `adrs/ADR-014-*.md`, `adrs/README.md`, `docs/specs/16-stack-layers.md` (new), `PORTING_LEDGER.md`
+- **Ports / adapters affected:** none yet; binds all future allocation
+- **PORTING_LEDGER / ADR updated:** ADR-027 ratified; ledger gains 5 REJECTED entries — LangGraph,
+  CrewAI, AutoGen (ADR-027 clause 4), Podman, GSAP
+- **ADR-014:** reviewed for ratification and **not ratified** — all four gate items require executing a
+  hook against a live pinned agent-server, which needs Colossus. Recorded in the ADR.
+- **Stop-condition status:** met · runner `=== PASSED ===` exit 0

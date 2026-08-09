@@ -66,7 +66,7 @@ Verified present in the pinned 1.41.0 artifact. Tiers 1-4 are upstream's; 5-6 ar
 | 2 | **Hook** | `openhands/sdk/hooks/` | Deterministic gate + side effect at 6 lifecycle points | binary allow/deny |
 | 3 | **Subagent** | `openhands/sdk/subagent/` | Bounded role: own tools, model, budget, permission mode | hard caps per run |
 | 4 | **Plugin** | `openhands/sdk/plugin/` | Distribution unit bundling tiers 1-3 + MCP + commands | none — packaging |
-| 5 | **Harness** | `services/middleware/` (ours) | Cross-run state, policy that must *ask*, provenance-bearing memory | full |
+| 5 | **Middleware (harness residue)** | `services/middleware/` (ours) | Cross-run state, policy that must *ask*, provenance-bearing memory | full |
 | 6 | **GUI** | `apps/gui/` (ours) | Rendering and operator decisions | none |
 
 #### Tier 1 — Skill
@@ -150,7 +150,10 @@ implemented in tier 1, 2, or 3 and *shipped* in a plugin. Our agent-side footpri
 versioned OH-GUI plugin, which is what makes D1.2 true and what makes our footprint uninstallable in
 one native operation.
 
-#### Tier 5 — Harness (`services/middleware/`)
+#### Tier 5 — Middleware, the harness residue (`services/middleware/`)
+
+> Renamed by ADR-027. OpenHands is the harness; this tier is only what its five layers
+> demonstrably leave unfilled. Allocation to it now carries a burden of proof (ADR-027 clause 3).
 
 **Admission test — a capability enters the harness only if it fails all three:** (a) it cannot be
 advice, (b) it cannot be a binary gate inside 60s, (c) it is not scoped to one run.

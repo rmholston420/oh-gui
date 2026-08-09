@@ -334,3 +334,62 @@ so this is the donor's original TypeScript, not decompiled output.
 Display order follows upstream `ActionEvent.visualize` (Summary → Reasoning → Thought), except that Thought
 precedes Reasoning here: `thought` is the agent's stated reason and `reasoning_content` its intermediate
 chain, and §4.2 is about the account, so the conclusion leads.
+
+---
+
+#### LangGraph — REJECTED
+- **Source:** https://github.com/langchain-ai/langgraph
+- **Considered for:** orchestration / graph layer of the swappable stack
+- **License:** MIT (not the reason for refusal)
+- **Rejected because:** ADR-027 clause 4. LangGraph's purpose is to run the loop — nodes, edges,
+  and a checkpointed execution graph. OpenHands already owns the plan-act-observe loop and its own
+  event store and checkpointing (`sdk/conversation/`). Adopting LangGraph means a second harness
+  inside the first, which is the Forge-OH failure mode restated.
+- **Concurring evidence:** `docs/donor-specs/forge-oh/05-improvements-model-council-synthesis.md:122`
+  — "Do NOT build … a custom plan-and-execute harness (Axis 3.1)".
+- **ADR:** ADR-027
+- **Reversal:** ADR only.
+- **Logged:** 2026-08-09 01:36 EDT
+
+#### CrewAI — REJECTED
+- **Source:** https://github.com/crewAIInc/crewAI
+- **Considered for:** orchestration / multi-agent layer
+- **License:** MIT (not the reason for refusal)
+- **Rejected because:** ADR-027 clause 4 — owns agent turn orchestration. OpenHands carries
+  multi-agent work natively via `sdk/subagent/`, which is additionally the only tier with hard
+  `max_iteration_per_run` and `max_budget_per_run` caps.
+- **ADR:** ADR-027
+- **Reversal:** ADR only.
+- **Logged:** 2026-08-09 01:36 EDT
+
+#### AutoGen — REJECTED
+- **Source:** https://github.com/microsoft/autogen
+- **Considered for:** orchestration / multi-agent conversation layer
+- **License:** MIT (not the reason for refusal)
+- **Rejected because:** ADR-027 clause 4 — owns the conversation loop and agent dispatch.
+- **ADR:** ADR-027
+- **Reversal:** ADR only.
+- **Logged:** 2026-08-09 01:36 EDT
+
+#### Podman — REJECTED
+- **Source:** https://github.com/containers/podman
+- **Considered for:** container / sandbox layer
+- **License:** Apache-2.0 (not the reason for refusal)
+- **Rejected because:** Docker plus the NVIDIA Container Toolkit is already the specced sandbox
+  (`docs/donor-specs/forge-oh/01-integrated-design-and-development-spec.md:41`). Podman's rootless
+  model is its main advantage and this is a single-user workstation, so it buys little; running two
+  container runtimes doubles the sandbox-escape surface for no capability gain.
+- **ADR:** — (recorded in `docs/specs/16-stack-layers.md`)
+- **Reversal:** ADR, if the Docker daemon becomes an obstacle.
+- **Logged:** 2026-08-09 01:36 EDT
+
+#### GSAP — REJECTED
+- **Source:** https://github.com/greensock/GSAP
+- **Considered for:** frontend animation
+- **License:** GSAP standard "no charge" license — **not** an SPDX permissive license, and a second
+  reason to refuse independent of the overlap below.
+- **Rejected because:** Framer Motion is already adopted and shipping in three files. Two animation
+  runtimes means two idioms for one job and avoidable bundle weight.
+- **ADR:** — (recorded in `docs/specs/16-stack-layers.md`)
+- **Reversal:** ADR, and would require a licence review.
+- **Logged:** 2026-08-09 01:36 EDT
