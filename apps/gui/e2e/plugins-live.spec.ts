@@ -85,6 +85,41 @@ test.describe('@live plugins panel against agent-server', () => {
     step('all 22 agent-visible skills listed live');
   });
 
+  test('the operator can reach Plugins from the rail without editing the URL', async ({ page }) => {
+    // The point of this spec is that `?surface=plugins` is a *test* seam, not the way a person
+    // gets there. Everything below drives the surface the way the operator does: land on the
+    // default workspace, switch to Pro, click the rail.
+    await page.addInitScript(() => window.localStorage.setItem('oh-gui:lens', 'pro'));
+    await page.goto(`/?projectDir=${encodeURIComponent(PROJECT_DIR)}`);
+    step('landed on the default workspace in Pro');
+
+    const nav = page.getByRole('navigation', { name: 'Surfaces' });
+    await expect(nav).toBeVisible();
+
+    const runView = page.getByTestId('surface-run');
+    await page.getByRole('button', { name: 'Plugins' }).click();
+    step('clicked Plugins in the rail');
+
+    const card = page.getByTestId('plugin-card-oh-gui');
+    await expect(card).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('button', { name: 'Plugins' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    step('plugins surface reached from the rail');
+
+    // The live proof of the hidden-not-unmounted decision: a conversation must survive the
+    // operator glancing at a plugin list. `toBeHidden` passes for a `hidden` subtree that is
+    // still in the DOM, and fails if it was torn down.
+    await expect(runView).toBeHidden();
+    await expect(runView).toBeAttached();
+    step('run surface still mounted, not destroyed');
+
+    await page.getByRole('button', { name: 'Run' }).click();
+    await expect(runView).toBeVisible();
+    step('returned to the run surface');
+  });
+
   test('the installed endpoint does not report a project plugin', async ({ request }) => {
     // Pins the reason this panel calls POST /plugins. If a future agent-server starts reporting
     // project plugins here, this fails and the panel should be reconsidered.

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import AuthorizationCard, {
   type PendingAction,
 } from './features/authorization/AuthorizationCard';
@@ -7,6 +8,7 @@ import PluginsPanel from './features/plugins/PluginsPanel';
 import type { AgentServerEvent } from './api/types';
 import RunView from './features/run/RunView';
 import Shell from './shell/Shell';
+import SurfaceNav, { type Surface } from './shell/SurfaceNav';
 import type { SdkNativeModelProfileFields } from './features/model-profiles/model-profile';
 
 /**
@@ -144,14 +146,50 @@ export default function App() {
     );
   }
 
+  return <Workspace />;
+}
+
+/**
+ * The default workspace: the rail selects which surface the centre stage shows.
+ *
+ * The rail is Pro-only (`Shell` renders it only in that lens), so Plugins is reachable in Pro and
+ * absent in Vibe. That is deliberate rather than an oversight — Vibe is the autonomous lane, and
+ * inspecting which plugins the server discovered is a control-surface concern.
+ */
+function Workspace() {
+  const [surface, setSurface] = useState<Surface>('run');
+  const projectDir = new URLSearchParams(window.location.search).get('projectDir');
+
   // The lens is presentation over one mounted surface (spec 03 §3.0). `RunView` is mounted once
   // and is not remounted, refetched, or re-routed when the lens toggles — that is the constraint,
   // not an optimisation.
+  //
+  // The same reasoning applies to the rail: `RunView` stays mounted and is hidden rather than
+  // unmounted when Plugins is showing. Unmounting it would tear down a live conversation — its
+  // event stream, its pending authorization — because the operator glanced at a plugin list. The
+  // `hidden` attribute also removes it from the accessibility tree, so this is not a visual-only
+  // hide that leaves two surfaces readable to a screen reader at once.
   return (
     <Shell
       commandBarContent={<span className="font-mono text-xs text-slate-400">agent-server · 127.0.0.1:8000</span>}
+      leftRail={<SurfaceNav current={surface} onSelect={setSurface} />}
     >
-      {({ isReadOnlyViewport }) => <RunView isReadOnlyViewport={isReadOnlyViewport} />}
+      {({ isReadOnlyViewport }) => (
+        <>
+          <div hidden={surface !== 'run'} data-testid="surface-run">
+            <RunView isReadOnlyViewport={isReadOnlyViewport} />
+          </div>
+          <div
+            hidden={surface !== 'plugins'}
+            className="mx-auto max-w-4xl p-6"
+            data-testid="surface-plugins"
+          >
+            {/* Mounted only once the operator asks for it: the panel fetches on mount, and a
+                background request against the agent-server on every app load is not free. */}
+            {surface === 'plugins' && <PluginsPanel projectDir={projectDir} />}
+          </div>
+        </>
+      )}
     </Shell>
   );
 }

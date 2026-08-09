@@ -4528,3 +4528,23 @@ The applied diff is now printed for every mutant.
   decision rather than a gap, so it cannot read as unfinished again.
 - **Files touched:** `SESSION_HANDOFF.md`
 - **Stop-condition status:** Phase 1 spec-governance work is complete.
+
+## 2026-08-09 07:34 EDT — Plugins reachable from the rail; run surface survives the trip
+
+- **Stage / plugin / port:** Phase 1 · GUI · shell navigation
+- **What changed:** `SurfaceNav` in the Pro left rail selects the centre-stage surface. Plugins is
+  reachable by clicking, not by hand-editing `?surface=`.
+- **Spec position:** REQ-03-007 enumerates the rail and does not name plugins, so Plugins is filed
+  **under Settings** rather than promoted to a peer of conversations or worktrees. Read-only
+  inspection of discovered plugins is configuration, not a workspace object. Filing it this way
+  needs no ADR; promoting it would have.
+- **Decision worth naming:** `RunView` is hidden, not unmounted, when Plugins is showing.
+  Unmounting would tear down a live conversation -- its event stream and any pending authorization
+  -- because the operator glanced at a plugin list. `hidden` also drops it from the accessibility
+  tree, so this is not a visual-only hide leaving two surfaces readable at once.
+- **Rail scope:** only surfaces that exist are listed. A disabled row per unbuilt spec item would
+  be a to-do list wearing navigation's clothes.
+- **Files touched:** `apps/gui/src/shell/SurfaceNav.tsx` (new), `SurfaceNav.test.tsx` (new, 4),
+  `apps/gui/src/App.tsx`, `apps/gui/src/shell/Shell.css`, `apps/gui/e2e/plugins-live.spec.ts`
+- **Evidence:** 241 vitest pass (was 237), `tsc --noEmit` clean, 3 live tests enumerated.
+- **Stop-condition status:** in-progress -- the rail path is unwitnessed until the live run.
