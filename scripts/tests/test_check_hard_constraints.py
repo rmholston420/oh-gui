@@ -16,6 +16,7 @@ Two layers:
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -445,3 +446,20 @@ def test_every_static_check_has_a_mutation_test():
     source = Path(__file__).read_text(encoding="utf-8")
     untested = [name for name in checks.REGISTRY_CHECKS if f"checks.{name}()" not in source]
     assert untested == [], f"STATIC predicates with no mutation test: {untested}"
+
+
+def test_verify_local_does_not_hardcode_a_gate_count():
+    """A verification banner must not state a count it cannot keep true.
+
+    `verify-local.sh` said "all 71 gates" while the runner beneath it printed 72, because
+    ADR-021 added one. Harmless in itself, but it is exactly the failure this gate exists to
+    catch — a claim that has come unmoored from the thing it describes — printed at the top of
+    the output that certifies the tree is honest. The count belongs to the runner.
+    """
+    text = (SCRIPTS / "verify-local.sh").read_text(encoding="utf-8")
+    banner = [
+        line
+        for line in text.splitlines()
+        if not line.lstrip().startswith("#") and re.search(r"\ball \d+ gates\b", line)
+    ]
+    assert banner == [], f"hardcoded gate count in verify-local.sh: {banner}"

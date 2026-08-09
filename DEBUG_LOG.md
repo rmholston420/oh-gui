@@ -1401,3 +1401,24 @@ the snap daemon. Recorded in `docs/forge-oh-port-survey.md`.
   checks entirely, since they gate the frontend and have nothing to say about the Python gate.
 - **Files changed:** `scripts/verify-local.sh`
 - **Related BUILD_LOG entry:** 2026-08-08 21:10 EDT
+
+## 2026-08-08 21:35 EDT — verify-local.sh banner claimed "all 71 gates" while the runner printed 72
+
+- **Symptom:** operator run on Colossus, 21:15 EDT:
+  `[1] Hard constraints  (ADR-018 — docs/specs/13-hard-constraints.md, all 71 gates)`
+  immediately above `=== hard constraints: 72 gates in docs/specs/13-hard-constraints.md ===`.
+  Both green; nothing failed.
+- **Affected stage / plugin / port:** Phase 1 · governance · `scripts/verify-local.sh`
+- **Root cause:** the count was hardcoded in the `step` banner when `run_constraints_gate()` was
+  written, and went stale one commit later when ADR-021 added the
+  `provisional_types_not_wired` gate. Cosmetic in effect, but it is the same class of defect the
+  gate exists to catch — a claim no longer tied to what it describes — printed as the header of
+  the output that certifies the tree is honest. Worse, it appeared *above* the correct number,
+  so the run looked self-contradicting to the only person reading it.
+- **Fix applied:** removed the count from the banner; the runner is the single source of it.
+  Added `test_verify_local_does_not_hardcode_a_gate_count`, which greps non-comment lines for
+  `all N gates`. Mutation-verified: reintroducing "all 72 gates" fails it, restoring passes.
+  The check ignores comments deliberately, so the explanation of why the count is absent can
+  itself mention the number without tripping the rule.
+- **Files changed:** `scripts/verify-local.sh`, `scripts/tests/test_check_hard_constraints.py`
+- **Related BUILD_LOG entry:** 2026-08-08 21:25 EDT

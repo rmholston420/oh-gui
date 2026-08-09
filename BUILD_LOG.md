@@ -3117,3 +3117,17 @@ Two real bugs surfaced from the tests themselves before mutation: a `KeyError` o
 check name, and `validate_registry()` red-flagging unused predicates against synthetic
 registries. A third find was a **vacuous test** — the `spec` fixture reused one tmp filename, so
 a rewording test was comparing a file with itself and could never have failed.
+
+## 2026-08-08 21:35 EDT — removed the hardcoded gate count from the verify-local banner
+
+- **Stage / plugin / port:** Phase 1 · governance · `scripts/verify-local.sh`
+- **What changed:** the constraints banner said "all 71 gates" directly above a run reporting 72.
+  The count now comes only from the runner. Guarded by a test rather than a comment, because a
+  comment asking future edits not to hardcode a number is the inert control ADR-006 is about.
+- **Files touched:** `scripts/verify-local.sh`, `scripts/tests/test_check_hard_constraints.py`,
+  `DEBUG_LOG.md`
+- **Ports / adapters affected:** none
+- **PORTING_LEDGER / ADR updated:** — (no decision surface changed; ADR-018 already owns the rule
+  that the registry is the source of truth for the gate set)
+- **Stop-condition status:** met. 42 runner tests, mutant killed, gate green with 0 warnings on
+  Colossus.

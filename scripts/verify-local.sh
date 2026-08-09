@@ -60,11 +60,16 @@ MWVENV="$MW/.venv"
 
 # ------------------------------------------------------- hard constraints (ADR-018)
 # docs/specs/13-hard-constraints.md says "verify before every PR". Until ADR-018 it said so
-# to a human who could not have verified all 71 items in a sitting, which meant it was not
+# to a human who could not have verified every item in a sitting, which meant it was not
 # verified at all. This reconciles the checklist against its tier registry and runs every
 # predicate that can run against the tree as it stands.
+#
+# The gate count is deliberately not written here. It was, for one commit, and it went stale
+# the moment ADR-021 added a gate — a header reading "all 71 gates" above a run reporting 72.
+# A hardcoded count in a verification banner is the same class of defect this whole gate
+# exists to catch: a claim no longer tied to the thing it describes. The runner prints it.
 run_constraints_gate() {
-  step "Hard constraints  (ADR-018 — docs/specs/13-hard-constraints.md, all 71 gates)"
+  step "Hard constraints  (ADR-018 — docs/specs/13-hard-constraints.md)"
   note "green = enforced by a predicate now · yellow = deferred to a named phase, or"
   note "operator-witnessed · red = drift, a closed phase with an unproven gate, or a failure."
   HCPY="$(command -v python3.13 || command -v python3.12 || command -v python3 || true)"
