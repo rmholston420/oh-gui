@@ -3935,3 +3935,19 @@ The applied diff is now printed for every mutant.
   cell promoted into the confirmatory arm each produced the expected red before restore.
 - **Stop-condition status:** in-progress — awaiting operator approval of the manifest, then the
   capped GPU run.
+
+## 2026-08-09 04:41 EDT — Ollama upgrade recorded as deferred (KNOWN_ISSUES)
+
+- **Stage / plugin / port:** Phase 0 parallel track · ADR-016 tool-call benchmark · no port
+- **What changed:** logged the HTTP 412 runtime-version blocker for exploratory cells
+  `laguna-xs-2.1:q4_K_M` and `ornith:35b` in `KNOWN_ISSUES.md`, with the deferral rationale
+  (unattended-run risk; and more importantly that the runtime version is part of the measured
+  environment, so upgrading mid-design breaks comparability with ADR-012's baseline selection).
+  Recorded the gap that the installed Ollama version was never captured before the run, and the
+  re-probe obligation that any future upgrade triggers.
+- **Files touched:** `KNOWN_ISSUES.md`, `BUILD_LOG.md`
+- **Ports / adapters affected:** none
+- **PORTING_LEDGER / ADR updated:** none — no architectural decision was made, only a deferral
+  recorded. If the upgrade later changes confirmatory-cell behaviour, that becomes an ADR-016
+  amendment rather than a log entry.
+- **Stop-condition status:** unchanged — awaiting operator approval of the manifest, then the run.

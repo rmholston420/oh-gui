@@ -413,3 +413,43 @@ better than another. They are a baseline of record for the app, not a model rank
   then wiring Reject — the audit log is the one with a zero-trust obligation attached, since every
   entry must carry the structured `provenance` array captured at decision time.
 - **Related DEBUG_LOG search terms:** blast radius, DERIVED, authorization card, reject_pending_actions
+
+### 2026-08-09 — Ollama runtime too old for two registered bench candidates; upgrade deliberately deferred
+
+- **Blocks:** nothing currently. Two ADR-016 **exploratory** cells (G, H in the manifest arm table)
+  cannot execute. No confirmatory cell is affected, so the benchmark's inferential claim is intact.
+- **Symptom:** exact text from the pull attempt, 2026-08-09 04:30 EDT:
+  ```
+  Error: pull model manifest: 412:
+  The model you are attempting to pull requires a newer version of Ollama.
+  ```
+  Affects `laguna-xs-2.1:q4_K_M` and `ornith:35b`. Both then fail the tool-call probe with
+  `model '<tag>' not found`, which is a *downstream* symptom of the failed pull, not an
+  independent capability finding — neither model has been shown to lack tool-calling.
+  `glm-4.7-flash:q4_K_M` and `lfm2.5:8b` pulled and probed PASS on the same runtime.
+- **Affected stage / plugin / port:** Phase 0 parallel track · ADR-016 tool-call benchmark ·
+  no port.
+- **Why deferred rather than fixed:** two independent reasons, either sufficient.
+  1. **Unattended-run risk.** The decision arose at ~04:30 EDT with the overnight benchmark due to
+     start at ~05:30. An upgrade that breaks model serving would burn the whole window silently.
+  2. **Measurement validity — the stronger reason.** The benchmark measures native tool-call
+     emission, which is a property of the *runtime's* chat/tool templates as much as of the model
+     weights. Upgrading Ollama mid-design would mean the baseline `qwen3.6:35b-a3b-mtp-coder` is
+     characterised under a different runtime than the one ADR-012 selected it on, and results
+     before and after would not be comparable. The runtime version is part of the registered
+     environment, not an incidental detail.
+- **Attempted fixes:** none attempted by design. No upgrade, no `--insecure` pull, no manual
+  manifest fetch.
+- **Known gap in the record:** the installed Ollama version was **never captured** before the
+  overnight run, so the registered environment is under-specified. This should have been recorded
+  alongside the timing probe. Capture it with:
+  ```bash
+  ollama --version && curl -s http://127.0.0.1:11434/api/version
+  ```
+- **Next investigation:** while awake and with no run in flight — record the current version,
+  upgrade Ollama, then **re-probe all four confirmatory models (A-D)** for tool-call emission and
+  re-run `timing_probe.py`. If any confirmatory cell's behaviour changes, the completed benchmark
+  is scoped to the old runtime and must be labelled as such rather than silently carried forward.
+  Only then pull `laguna-xs-2.1` and `ornith:35b`.
+- **Related DEBUG_LOG search terms:** 412, pull model manifest, requires a newer version of Ollama,
+  model not found, laguna-xs-2.1, ornith, tool_calls probe
