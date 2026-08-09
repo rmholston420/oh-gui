@@ -54,7 +54,8 @@ def _constraint_matches(value: Any, constraint: Mapping[str, Any]) -> bool:
 
 
 def _result(*, resolved: bool | None, tool_call_failure: str | None = None,
-            quality_failure: str | None = None, tool_name: str | None = None) -> dict[str, Any]:
+            quality_failure: str | None = None, tool_name: str | None = None,
+            command_exact: bool | None = None) -> dict[str, Any]:
     return {
         "resolved": resolved,
         "accepted": resolved is True,
@@ -62,7 +63,26 @@ def _result(*, resolved: bool | None, tool_call_failure: str | None = None,
         "quality_failure": quality_failure,
         "unmeasurable_reason": tool_call_failure if resolved is None else None,
         "tool_name": tool_name,
+        # Secondary, reported separately and never folded into `resolved`. See
+        # `_is_freeform_command` for why exact shell text is a different construct.
+        "command_exact": command_exact,
     }
+
+
+def _is_freeform_command(tool: str, arg: str, constraint: Mapping[str, Any]) -> bool:
+    """Is this constraint pinning free-form shell text to one exact phrasing?
+
+    The `file_editor` `command` argument is a native enum — `view`, `create`, `str_replace`,
+    `insert`, `undo_edit` — so an exact match there is the correct predicate. A `terminal`
+    `command` is free-form shell, where many distinct strings are equally correct: `git branch
+    --show-current` and `git rev-parse --abbrev-ref HEAD` both name the active branch.
+
+    Pinning those to one phrasing measures whether the model guessed the author's incantation, not
+    whether it can call a tool. Four of the nine tasks that failed on all nine screening cells were
+    exactly this, across a 44x parameter range, which is a predicate signature rather than a
+    capability one. The check is kept and reported, but as a secondary metric.
+    """
+    return tool == "terminal" and arg == "command" and "equals" in constraint
 
 
 def grade_message(task: Mapping[str, Any], message: Mapping[str, Any] | None) -> dict[str, Any]:
@@ -124,7 +144,21 @@ def grade_message(task: Mapping[str, Any], message: Mapping[str, Any] | None) ->
     for arg in expected["required_args"]:
         if arg not in arguments:
             return _result(resolved=False, quality_failure=f"missing_required_arg:{arg}", tool_name=name)
+    command_exact: bool | None = None
     for arg, constraint in expected.get("arg_constraints", {}).items():
-        if arg in arguments and not _constraint_matches(arguments[arg], constraint):
-            return _result(resolved=False, quality_failure=f"invalid_arg:{arg}", tool_name=name)
-    return _result(resolved=True, tool_name=name)
+        if arg not in arguments:
+            continue
+        matches = _constraint_matches(arguments[arg], constraint)
+        if _is_freeform_command(expected["tool"], arg, constraint):
+            # Structural checks still apply to the same argument; only the exact-text comparison
+            # is demoted, so an empty or non-string command is still a hard failure.
+            command_exact = matches
+            structural = {k: v for k, v in constraint.items() if k != "equals"}
+            if structural and not _constraint_matches(arguments[arg], structural):
+                return _result(resolved=False, quality_failure=f"invalid_arg:{arg}",
+                               tool_name=name, command_exact=command_exact)
+            continue
+        if not matches:
+            return _result(resolved=False, quality_failure=f"invalid_arg:{arg}", tool_name=name,
+                           command_exact=command_exact)
+    return _result(resolved=True, tool_name=name, command_exact=command_exact)

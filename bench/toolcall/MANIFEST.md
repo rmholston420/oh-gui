@@ -277,3 +277,32 @@ the re-graded screening rates before any confirmatory GPU time is spent; it is n
 
 **Reporting.** `regrade.py` prints measured coverage beside every rate and flags any cell below
 90%, so a self-selected denominator cannot be read as a score again.
+
+## Protocol amendment 3 — 2026-08-09 06:26 EDT (construct validity: phrasing is not capability)
+
+**What changed.** An `equals` constraint on a `terminal` `command` is no longer part of the
+accept/reject predicate. It is evaluated and reported as a secondary metric, `command_exact`.
+Structural constraints on the same argument (type, non-emptiness) still fail hard. `file_editor`
+`command` is untouched: `view`/`create`/`str_replace`/`insert`/`undo_edit` is a native enum, where
+exactness is the correct predicate.
+
+**Why.** Four of the nine tasks that failed on *all nine* screening cells were exact-string
+terminal commands with obviously correct alternatives:
+
+| Task | Authored phrasing | An equally correct answer marked wrong |
+|---|---|---|
+| `050-show-active-branch` | `git -C … branch --show-current` | `git -C … rev-parse --abbrev-ref HEAD` |
+| `059-show-login-shell` | `printf '%s\n' "$SHELL"` | `echo "$SHELL"` |
+| `080-find-executable-scripts` | `find … -type f -perm -u=x` | `find … -type f -executable` |
+| `088-list-staged-files` | `git … diff --cached --name-only` | `git … status --short` |
+
+Nine models spanning a 44x parameter range failing the same four tasks identically is a predicate
+signature, not a capability one. `invalid_arg:command` was the largest single failure bucket at 76.
+
+**Construct being measured.** ADR-016 registers *tool-call ability*: select the correct tool, emit
+a well-formed call, supply the required arguments. Whether the model reproduces one author's shell
+phrasing is a different and much narrower construct. It was silently dominating the headline
+number, so it is now reported beside it instead of inside it.
+
+**Not a difficulty reduction.** No task is removed, no constraint is deleted, and the exactness
+result is still computed and shown per cell. A reader who wants the stricter reading has it.

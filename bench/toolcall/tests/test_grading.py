@@ -33,7 +33,8 @@ def message(name, arguments):
 def test_valid_json_string_arguments_pass():
     got = grade_message(TERMINAL_TASK, message("terminal", '{"command":"pwd"}'))
     assert got == {"resolved": True, "accepted": True, "tool_call_failure": None,
-                   "quality_failure": None, "unmeasurable_reason": None, "tool_name": "terminal"}
+                   "quality_failure": None, "unmeasurable_reason": None, "tool_name": "terminal",
+                   "command_exact": None}
 
 
 def test_native_object_arguments_pass():
@@ -105,3 +106,46 @@ def test_everything_the_model_emitted_is_measured():
         assert got["resolved"] is False, expected
         assert got["quality_failure"] == expected
         assert got["tool_call_failure"] is None
+
+
+EXACT_TERMINAL_TASK = {
+    "id": "t-exact",
+    "expected_outcome": {
+        "tool": "terminal",
+        "required_args": ["command"],
+        "arg_constraints": {"command": {"type": "string", "equals": "git branch --show-current"}},
+    },
+}
+
+
+def test_a_different_but_correct_shell_command_still_passes():
+    # ADR-016 amendment 3. `git rev-parse --abbrev-ref HEAD` names the active branch just as well
+    # as `git branch --show-current`. Failing it measured whether the model guessed the author's
+    # phrasing. The exactness check survives as a secondary signal.
+    got = grade_message(EXACT_TERMINAL_TASK,
+                        message("terminal", '{"command":"git rev-parse --abbrev-ref HEAD"}'))
+    assert got["resolved"] is True
+    assert got["command_exact"] is False
+
+
+def test_the_authored_phrasing_is_recorded_as_exact():
+    got = grade_message(EXACT_TERMINAL_TASK,
+                        message("terminal", '{"command":"git branch --show-current"}'))
+    assert got["resolved"] is True
+    assert got["command_exact"] is True
+
+
+def test_demoting_exactness_does_not_disable_structural_checks():
+    # The whole argument for the demotion is that shell text has many correct forms -- not that
+    # `command` stops being checked. A non-string is still a hard failure.
+    got = grade_message(EXACT_TERMINAL_TASK, message("terminal", '{"command":123}'))
+    assert got["resolved"] is False
+    assert got["quality_failure"] == "invalid_arg:command"
+
+
+def test_file_editor_command_enum_stays_a_hard_failure():
+    # `command` on file_editor is a native enum, not free-form text, so exactness is the correct
+    # predicate there. If a future edit demotes it too, this goes red.
+    got = grade_message(EDITOR_TASK, message("file_editor", '{"command":"replace","path":"/x","file_text":"y"}'))
+    assert got["resolved"] is False
+    assert got["quality_failure"] == "invalid_arg:command"

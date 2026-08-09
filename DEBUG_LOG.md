@@ -1975,3 +1975,19 @@ gating" defect class in this repo.
 - **Files changed:** `bench/toolcall/grading.py`, `bench/toolcall/tests/test_grading.py`,
   `bench/toolcall/regrade.py`
 - **Related BUILD_LOG entry:** 2026-08-09 06:20 EDT
+
+## 2026-08-09 06:26 EDT — nine models of every size fail the same four tasks
+
+- **Symptom:** `050-show-active-branch`, `059-show-login-shell`, `080-find-executable-scripts` and
+  `088-list-staged-files` failed on all nine screening cells, from `qwen3.5:0.8b` to a 35B coder.
+  `invalid_arg:command` was the largest failure bucket at 76 across the run.
+- **Affected stage / plugin / port:** Phase 0 · ADR-016 benchmark · task predicates
+- **Root cause:** those tasks pin a free-form shell `command` to one exact string with `equals`.
+  Many distinct commands answer each prompt correctly, so the check measured whether the model
+  guessed the author's phrasing rather than whether it can call a tool. Identical failure across a
+  44x parameter range is a predicate signature, not a capability one.
+- **Fix applied:** exact-text matching on `terminal` `command` demoted to a reported secondary
+  metric; structural checks and the `file_editor` enum unchanged.
+- **Files changed:** `bench/toolcall/grading.py`, `bench/toolcall/tests/test_grading.py`,
+  `bench/toolcall/regrade.py`
+- **Related BUILD_LOG entry:** 2026-08-09 06:26 EDT

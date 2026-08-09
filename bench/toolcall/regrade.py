@@ -50,7 +50,7 @@ def main() -> int:
     out_dir = args.run_dir / "regraded"
     out_dir.mkdir(exist_ok=True)
     print(f"{DIM}re-grading {len(files)} replicate file(s) -> {out_dir}{OFF}\n")
-    print(f"  {'cell':<6} {'model':<52} {'was':>7} {'now':>7} {'measured':>9} {'dropped':>8}")
+    print(f"  {'cell':<6} {'model':<44} {'was':>7} {'now':>7} {'exact':>7} {'measured':>9}")
 
     rows = []
     for path in files:
@@ -69,6 +69,9 @@ def main() -> int:
             }
             result.update(grade_message(task, message))
         new_accepted = sum(r["accepted"] for r in results)
+        exact_scored = [r for r in results if r.get("command_exact") is not None]
+        exact_rate = (sum(bool(r["command_exact"]) for r in exact_scored) / len(exact_scored)
+                      if exact_scored else None)
         measured = sum(r["resolved"] is not None for r in results)
         record["regraded"] = {"predicate": "ADR-016 amendment 2026-08-09", "source": path.name}
         (out_dir / path.name).write_text(json.dumps(record, indent=2) + "\n")
@@ -77,9 +80,13 @@ def main() -> int:
         new_rate = new_accepted / measured if measured else 0.0
         colour = RED if new_rate < old_rate - 0.02 else (GREEN if measured > old_measured else YELLOW)
         rows.append((record["cell_id"], new_rate, measured, len(results)))
-        print(f"  {record['cell_id']:<6} {record['model'][:52]:<52} "
+        exact_text = "     --" if exact_rate is None else f"{exact_rate * 100:6.1f}%"
+        print(f"  {record['cell_id']:<6} {record['model'][:44]:<44} "
               f"{old_rate * 100:6.1f}% {colour}{new_rate * 100:6.1f}%{OFF} "
-              f"{measured:>6}/{len(results):<3} {len(results) - measured:>8}")
+              f"{DIM}{exact_text}{OFF} {measured:>6}/{len(results):<3}")
+
+    print(f"{DIM}  'now' = tool-call validity (the registered construct). 'exact' = secondary: "
+          f"matched the author's exact shell phrasing.{OFF}")
 
     rows.sort(key=lambda row: row[1], reverse=True)
     print(f"\n{GREEN}ranking on the amended predicate (screening only — not a verdict){OFF}")

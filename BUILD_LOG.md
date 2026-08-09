@@ -4307,3 +4307,22 @@ The applied diff is now printed for every mutant.
   back to `None` reintroduces the artifact and fails.
 - **Stop-condition status:** attainability gate must be re-run against re-graded rates before the
   confirmatory stage is relaunched. \(p_A=0.60\)/\(p_B=0.50\) are stale.
+
+## 2026-08-09 06:26 EDT — ADR-016 amendment 3: phrasing demoted to a secondary metric
+
+- **Stage / plugin / port:** Phase 0 · ADR-016 tool-call benchmark · grading predicate + tasks
+- **What changed:** `equals` on a `terminal` `command` no longer decides accept/reject; it is
+  reported as `command_exact` alongside the rate. Structural checks on that argument still fail
+  hard, and `file_editor`'s `command` enum is unchanged. `regrade.py` prints both columns.
+- **Why:** four of the nine universally-failed screening tasks were exact shell strings with
+  obviously correct alternatives; `invalid_arg:command` was the largest failure bucket at 76.
+- **Correction recorded:** I first reported four tasks as unpassable because they constrain a
+  value to `""`. That was wrong and was asserted before inspecting them — three are `new_str` on
+  deletion edits and one is the native empty-command idiom for reading pending terminal output.
+- **Files touched:** `bench/toolcall/grading.py`, `bench/toolcall/tests/test_grading.py`,
+  `bench/toolcall/regrade.py`, `bench/toolcall/MANIFEST.md`, `adrs/ADR-016-*.md`, `DEBUG_LOG.md`
+- **Mutation evidence:** four new tests pin the boundary — a correct alternative phrasing passes
+  with `command_exact=False`, the authored phrasing records `True`, a non-string command still
+  fails hard, and demoting the `file_editor` enum turns a test red.
+- **Stop-condition status:** re-grade, then re-run attainability against the new rates. GPU still
+  idle by design.

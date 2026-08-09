@@ -1,5 +1,13 @@
 # ADR-016 — The benchmark gates a claim, not the code: decouple the baseline report from Phase 0 exit
 
+> **STATUS AMENDMENT 3 (2026-08-09 06:26 EDT):** exact-text matching on free-form `terminal`
+> commands is demoted from the accept/reject predicate to a reported secondary metric
+> (`command_exact`). `file_editor` `command` remains a hard enum check. Four of the nine tasks
+> failing on all nine screening cells were exact-string commands with obviously correct
+> alternatives (`rev-parse --abbrev-ref HEAD` for `branch --show-current`, `echo $SHELL` for
+> `printf '%s\n' "$SHELL"`, `-executable` for `-perm -u=x`, `status --short` for `diff --cached
+> --name-only`). The registered construct is tool-call ability, not phrasing recall.
+
 > **STATUS AMENDMENT 2 (2026-08-09 06:20 EDT):** the same criterion is applied in full.
 > `missing_tool_call` and malformed-envelope outcomes are measured quality failures, not
 > unmeasurable ones; only a transport failure or an absent assistant message is unobserved.
