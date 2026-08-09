@@ -153,6 +153,67 @@ test.describe('@live real conversation against agent-server', () => {
     });
   });
 
+  test('a follow-up message steers a real run without restarting it', async ({ page }) => {
+    await startRun(
+      page,
+      'Run the single shell command: echo OHGUI_FIRST. Then call finish. Do not do anything else.',
+    );
+
+    const conversationId = page.locator('dt', { hasText: 'Conversation' }).locator('+ dd');
+    const idBefore = await conversationId.textContent();
+
+    await waitForPendingAction(page);
+    await page.getByTestId('approve').first().click();
+
+    // The composer only exists once a conversation does. Steering a run that was never started is
+    // the failure this guard exists for.
+    const composer = page.getByRole('region', { name: 'Steer the run' });
+    await expect(composer).toBeVisible({ timeout: 60_000 });
+
+    const rows = page.getByTestId('event-row');
+    const before = await rows.count();
+
+    await page.getByLabel('Follow-up instruction').fill(
+      'Now run exactly: echo OHGUI_STEERED. Then call finish.',
+    );
+    await page.getByRole('button', { name: 'Send follow-up' }).click();
+
+    // Proof the server accepted the steer rather than the GUI merely clearing its textarea: the
+    // SAME conversation grows new events. A new conversation id here would mean we restarted.
+    await expect
+      .poll(async () => rows.count(), {
+        timeout: 180_000,
+        message: 'event log never grew after the follow-up was sent',
+      })
+      .toBeGreaterThan(before);
+    await expect(conversationId).toHaveText(idBefore ?? '');
+
+    // The agent must actually act on the new instruction, not just receive it.
+    await expect(page.getByTestId('event-log')).toContainText('OHGUI_STEERED', {
+      timeout: 180_000,
+    });
+  });
+
+  test('a real authorization decision is recorded in the audit log', async ({ page }) => {
+    await startRun(
+      page,
+      'Run the single shell command: echo OHGUI_AUDIT_PROOF. Then call finish. Do not do anything else.',
+    );
+
+    // Nothing has been decided yet, so there is nothing to show.
+    await expect(page.getByRole('region', { name: 'Authorization history' })).toBeHidden();
+
+    await waitForPendingAction(page);
+    await page.getByTestId('approve').first().click();
+
+    const history = page.getByRole('region', { name: 'Authorization history' });
+    await expect(history).toBeVisible({ timeout: 60_000 });
+    // The record must carry the decision and the command that was authorized, or it is not
+    // evidence of anything.
+    await expect(history).toContainText('Approved');
+    await expect(history).toContainText('echo');
+  });
+
   test('the lens toggle does not disturb a live run', async ({ page }) => {
     await startRun(page, 'Run the single shell command: echo OHGUI_LENS_PROOF. Then call finish.');
 

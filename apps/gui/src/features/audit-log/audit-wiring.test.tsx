@@ -36,17 +36,17 @@ describe('authorization audit binding', () => {
     act(() => result.current.recordApproval(ACTION));
 
     expect(result.current.entries).toHaveLength(1);
-    expect(result.current.entries[0].decision).toBe('approved');
-    expect(result.current.entries[0].sessionId).toBe('conv-1');
-    expect(result.current.entries[0].guiLocal.actionLabel).toBe('rm -rf build');
+    expect(result.current.entries[0]!.decision).toBe('approved');
+    expect(result.current.entries[0]!.sessionId).toBe('conv-1');
+    expect(result.current.entries[0]!.guiLocal.actionLabel).toBe('rm -rf build');
   });
 
   it('keeps the operator rejection reason verbatim', () => {
     const { result } = renderHook(() => useAuthorizationAudit('conv-1'));
     act(() => result.current.recordRejection(ACTION, 'that deletes the build I need'));
 
-    expect(result.current.entries[0].decision).toBe('rejected');
-    expect(result.current.entries[0].guiLocal.rejectionReason).toBe(
+    expect(result.current.entries[0]!.decision).toBe('rejected');
+    expect(result.current.entries[0]!.guiLocal.rejectionReason).toBe(
       'that deletes the build I need',
     );
   });
@@ -81,10 +81,10 @@ describe('authorization audit binding', () => {
 
     // Both carry only the first-party operator item, so provenance alone cannot
     // distinguish them. The distinction must survive in actionClass.
-    expect(result.current.entries[0].guiLocal.actionClass).toBe('gui-local-uncomputed');
-    expect(result.current.entries[1].guiLocal.actionClass).toBe('gui-local-clear');
-    expect(result.current.entries[0].guiLocal.actionClass).not.toBe(
-      result.current.entries[1].guiLocal.actionClass,
+    expect(result.current.entries[0]!.guiLocal.actionClass).toBe('gui-local-uncomputed');
+    expect(result.current.entries[1]!.guiLocal.actionClass).toBe('gui-local-clear');
+    expect(result.current.entries[0]!.guiLocal.actionClass).not.toBe(
+      result.current.entries[1]!.guiLocal.actionClass,
     );
   });
 
@@ -94,14 +94,14 @@ describe('authorization audit binding', () => {
       'terminal',
     );
     expect(refs).toHaveLength(3);
-    expect(refs[0].trust_class).toBe('first-party');
+    expect(refs[0]!.trust_class).toBe('first-party');
     expect(refs.slice(1).map((r) => r.id)).toEqual(['ctx-7', 'ctx-9']);
     expect(refs.slice(1).every((r) => r.trust_class === 'third-party-untrusted')).toBe(true);
   });
 
   it('always carries a first-party item so a write is never provenance-free', () => {
     expect(untrustedProvenanceReferences(undefined, 'terminal')).toHaveLength(1);
-    expect(untrustedProvenanceReferences(undefined, 'terminal')[0].trust_class).toBe(
+    expect(untrustedProvenanceReferences(undefined, 'terminal')[0]!.trust_class).toBe(
       'first-party',
     );
   });
@@ -109,7 +109,7 @@ describe('authorization audit binding', () => {
   it('confidence is 1 because the operator decision is directly observed', () => {
     const { result } = renderHook(() => useAuthorizationAudit('conv-1'));
     act(() => result.current.recordApproval(ACTION));
-    expect(result.current.entries[0].confidence).toBe(1);
+    expect(result.current.entries[0]!.confidence).toBe(1);
   });
 });
 

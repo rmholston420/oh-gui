@@ -4196,3 +4196,24 @@ The applied diff is now printed for every mutant.
 - **Files touched:** `bench/toolcall/bench_toolcall.py`
 - **Stop-condition status:** benchmark dispatchable; every confirmatory cell now runs on measured
   latency rather than a fallback.
+
+## 2026-08-09 05:41 EDT — Live Playwright coverage for the composer and audit log; ADR-032 downgraded
+
+- **Stage / plugin / port:** Phase 1 · GUI run surface · live verification
+- **What changed:** two `@live` specs added against the real agent-server — a follow-up steers a
+  run (asserting the SAME conversation id grows new events and the agent actually echoes the
+  steered string, so a silent restart cannot pass), and a real approval appears in the audit log.
+- **Defect in my own process:** I shipped three commits tonight running only
+  `--grep-invert @live`. The standing rule is that live workflows are exercised, and unit plus
+  headless browser tests were reported as if they covered the feature. They did not.
+- **ADR-032 downgraded from Ratified to Proposed:** it conflicts with **ADR-020 clause 3**, which
+  already ratified `provenance: null` = untraceable vs `[]` = traced-and-none, with a contract test
+  asserting they are distinguishable. The implemented entry type is non-nullable and puts the
+  distinction in `actionClass`. I also drafted ADR-032 citing ADR-008 and ADR-015 from memory; both
+  citations were wrong (ADR-008 is Phase 0 baseline metrics). Logged in KNOWN_ISSUES.
+- **Files touched:** `apps/gui/e2e/live-run.spec.ts`,
+  `apps/gui/src/features/audit-log/audit-wiring.test.tsx` (TS2532 fixes),
+  `adrs/ADR-032-audit-confidence-is-record-fidelity.md`, `adrs/README.md`, `KNOWN_ISSUES.md`
+- **Also fixed:** ADR-031 was never added to the ADR index; added.
+- **Stop-condition status:** live suite must be run on Colossus before the composer and audit
+  wiring can be called verified. Headless: 219 unit / 49 browser green.

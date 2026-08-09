@@ -508,3 +508,22 @@ better than another. They are a baseline of record for the app, not a model rank
   (editor + diff side by side), which is likely the real 21:9 win and interacts with ADR-030.
   Option (c) is a design decision requiring operator input, not a CSS tweak.
 - **Related DEBUG_LOG search terms:** 3440, ultrawide, 21:9, four-region, clamp maximum, REQ-03-014
+
+### 2026-08-09 — Audit-log provenance shape diverges from ratified ADR-020
+
+- **Blocks:** ratification of ADR-032; Phase 1 audit-log exit criterion
+- **Symptom:** ADR-020 clause 3 requires `provenance: null` for an untraceable action and `[]` for
+  "traced, none", with a contract test asserting they are distinguishable. The implemented
+  `AuthorizationAuditEntry.provenance` is non-nullable, and `useAuthorizationAudit` always inserts a
+  first-party operator item, so `null` is unreachable and the distinction lives in `actionClass`
+  instead.
+- **Attempted fixes:** none yet — found while drafting ADR-032, recorded rather than patched under
+  time pressure before a benchmark run.
+- **How it got here:** the audit-log module was built without reading ADR-020, and ADR-032 was
+  drafted citing ADR-008/ADR-015 from memory rather than from `adrs/`. Both citations were wrong.
+  A cheap gate would catch the class: assert every ADR cross-reference in an ADR resolves to a real
+  file whose title matches.
+- **Next investigation:** make the write's provenance nullable and conform to ADR-020, then delete
+  the `actionClass`-carries-the-distinction test and replace it with the null-vs-empty contract test
+  ADR-020 already specifies.
+- **Related DEBUG_LOG search terms:** provenance, ADR-020, actionClass, gui-local-uncomputed

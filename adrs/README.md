@@ -65,3 +65,5 @@ old one and mark the old one `Amended · superseded by ADR-###`.
 | ADR-028 | Living specs: every normative statement carries a permanent REQ id, a generated coverage register tracks its status, and dropping a requirement requires an ADR | Ratified |
 | ADR-029 | The decision boundary is the plan, not the action: envelopes are mechanically checkable, enforced in COMMAND hooks, and Vibe/Pro are default dial positions over one system | Ratified |
 | ADR-030 | The conversation is a view over the workspace, never the workspace itself: durable addressable objects, no authoritative state in the transcript, modality chosen by the data | Ratified |
+| ADR-031 | The four-region layout breakpoint is 1700px: clamp preferred side widths against the stage floor, not the side minimums | Ratified · revision 2 |
+| ADR-032 | Audit confidence is record fidelity: it describes the record, not a belief about the action, and an uncomputed untrusted-content tracker is never flattened into a clean one | **Proposed — conflicts with ADR-020 clause 3** |
