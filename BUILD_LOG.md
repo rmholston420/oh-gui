@@ -4044,3 +4044,18 @@ The applied diff is now printed for every mutant.
   arithmetic governs 1700-1900px, which this workstation never occupies. Logged as the next layout
   item rather than fixed now, on the operator's instruction to prioritise the self-coding loop.
 - **Stop-condition status:** ADR-031 closed and browser-verified. Ultrawide layout deferred.
+
+## 2026-08-09 05:17 EDT — Windowed-usage correction to the ADR-031 analysis
+
+- **Stage / plugin / port:** Phase 1 · shell layout · no port
+- **What changed:** tests only. The operator works windowed on 3440x1440, not full-screen, which
+  falsifies my previous claim that the corrected breakpoint governs a range this workstation never
+  occupies. Real window snaps (half minus gap 1704, half 1720, 60% 2064, two-thirds 2293) all land
+  in the four-region tier where the 17vw/23vw tracks bind. Added all four to the browser sweep.
+- **Files touched:** `apps/gui/e2e/breakpoint-overflow.spec.ts`, `KNOWN_ISSUES.md`, `BUILD_LOG.md`
+- **Verification:** 15 browser tests green.
+- **Two findings logged to KNOWN_ISSUES:** (1) a quarter-width snap is 860px, below the 900px
+  REQ-03-015 floor, so approvals silently disable in a window only 40px too narrow; (2) half-screen
+  with a window gap is 1704px, 4px above the 1700px breakpoint, so the tier flips on a trivial
+  resize.
+- **Stop-condition status:** layout work stops here; pivoting to the self-coding loop per operator.

@@ -31,7 +31,12 @@ test.describe('four-region breakpoint does not overflow (ADR-031)', () => {
   // 1699 is the last two-pane width; 1700 is the first four-region width.
   // 1600, 1620 and 1650 were all believed correct at some point and all
   // overflowed — they must now resolve to the two-pane tier.
-  for (const width of [1600, 1620, 1650, 1699, 1700, 1800, 1920, 2560, 3440]) {
+  // 1704/1720/2064/2293 are real window snaps on the 3440x1440 target display
+  // (half minus a gap, half, 60%, two-thirds) — the operator works windowed,
+  // so these are the widths that actually occur, not 3440.
+  for (const width of [
+    1600, 1620, 1650, 1699, 1700, 1704, 1720, 1800, 1920, 2064, 2293, 2560, 3440,
+  ]) {
     test(`no horizontal overflow at ${width}px`, async ({ page }) => {
       await openProShell(page, width);
       expect(await overflowPx(page)).toBe(0);

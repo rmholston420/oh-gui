@@ -471,10 +471,32 @@ better than another. They are a baseline of record for the app, not a model rank
   actual deliverable, since the current failure mode is silence.
 - **Related DEBUG_LOG search terms:** COVERAGE.md, spec_coverage, note cell, stale requirement text
 
+### 2026-08-09 — Quarter-tile windows silently disable all approvals
+
+- **Blocks:** nothing yet, but it is a live usability trap on the operator's actual workflow.
+- **Symptom:** the operator works windowed on 3440x1440, not full-screen. A quarter-width snap is
+  860px, which is below the 900px floor in REQ-03-015, so every authorization control is disabled
+  and the surface goes read-only. Only 40px separates an unusable window from a working one, and
+  nothing explains why the buttons died — the read-only notice states the rule but the user did not
+  choose the width for that reason. A one-third snap (1147px) also drops to the single-pane tier.
+- **Attempted fixes:** none.
+- **Next investigation:** the 900px rule exists to prevent mis-taps on phones (ADR-003, no exception
+  path), which is a poor fit for a deliberately-narrow window on a desktop. Options: key the gate on
+  pointer type (`@media (pointer: coarse)`) rather than width alone, so a narrow desktop window with
+  a mouse stays actionable while a phone does not; or surface an explicit "widen to approve" affordance.
+  Changing the gate touches ADR-003 and needs an ADR.
+- **Related DEBUG_LOG search terms:** 900px, read-only, REQ-03-015, quarter tile, windowed, pointer
+
 ### 2026-08-09 — Four-region layout is not designed for the 3440x1440 target display
 
 - **Blocks:** nothing functionally; it is the primary layout-quality gap on the only screen this
   system targets.
+- **Correction (05:16 EDT):** the operator works **windowed**, so the full-screen analysis below
+  understates the fix's relevance — real window widths (1704-2293px) land inside the corrected
+  range, where the 17vw/23vw tracks do bind. Half-screen (1720px) sits only 4px above the 1700px
+  breakpoint once a window gap is applied, so the tier can flip on a trivial resize. Consider
+  lowering the four-region threshold by relaxing a side minimum, so the common half-screen snap is
+  not balanced on the boundary.
 - **Symptom:** at 3440px the rail and conversation clamps are both pinned to their maximums
   (360px, 440px), totalling 800px of 3440 (23%). The center stage absorbs the remaining 2640px,
   which is far past a comfortable reading or editing measure. REQ-03-014 promises "up to 4
