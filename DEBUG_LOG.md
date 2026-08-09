@@ -1777,3 +1777,11 @@ change. A per-spec run is reported as a per-spec run.
 **Generalisation.** A negative assertion (nothing happened) is only evidence when paired with proof
 the thing was attempted. This is the fifth instance of the recurring "gate that quietly stops
 gating" defect class in this repo.
+
+## 2026-08-09 02:45 EDT — native source citations tripped the evidence-snapshot import guard
+
+- **Symptom:** `npm run gate` failed `evidence_snapshot_not_imported`: `apps/gui/src/api/agentServer.ts; apps/gui/src/api/types.ts` referenced `review/_sdk_src/` in code comments.
+- **Affected stage / plugin / port:** Phase 1 · `apps/gui` agent-server adapter.
+- **Root cause:** ADR-015 requires source file:line evidence, while ADR-026's static guard forbids any `apps/` reference to the vendored evidence-root path. The comment used the full repository-relative evidence path instead of the pinned artifact-relative source path.
+- **Fix applied:** retained exact pinned artifact file:line citations but removed the `review/_sdk_src/1.41.0/` prefix from code comments.
+- **Files changed:** `apps/gui/src/api/types.ts`, `apps/gui/src/api/agentServer.ts`, `DEBUG_LOG.md`.

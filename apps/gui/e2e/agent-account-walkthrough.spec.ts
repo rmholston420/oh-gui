@@ -43,7 +43,7 @@ test('an operator can see the agent account stay separate from the derived readi
   };
 
   // ---- 1. All three fields present, below the radius -------------------------------------------
-  await page.goto('/?surface=authorization&action=terminal');
+  await page.goto('/?demo=1&surface=authorization&action=terminal');
   const account = page.getByTestId('agent-account');
   await expect(account).toBeVisible();
   await dwell();
@@ -74,14 +74,14 @@ test('an operator can see the agent account stay separate from the derived readi
   await dwell();
 
   // ---- 2. An untyped thought block still renders -----------------------------------------------
-  await page.goto('/?surface=authorization&action=edit');
+  await page.goto('/?demo=1&surface=authorization&action=edit');
   await expect(page.getByTestId('agent-thought')).toContainText(/dev domain to localhost/i);
   await expect(page.getByTestId('agent-reasoning')).toHaveCount(0);
   await spotlight('agent-thought', '#60a5fa');
   await dwell();
 
   // ---- 3. Withheld thinking says so ------------------------------------------------------------
-  await page.goto('/?surface=authorization&action=unknown');
+  await page.goto('/?demo=1&surface=authorization&action=unknown');
   const withheld = page.getByTestId('agent-reasoning-redacted');
   await expect(withheld).toContainText(/redacted/i);
   await expect(page.getByTestId('agent-reasoning')).toHaveCount(0);
@@ -91,7 +91,7 @@ test('an operator can see the agent account stay separate from the derived readi
   await dwell();
 
   // ---- 4. Silence renders nothing, rather than an empty labelled box ----------------------------
-  await page.goto('/?surface=authorization&action=none');
+  await page.goto('/?demo=1&surface=authorization&action=none');
   await expect(page.getByTestId('agent-account')).toHaveCount(0);
   await dwell();
 });

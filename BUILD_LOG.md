@@ -3749,3 +3749,18 @@ The applied diff is now printed for every mutant.
 - **Ports / adapters affected:** none yet — verification only; no middleware written
 - **PORTING_LEDGER / ADR updated:** ADR-014 amended
 - **Stop-condition status:** met — deny path proven, landable boundary reached
+
+## 2026-08-09 02:45 EDT — Agent-server GUI wiring: implementation start
+- **Stage / phase:** Phase 1 · run workspace surface
+- **Plugin / kernel component:** `apps/gui` agent-server adapter and run lifecycle
+- **Scope / ports:** add verified route client (`/api/conversations`, run/pause/events/confirmation/workspace), typed request/event models, a polling lifecycle hook, and `RunView`; proxy `/api` to the local agent-server. No OpenHands source changes, cloud services, authentication, or multi-user behavior.
+- **Definition of Done / stop condition:** `apps/gui` uses `RunView` by default while `?demo=1` preserves the prior demo route; mock-fetch tests cover the Colossus start configuration and non-200 errors; `npm run gate` and `python3 scripts/check-hard-constraints.py` pass with no generated build artifacts left in the tree.
+
+## 2026-08-09 02:50 EDT — Agent-server GUI wiring completed
+- **Stage / component:** Phase 1 run-workspace surface; direct local agent-server adapter.
+- **Built:** Added contract-bounded TypeScript request/response types and typed client; local Colossus `defaultStartRequest()`; `useConversation` lifecycle and 3-second event polling; `RunView`; `/api` Vite proxy to `127.0.0.1:8000`; and client/type/hook tests. The default application surface is now `RunView`; the prior demo stays reachable with `?demo=1`.
+- **Files touched:** `apps/gui/src/api/types.ts`, `apps/gui/src/api/agentServer.ts`, their tests, `apps/gui/src/features/run/useConversation.ts`, `RunView.tsx`, the hook test, `src/App.tsx`, `vite.config.ts`, and the existing browser test routes that now select the demo explicitly.
+- **Ports / adapters:** Browser requests use the local `/api` development proxy only. No cloud, authentication, multi-user, WebSocket, or OpenHands source changes were introduced. The normal run-stop control uses the verified native interrupt route; the source-basis exceptions are recorded in code comments with artifact-relative file:line citations.
+- **ADR / ledger:** No donor component was ported, no ADR or porting ledger update was required. ADR-015 and ADR-030 boundaries were followed.
+- **Verification:** `npm run gate` completed successfully: constraints passed, lint passed, 15 test files / 118 tests passed, and Vite build completed. `python3 /tmp/ohg/scripts/check-hard-constraints.py` printed `=== PASSED ===`.
+- **Stop condition:** Met for this task. No commit or push performed.

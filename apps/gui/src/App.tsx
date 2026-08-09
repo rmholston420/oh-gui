@@ -2,6 +2,7 @@ import AuthorizationCard, {
   type PendingAction,
 } from './features/authorization/AuthorizationCard';
 import FirstRunWizard from './features/first-run/FirstRunWizard';
+import RunView from './features/run/RunView';
 
 /**
  * There is no router yet — the shell (docs/specs/03-layout.md section 3.1) is not built. Until it
@@ -78,12 +79,16 @@ const DEMO_ACTIONS: Record<string, PendingAction> = {
 };
 
 export default function App() {
-  const surface = new URLSearchParams(window.location.search).get('surface');
+  const query = new URLSearchParams(window.location.search);
+  const surface = query.get('surface');
 
-  if (surface === 'authorization') {
+  // `?demo=1` preserves the inert pre-agent-server surfaces. Keep the older authorization query
+  // working too: the existing headed checks use it to exercise the safety-card viewport boundary.
+  if (query.get('demo') === '1' || surface === 'authorization') {
+    if (surface !== 'authorization') return <FirstRunWizard />;
     // `?action=` picks which blast-radius outcome to mount, so the headed run can drive all four
     // rather than asserting three of them only in jsdom.
-    const variant = new URLSearchParams(window.location.search).get('action') ?? 'terminal';
+    const variant = query.get('action') ?? 'terminal';
     return (
       <main className="p-6">
         <AuthorizationCard action={DEMO_ACTIONS[variant] ?? DEMO_ACTIONS.terminal!} />
@@ -91,5 +96,5 @@ export default function App() {
     );
   }
 
-  return <FirstRunWizard />;
+  return <RunView />;
 }

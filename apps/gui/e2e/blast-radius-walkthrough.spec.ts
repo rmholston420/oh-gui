@@ -61,7 +61,7 @@ test('an operator can see derived and echoed values stay apart across all four s
   };
 
   // ---- 1. Projected: a formula ran, and its inputs are shown separately ------------------------
-  await page.goto('/?surface=authorization&action=edit');
+  await page.goto('/?demo=1&surface=authorization&action=edit');
   const radius = page.getByTestId('blast-radius');
   await expect(radius).toHaveAttribute('data-status', 'projected');
   await expect(page.getByTestId('blast-target')).toHaveText(/\/etc\/hosts/);
@@ -74,7 +74,7 @@ test('an operator can see derived and echoed values stay apart across all four s
   await shot('1-projected');
 
   // ---- 2. No projection: the same card, with nothing derived at all ---------------------------
-  await page.goto('/?surface=authorization&action=terminal');
+  await page.goto('/?demo=1&surface=authorization&action=terminal');
   await expect(radius).toHaveAttribute('data-status', 'no-projection');
   // The claim worth seeing: no green box appears anywhere on this card.
   await expect(page.getByTestId('blast-target')).toHaveCount(0);
@@ -84,14 +84,14 @@ test('an operator can see derived and echoed values stay apart across all four s
   await shot('2-no-projection');
 
   // ---- 3. Unknown action: a gap in our coverage, not a clean bill of health -------------------
-  await page.goto('/?surface=authorization&action=unknown');
+  await page.goto('/?demo=1&surface=authorization&action=unknown');
   await expect(radius).toHaveAttribute('data-status', 'unknown-action');
   await expect(radius).toContainText('QuantumAction');
   await dwell(1.4);
   await shot('3-unknown');
 
   // ---- 4. Non-executable: says so, rather than showing an empty radius ------------------------
-  await page.goto('/?surface=authorization&action=none');
+  await page.goto('/?demo=1&surface=authorization&action=none');
   await expect(radius).toHaveAttribute('data-status', 'not-executable');
   await expect(page.getByTestId('native-reading')).toHaveCount(0);
   await dwell(1.4);
@@ -100,7 +100,7 @@ test('an operator can see derived and echoed values stay apart across all four s
   // ---- 5. The narrow viewport, resized live ---------------------------------------------------
   // Watching the reflow is the point: this is where a long echoed command would push the card wide
   // and hide the very thing being authorized.
-  await page.goto('/?surface=authorization&action=terminal');
+  await page.goto('/?demo=1&surface=authorization&action=terminal');
   await dwell();
   for (const width of [900, 640, 390]) {
     await page.setViewportSize({ width, height: 720 });

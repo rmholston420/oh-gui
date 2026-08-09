@@ -41,7 +41,7 @@ test('an operator can click all the way through the wizard and back', async ({ p
     });
   };
 
-  await page.goto('/');
+  await page.goto('/?demo=1');
   await expect(page, 'something other than OH-GUI is serving the dev port').toHaveTitle(/OH-GUI/);
 
   const next = page.getByRole('button', { name: 'Next' });

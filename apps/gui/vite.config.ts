@@ -6,10 +6,9 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
-    // The frontend talks ONLY to the OH-GUI middleware (ADR-001 item 4).
-    // It must never be pointed at the Agent Server (ports 8000/8002) directly.
+    // Local Agent Server proxy: keep the browser on Vite's origin and avoid a CORS dependency.
     proxy: {
-      '/api': { target: 'http://127.0.0.1:8080', changeOrigin: true },
+      '/api': { target: 'http://127.0.0.1:8000', changeOrigin: true },
     },
   },
   test: {

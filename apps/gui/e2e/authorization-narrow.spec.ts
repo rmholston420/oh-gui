@@ -13,7 +13,7 @@ import { expect, test } from '@playwright/test';
  *   cd apps/gui && npx playwright test authorization-narrow --headed
  */
 
-const URL = '/?surface=authorization';
+const URL = '/?demo=1&surface=authorization';
 const ACTIONS = ['approve', 'reject', 'approve-and-relax'] as const;
 
 /** iPhone-ish and tablet-ish, plus the two cells either side of the boundary. */

@@ -12,7 +12,7 @@ import { expect, test } from '@playwright/test';
  * the ones that need a rendering engine: computed styles, real layout, real overflow.
  */
 
-const surface = (action: string) => `/?surface=authorization&action=${action}`;
+const surface = (action: string) => `/?demo=1&surface=authorization&action=${action}`;
 
 test.describe('the four blast-radius outcomes are visibly distinct', () => {
   test('a projected action shows derived targets separately from echoed fields', async ({
