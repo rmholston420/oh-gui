@@ -678,6 +678,29 @@ def test_an_unattributed_number_is_still_caught_beside_a_donor_line(repo_copy):
     assert checks.spec_cross_references_resolve() is not None
 
 
+def test_a_backticked_number_in_a_log_is_a_mention_not_a_citation(repo_copy):
+    """A BUILD_LOG entry describing this gate must be able to write down what the gate rejects."""
+    (repo_copy / "BUILD_LOG.md").write_text(
+        "## entry\n\n- a bogus `ADR-099` is now red.\n", encoding="utf-8"
+    )
+    assert checks.spec_cross_references_resolve() is None
+
+
+def test_the_same_number_unquoted_in_a_log_is_still_a_citation(repo_copy):
+    (repo_copy / "BUILD_LOG.md").write_text(
+        "## entry\n\n- ratified by ADR-099.\n", encoding="utf-8"
+    )
+    assert checks.spec_cross_references_resolve() is not None
+
+
+def test_specs_get_no_backtick_escape(repo_copy):
+    """In a spec a citation is load-bearing whether or not someone put backticks around it."""
+    (repo_copy / "docs" / "specs" / "77-mutant.md").write_text(
+        "See `ADR-099` for the rationale.\n", encoding="utf-8"
+    )
+    assert checks.spec_cross_references_resolve() is not None
+
+
 def test_donor_specs_keep_their_own_adr_numbering(repo_copy):
     """Forge-OH's ADR-074 is a real decision of Forge-OH's, not a dangling reference to ours.
 

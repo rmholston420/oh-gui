@@ -4394,7 +4394,7 @@ The applied diff is now printed for every mutant.
   still red, pinning that the exemption cannot launder a fabrication elsewhere in the file. 65 pass.
 - **Stop-condition status:** met.
 
-## 2026-08-09 06:52 EDT — agent-side footprint packaged as the single `oh-gui` plugin (REQ-15-006)
+## 2026-08-09 06:44 EDT — agent-side footprint packaged as the single `oh-gui` plugin (REQ-15-006)
 
 - **Stage / plugin / port:** Phase 1 · agent context · `oh-gui` plugin
 - **What changed:** `.agents/skills/` moved to `.agents/plugins/oh-gui/skills/` and wrapped in a
@@ -4411,3 +4411,22 @@ The applied diff is now printed for every mutant.
   with only recognized frontmatter keys; 18 skills carry a `SKILL.md`. Full SDK load could not run
   in this sandbox (vendored SDK needs `litellm`), so an in-container load check is owed.
 - **Stop-condition status:** met for packaging; in-container load verification outstanding.
+
+## 2026-08-09 06:43 EDT — ADR-citation gate learns use vs mention; two process failures recorded
+
+- **Stage / plugin / port:** Phase 0 · tooling · `spec_cross_references_resolve`
+- **What changed:** in the repo-root logs, an ADR number inside inline code is now read as a
+  mention of the token rather than a citation of a decision. Specs and ADRs get no such escape.
+  Without this, a BUILD_LOG entry cannot describe what this gate rejects without tripping it.
+- **Process failure 1:** I chained `check-hard-constraints` and `git push` in one command **and
+  appended to BUILD_LOG after the gate ran**, twice. The push at fb5e1c0 went out red. The gate
+  output was in the same result I read, and I read the push line instead. Gate first, append second,
+  commit third — never in one chained invocation again.
+- **Process failure 2:** a failed `python3 -c` import of the vendored SDK wrote `__pycache__` trees
+  into `review/_sdk_src/`, which the evidence-snapshot gate correctly flagged as drift. Nothing was
+  committed. Reading vendored evidence must not execute it.
+- **Files touched:** `scripts/hard_constraints/checks.py`,
+  `scripts/tests/test_check_hard_constraints.py`, `BUILD_LOG.md`
+- **Mutation evidence:** the same number unquoted in a log is still red, and backticked in a spec is
+  still red. 68 pass; hard constraints and log timestamps both green **before** this commit.
+- **Stop-condition status:** met.

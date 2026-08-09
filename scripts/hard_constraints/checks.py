@@ -620,6 +620,13 @@ _ADR_INDEX_ROW_RE = re.compile(r"^\|\s*\[?ADR-(\d{3})\b", re.MULTILINE)
 _FOREIGN_ADR_DIRS = ("docs/donor-specs",)
 
 
+# In the repo-root logs an ADR number inside inline code is a *mention* of the token, not a
+# citation of a decision. BUILD_LOG entries about this very gate have to write a fabricated number
+# down in order to describe what the gate rejects, and that sentence is true. Specs and ADRs get no
+# such escape: there, a citation is load-bearing whether or not someone put backticks around it.
+_INLINE_CODE_RE = re.compile(r"`[^`]*`")
+
+
 def _donor_names() -> tuple[str, ...]:
     """Donor projects, read from the directories under `docs/donor-specs/` rather than a list.
 
@@ -674,9 +681,12 @@ def _adr_citation_offenders() -> list[str]:
         if rel.startswith(_FOREIGN_ADR_DIRS):
             continue
         text = source.read_text(encoding="utf-8", errors="replace")
+        is_log = "/" not in rel
         for line in text.splitlines():
             if _names_a_donor(line):
                 continue
+            if is_log:
+                line = _INLINE_CODE_RE.sub(" ", line)
             for number in sorted(set(_ADR_NUMBER_RE.findall(line))):
                 if number not in by_number:
                     offenders.append(f"{rel} cites ADR-{number}, which has no file")
