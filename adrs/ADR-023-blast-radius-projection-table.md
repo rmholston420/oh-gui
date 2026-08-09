@@ -1,6 +1,14 @@
 # ADR-023 — Blast radius is a per-tool projection, and the terminal tool has none
 
 **Status:** Proposed — awaiting operator ratification
+
+> **SCOPE CORRECTION (2026-08-08 23:20 EDT):** the first revision of this ADR verified
+> `openhands-tools` only. That was too narrow — the suite is `openhands-sdk`, `openhands-tools`,
+> `openhands-workspace`, `openhands-agent-server`, plus the Agent Canvas reference app. Rescanning
+> every `openhands.*` module in the image found **six more `Action` classes**, one of which
+> (`MCPToolAction`) materially changes the decision. Findings 4 and 5 below are new. The original
+> Findings 1–3 are unchanged and were re-verified under the wider scan.
+
 **Lock-in phase:** Phase 1 — Authorization surface (§4.2)
 **Supersedes:** —
 
@@ -69,7 +77,35 @@ host. The remaining fifteen browser actions address tabs and elements by index o
 host at all. Reporting the host of a `BrowserClickAction` would require reading browser session
 state that no action field carries.
 
+## Finding 4 — `MCPToolAction` has no static field set at all
+
+`MCPToolAction` (`openhands/sdk/mcp/definition.py`) declares exactly one field: `data: dict[str,
+Any]`. The shape of that payload is defined at runtime by whichever MCP server is connected, and is
+not knowable from any pinned artifact.
+
+This is a third category, distinct from both derivable and underivable-by-parsing. There is no
+fixed set of fields to declare a projection over, and the set can change between sessions without
+any version of anything changing. A projection table keyed on class name cannot cover it even in
+principle.
+
+## Finding 5 — five SDK builtin actions, none of them filesystem or network
+
+The wider scan also found `FinishAction(message)`, `ThinkAction(thought)`,
+`InvokeSkillAction(name)`, `SwitchLLMAction(profile_name, reason)` and
+`VisionInspectAction(image_index, question, profile_name)`. All five have `extra=forbid` and none
+touches a path, a host, or a credential. They are correctly `null` under the rule below, and now
+they are `null` **by verified decision** rather than by having been missed.
+
+`openhands-workspace` and `openhands-agent-server` were scanned and define no `Action` subclass at
+all. That is recorded in the evidence file as checked-and-empty, which is not the same fact as
+not-checked.
+
 ## Decision
+
+**0. Discovery is by scan, never by a hand-kept list.** `scripts/verify_tool_actions.py` walks
+every `openhands.*` code object in the image and finds classes by name. The hand-kept list is
+exactly what produced the first revision's blind spot, and a list would go stale on the next
+upstream release with no signal.
 
 **1. Blast radius ships as a declared projection table over verified native fields, with an
 explicit `null` for every tool class not in the table.**
@@ -91,7 +127,13 @@ Declared projections (all field names verified in the pinned image, `docs/eviden
 **2. Every other tool class renders `null`** — explicitly "not computed", visually distinct from an
 empty list. This includes `TerminalAction`, `ApplyPatchAction` (paths live inside the
 `*** Begin Patch` body, which is again parsing, not projection), `TaskAction`, `DelegateAction`,
-`WorkflowAction`, `ConsultTomAction`, and the fifteen non-navigate browser actions.
+`WorkflowAction`, `ConsultTomAction`, the fifteen non-navigate browser actions, the five SDK
+builtins from Finding 5, and `MCPToolAction`.
+
+**2a. `MCPToolAction` renders `null` permanently, not pending work.** Per Finding 4 there is no
+static field set to project. The card must name the MCP tool via the native `ActionEvent.tool_name`
+and state that no projection is possible for MCP tools — distinct from "none declared yet", which
+would imply a future in which one is.
 
 **3. `GlobAction` and `GrepAction` project a search root, never a match set.** The set of files a
 glob will match is not knowable before execution and is not a native field. Showing a root labelled
@@ -134,8 +176,8 @@ lose real operator value, and the per-tool `null` mechanism already makes the bo
 - New: `apps/gui/src/features/authorization/blast-radius.ts` — the projection table, one entry per
   class above, returning a discriminated result (`projected` | `no-projection-declared`).
 - New: `scripts/verify_tool_actions.py`, `docs/evidence/tool-action-fields.json`.
-- `docs/UPSTREAM_PINS.md` §2 gains sdist digests, including the previously unpinned
-  `openhands-tools`.
+- `docs/UPSTREAM_PINS.md` §2 gains sdist digests for all four Python distributions, including
+  the previously unpinned `openhands-tools`, `openhands-workspace`, and `openhands-agent-server`.
 - `docs/specs/04-authorization.md` §4.2 amended: credentials dropped; blast radius gains the
   per-tool table and the terminal-tool exclusion.
 - `PORTING_LEDGER.md`: blast radius logged as DERIVED with native basis and formula per ADR-015

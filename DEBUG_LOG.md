@@ -1555,3 +1555,25 @@ the snap daemon. Recorded in `docs/forge-oh-port-survey.md`.
   line.** Colossus runs Node >=22.14, so the suite is genuinely green there.
 - **Files changed:** none
 - **Related BUILD_LOG entry:** 2026-08-08 22:42 EDT
+
+## 2026-08-08 23:24 EDT — Verification script ran against a silently downgraded SDK
+
+- **Symptom:** `ModuleNotFoundError: No module named 'openhands.sdk.tool.builtins.switch_llm'`
+  when importing a module that demonstrably exists in the pinned image and in the pinned sdist.
+- **Affected stage / plugin / port:** Phase 1 · §4.2 blast radius · `scripts/verify_tool_actions.py`
+- **Root cause:** `pip install openhands-tools==1.41.0` resolved `openhands-sdk` **down to 1.20.0**
+  in the same venv where `openhands-sdk==1.41.0` had just been installed. The banner printed
+  `v1.41.0` before that step and `v1.20.0` after; nothing in the script noticed. The prior
+  extraction therefore ran on a contaminated interpreter while reporting success.
+- **Why the output was still correct:** the script does `sys.path.insert(0, sdk_source_root)`, so
+  the `Action` base class resolved from the pinned sdist, not from site-packages. Re-running under
+  a clean version-asserted venv produced a byte-identical field set. Correct by accident of path
+  order, not by design.
+- **Fix applied:** `--expect-versions` (default `openhands-sdk=1.41.0,openhands-tools=1.41.0`)
+  asserts `importlib.metadata.version()` per distribution and refuses to run on a mismatch. Proven
+  to fail: rerun on the 1.20.0 venv → refused; `--expect-versions openhands-sdk=9.9.9` → refused.
+- **Files changed:** `scripts/verify_tool_actions.py`
+- **Related BUILD_LOG entry:** 2026-08-08 23:24 EDT
+- **Generalisable trap:** a pinned install is not a pinned interpreter. A later `pip install` in the
+  same venv can move a pin underneath a script that has already reported success. Assert versions
+  at the point of use, not at the point of install.

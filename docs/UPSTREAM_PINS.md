@@ -79,10 +79,15 @@ compiled from an sdist. Those sdists are pinned here so the verification is repr
 |---|---|---|
 | `openhands-sdk` 1.41.0 | `b12bb6f5a69bfee476a4ae8700b0bf33c478f67ea708c8d4a5f75a95d6f4045f` | https://files.pythonhosted.org/packages/2f/ee/a938c78fdd310022c9081445195047207f06fabb2650abb9c1c04e44f66d/openhands_sdk-1.41.0.tar.gz |
 | `openhands-tools` 1.41.0 | `93bbfe1b6b289a379e656b84167ba4b163f5f2778d48cc2cce1f2507bf21ac9a` | https://files.pythonhosted.org/packages/65/dc/d39fa6f6471ad9c5ccf81ca17a905f9d4212bdd21fdf8cd4299eaf320ef6/openhands_tools-1.41.0.tar.gz |
+| `openhands-workspace` 1.41.0 | `c01b65556436d0ff412c9987274e59bc85030aee1fb955494f5fb436bf59b705` | https://files.pythonhosted.org/packages/7d/78/54b91952dee13da7877f83de13d64e074f82d07fa9c54329eb619e034280/openhands_workspace-1.41.0.tar.gz |
+| `openhands-agent-server` 1.41.0 | `a4c6456af759a43a92f9f0e9a620835519c0061763cc8e70d19aff2fb128eb6e` | https://files.pythonhosted.org/packages/19/4f/acd96372260788dae84b1cf3fb3414d259ba2c5be1a555d02cfd25229075/openhands_agent_server-1.41.0.tar.gz |
 
-The `openhands-tools` pin was added 2026-08-08 for `scripts/verify_tool_actions.py`, which
-establishes the native basis for blast radius (ADR-023). Tool `Action` classes live in
-`openhands-tools`, not in `openhands-sdk`, so the SDK pin alone was insufficient.
+All four were added 2026-08-08 for `scripts/verify_tool_actions.py`, which establishes the native
+basis for blast radius (ADR-023). The SDK pin alone was insufficient: `Action` classes are spread
+across `openhands-sdk` (7 modules) and `openhands-tools` (17). `openhands-workspace` and
+`openhands-agent-server` are pinned so that "no `Action` class here" is a **verified** statement
+rather than an unexamined one — the script fails closed on any `openhands.*` module it cannot map
+to a pinned sdist, so an unpinned distribution cannot be silently skipped.
 
 `requires_python >=3.12` is a hard floor on the middleware venv. Colossus's project venvs must be
 checked against it before scaffolding (`colossus-python-env` skill; do not assume the system Python).

@@ -2,6 +2,14 @@
   "source": "openhands.tools.*.definition, read from the pinned agent-server image's PyInstaller PYZ and verified byte-structure-equal to the pinned openhands-tools sdist",
   "caveat": "Field sets are read off the constructed pydantic models. Executor implementations, rich, and browser drivers were stubbed inert; logic living in a stubbed dependency is not covered. Modules that failed to execute are listed under `unavailable` and are NOT absent-by-omission.",
   "definition_modules_verified": [
+    "openhands.sdk.mcp.definition",
+    "openhands.sdk.tool.builtins.finish",
+    "openhands.sdk.tool.builtins.invoke_skill",
+    "openhands.sdk.tool.builtins.switch_llm",
+    "openhands.sdk.tool.builtins.think",
+    "openhands.sdk.tool.builtins.vision_inspect",
+    "openhands.sdk.tool.schema",
+    "openhands.tools.apply_patch.core",
     "openhands.tools.apply_patch.definition",
     "openhands.tools.browser_use.definition",
     "openhands.tools.delegate.definition",
@@ -359,6 +367,19 @@
         }
       ]
     },
+    "FinishAction": {
+      "module": "openhands.sdk.tool.builtins.finish",
+      "class": "FinishAction",
+      "fields": [
+        {
+          "name": "message",
+          "type": "str",
+          "required": true,
+          "default": null,
+          "description": "Final message to send to the user."
+        }
+      ]
+    },
     "GlobAction": {
       "module": "openhands.tools.glob.definition",
       "class": "GlobAction",
@@ -406,6 +427,19 @@
         }
       ]
     },
+    "InvokeSkillAction": {
+      "module": "openhands.sdk.tool.builtins.invoke_skill",
+      "class": "InvokeSkillAction",
+      "fields": [
+        {
+          "name": "name",
+          "type": "str",
+          "required": true,
+          "default": null,
+          "description": "Name of the loaded skill to invoke."
+        }
+      ]
+    },
     "ListDirectoryAction": {
       "module": "openhands.tools.gemini.list_directory.definition",
       "class": "ListDirectoryAction",
@@ -423,6 +457,19 @@
           "required": false,
           "default": "False",
           "description": "Whether to list subdirectories recursively (up to 2 levels)."
+        }
+      ]
+    },
+    "MCPToolAction": {
+      "module": "openhands.sdk.mcp.definition",
+      "class": "MCPToolAction",
+      "fields": [
+        {
+          "name": "data",
+          "type": "dict",
+          "required": false,
+          "default": "PydanticUndefined",
+          "description": "Dynamic data fields from the tool call"
         }
       ]
     },
@@ -512,6 +559,26 @@
       "module": "openhands.tools.tom_consult.definition",
       "class": "SleeptimeComputeAction",
       "fields": []
+    },
+    "SwitchLLMAction": {
+      "module": "openhands.sdk.tool.builtins.switch_llm",
+      "class": "SwitchLLMAction",
+      "fields": [
+        {
+          "name": "profile_name",
+          "type": "str",
+          "required": true,
+          "default": null,
+          "description": "Name of the saved LLM profile to use for future agent steps."
+        },
+        {
+          "name": "reason",
+          "type": "str",
+          "required": true,
+          "default": null,
+          "description": "Brief reason why this profile is a better fit for the next step."
+        }
+      ]
     },
     "TaskAction": {
       "module": "openhands.tools.task.definition",
@@ -608,6 +675,46 @@
         }
       ]
     },
+    "ThinkAction": {
+      "module": "openhands.sdk.tool.builtins.think",
+      "class": "ThinkAction",
+      "fields": [
+        {
+          "name": "thought",
+          "type": "str",
+          "required": true,
+          "default": null,
+          "description": "The thought to log."
+        }
+      ]
+    },
+    "VisionInspectAction": {
+      "module": "openhands.sdk.tool.builtins.vision_inspect",
+      "class": "VisionInspectAction",
+      "fields": [
+        {
+          "name": "image_index",
+          "type": "int",
+          "required": true,
+          "default": null,
+          "description": "Zero-based index of the image to inspect from the latest user message."
+        },
+        {
+          "name": "question",
+          "type": "str",
+          "required": true,
+          "default": null,
+          "description": "Question to ask the vision model about the selected image."
+        },
+        {
+          "name": "profile_name",
+          "type": "str | None",
+          "required": false,
+          "default": "None",
+          "description": "Optional saved vision-capable LLM profile name. If omitted, the first available vision profile listed in the tool description is used."
+        }
+      ]
+    },
     "WorkflowAction": {
       "module": "openhands.tools.workflow.definition",
       "class": "WorkflowAction",
@@ -655,5 +762,23 @@
         }
       ]
     }
+  },
+  "scope": {
+    "packages_scanned": [
+      "openhands-sdk 1.41.0",
+      "openhands-tools 1.41.0",
+      "openhands-workspace 1.41.0",
+      "openhands-agent-server 1.41.0"
+    ],
+    "packages_with_action_classes": {
+      "openhands-sdk": 7,
+      "openhands-tools": 17
+    },
+    "packages_checked_and_empty": [
+      "openhands-workspace",
+      "openhands-agent-server"
+    ],
+    "note": "openhands-workspace and openhands-agent-server were scanned and define no Action subclass. Recorded explicitly: checked-and-empty is not the same as not-checked, and an earlier revision of this file was tools-only and silently missed six classes including MCPToolAction.",
+    "agent_canvas": "The Agent Canvas reference app (v1.12.0) and @openhands/typescript-client 1.37.0 are pinned in docs/UPSTREAM_PINS.md sections 3-4. They are JS/TS and carry no Python Action class; the canvas consumes the same agent-server events. Its dev backend pins the suite at 1.40.1, not 1.41.0 - see UPSTREAM_PINS 'Reference-app dev backend pins 1.40.1'."
   }
 }

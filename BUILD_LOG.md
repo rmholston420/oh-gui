@@ -3328,3 +3328,34 @@ a rewording test was comparing a file with itself and could never have failed.
 - **Stop-condition status:** **blocked pending operator decision.** ADR-023 drops a spec
   requirement and renders `null` on the most dangerous tool; per project instruction, spec-flagged
   ADR items go to the operator rather than being assumed.
+
+## 2026-08-08 23:24 EDT — Blast-radius verification widened from one package to the whole suite
+
+- **Stage / plugin / port:** Phase 1 · Authorization surface · §4.2 blast radius (ADR-023, still Proposed)
+- **What changed:** the 23:12 entry's verification scanned `openhands.tools.*` only. The suite is
+  four Python distributions plus the Agent Canvas reference app, and the narrow scan **silently
+  missed six `Action` classes**. Rescanned every `openhands.*` module in the pinned image.
+  - **31 → 37 Action classes.** New: `MCPToolAction`, `FinishAction`, `ThinkAction`,
+    `InvokeSkillAction`, `SwitchLLMAction`, `VisionInspectAction`.
+  - **`MCPToolAction` declares one field, `data: dict[str, Any]`** — shape defined at runtime by
+    whichever MCP server is connected. No static field set exists to project over, in principle,
+    not just today. ADR-023 gains Finding 4 and decision 2a.
+  - `openhands-workspace` and `openhands-agent-server` scanned, **zero** Action classes — recorded
+    as checked-and-empty in the evidence file, which is not the same fact as not-checked.
+  - Discovery is now by scan over the image's code objects, never by a hand-kept module list.
+    The hand-kept list is what caused the blind spot.
+- **Two defects in my own verification, both caught here:**
+  1. The extraction at 23:12 ran on an interpreter carrying **openhands-sdk 1.20.0**, not 1.41.0 —
+     `pip install openhands-tools==1.41.0` had resolved the SDK downward. The re-run under a clean,
+     version-asserted venv produced a **byte-identical** field set (`sys.path[0]` was the pinned
+     sdist, so the base classes were right), so nothing derived from it was wrong — but it was luck.
+     Added `--expect-versions`, which refuses to run on a mismatched interpreter.
+  2. Scope, as above.
+- **Gates mutation-tested (3/3 caught):** contaminated interpreter (sdk 1.20.0) → refused;
+  impossible expectation (`9.9.9`) → refused; one byte tampered in the terminal-tool sdist →
+  bytecode diff refused to derive a field set.
+- **Files touched:** `scripts/verify_tool_actions.py`, `docs/evidence/tool-action-fields.json`,
+  `docs/UPSTREAM_PINS.md`, `adrs/ADR-023-blast-radius-projection-table.md`, `BUILD_LOG.md`
+- **PORTING_LEDGER / ADR updated:** ADR-023 scope correction (still **Proposed**).
+- **Stop-condition status:** still blocked on the same operator decision (a/b/c). Scope of the
+  evidence behind it is now the full suite rather than one package.

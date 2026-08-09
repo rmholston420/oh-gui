@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Extract the native field set of every tool Action from the pinned agent-server image.
+"""Extract the native field set of every Action in the pinned OpenHands suite.
 
 Why this exists
 ---------------
@@ -8,13 +8,18 @@ Blast radius is DERIVED under ADR-015: a per-tool projection over native fields 
 *named native field, individually verified per clause 1* — verified in the shipped artifact, with
 path and line, not read out of documentation.
 
-`openhands.tools` is a separate distribution (`openhands-tools`) from `openhands-sdk`, and neither
-the SDK sdist nor the spec tells us what fields `ExecuteBashAction` or `FileEditorAction` actually
-carry. So this does what `verify_trust_dial.py` does, one package over:
+`Action` subclasses are spread across the suite, not concentrated in one package, and an earlier
+version of this script scanned `openhands.tools.*` alone. That was wrong: it silently missed six
+classes, including `MCPToolAction`. The suite is four Python distributions — `openhands-sdk`,
+`openhands-tools`, `openhands-workspace`, `openhands-agent-server` — plus the Agent Canvas
+reference app (pinned separately in `docs/UPSTREAM_PINS.md` §3). This scans **every** `openhands.*`
+module in the image and verifies each hit against whichever pinned sdist provides it:
 
-1. Read each `openhands.tools.*.definition` module out of the image's PyInstaller PYZ.
-2. Diff it structurally against the same module compiled from the pinned `openhands-tools` sdist,
-   establishing the sdist as a verified stand-in for what the image runs.
+1. Walk every `openhands.*` code object in the image's PyInstaller PYZ and find the modules that
+   define a class whose name ends in `Action`. Discovery is by scan, never by a hand-kept list —
+   a hand-kept list is what missed `MCPToolAction`.
+2. Diff each such module structurally against the same module compiled from the pinned sdist for
+   its distribution, establishing the sdist as a verified stand-in for what the image runs.
 3. Execute the *image's own* code objects to enumerate every `Action` subclass and its pydantic
    field names, types, defaults and descriptions.
 4. Emit the result as evidence.
@@ -116,42 +121,99 @@ def main() -> int:
     ap.add_argument("--binary", required=True, type=Path)
     ap.add_argument("--tools-source-root", required=True, type=Path)
     ap.add_argument("--sdk-source-root", required=True, type=Path)
+    ap.add_argument("--workspace-source-root", required=True, type=Path)
+    ap.add_argument("--agent-server-source-root", required=True, type=Path)
+    ap.add_argument(
+        "--expect-versions",
+        default="openhands-sdk=1.41.0,openhands-tools=1.41.0",
+        help=(
+            "Guard against a contaminated interpreter. An earlier run silently executed against "
+            "openhands-sdk 1.20.0 after a dependency resolution downgraded it; the result "
+            "happened to be identical, which is luck, not verification."
+        ),
+    )
     ap.add_argument("--out", required=True, type=Path)
     args = ap.parse_args()
+
+    for spec in args.expect_versions.split(","):
+        dist, _, want = spec.partition("=")
+        try:
+            import importlib.metadata as md  # noqa: PLC0415
+
+            got = md.version(dist)
+        except Exception:  # noqa: BLE001
+            got = None
+        if got != want:
+            fail(f"{dist}: interpreter has {got!r}, expected {want!r} — refusing to run")
+            return 1
+    ok(f"interpreter version guard passed ({args.expect_versions})")
+
+    roots = {
+        "openhands.tools.": args.tools_source_root,
+        "openhands.sdk.": args.sdk_source_root,
+        "openhands.workspace.": args.workspace_source_root,
+        "openhands.agent_server.": args.agent_server_source_root,
+    }
 
     pyz = read_carchive_pyz(args.binary)
     toc = pyz_modules(pyz)
 
-    definitions = sorted(
-        m for m in toc if m.startswith("openhands.tools.") and m.endswith(".definition")
-    )
-    if not definitions:
-        fail("no openhands.tools.*.definition modules in the image")
+    # Discovery by scan, not by a hand-kept list. The hand-kept list is what missed MCPToolAction.
+    def defines_action(co: Any) -> bool:
+        for c in co.co_consts:
+            if isinstance(c, types.CodeType):
+                if c.co_name.endswith("Action") and c.co_name[:1].isupper():
+                    return True
+                if defines_action(c):
+                    return True
+        return False
+
+    candidates: list[str] = []
+    for m in sorted(toc):
+        if not m.startswith("openhands."):
+            continue
+        try:
+            if defines_action(shipped_code(pyz, toc, m)):
+                candidates.append(m)
+        except Exception:  # noqa: BLE001, S112
+            continue
+    if not candidates:
+        fail("no openhands.* module in the image defines an Action class")
         return 1
-    ok(f"{len(definitions)} tool definition modules in the image")
+    by_pkg: dict[str, int] = {}
+    for m in candidates:
+        by_pkg[m.split(".")[1]] = by_pkg.get(m.split(".")[1], 0) + 1
+    ok(f"{len(candidates)} modules define Action classes: {by_pkg}")
 
     verified: list[str] = []
     mismatched: list[str] = []
-    for name in definitions:
-        rel = Path(*name.split(".")) .with_suffix(".py")
-        src = args.tools_source_root / rel
-        if not src.exists():
-            mismatched.append(f"{name}: not present in the pinned sdist ({rel})")
+    unmapped: list[str] = []
+    for name in candidates:
+        root = next((r for pre, r in roots.items() if name.startswith(pre)), None)
+        if root is None:
+            unmapped.append(name)
             continue
-        shipped = shipped_code(pyz, toc, name)
-        reference = compile_reference(src.read_text(), name)
-        d = diff_code(shipped, reference)
+        src = root / Path(*name.split(".")).with_suffix(".py")
+        if not src.exists():
+            pkg_init = root / Path(*name.split(".")) / "__init__.py"
+            src = pkg_init if pkg_init.exists() else src
+        if not src.exists():
+            mismatched.append(f"{name}: not present in its pinned sdist ({src})")
+            continue
+        d = diff_code(shipped_code(pyz, toc, name), compile_reference(src.read_text(), name))
         if d:
             mismatched.append(f"{name}: {d[0]}")
         else:
             verified.append(name)
 
+    for m in unmapped:
+        fail(f"{m}: no pinned sdist mapped for this distribution")
     for m in mismatched:
         fail(m)
-    ok(f"{len(verified)}/{len(definitions)} definition modules match the pinned sdist")
-    if mismatched:
-        fail("refusing to derive a field set from code that does not match the pin")
+    if mismatched or unmapped:
+        fail("refusing to derive a field set from code that does not match a pin")
         return 1
+    ok(f"{len(verified)}/{len(candidates)} modules match their pinned sdist")
 
     install_stubs(args.sdk_source_root)
     from openhands.sdk.tool.schema import Action  # noqa: PLC0415
