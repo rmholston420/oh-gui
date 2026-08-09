@@ -64,7 +64,7 @@ export function AgentAccountSection({ account }: { account: AgentAccount }) {
       <h3 data-testid="agent-account-heading" className="text-sm font-semibold text-slate-300">
         What the agent says about this &mdash; unverified
       </h3>
-      <p className="mt-1 text-xs text-slate-500">
+      <p className="mt-1 text-xs text-slate-400">
         The agent&rsquo;s own words, reported unchanged. Not an analysis, and not checked against
         what the action will actually do.
       </p>

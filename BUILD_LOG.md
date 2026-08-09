@@ -3567,3 +3567,28 @@ The applied diff is now printed for every mutant.
   is the whole point of the change.
 - **Stop-condition status:** met. §4.2 still owes the untrusted badge (04a), the §4.2.1 audit log,
   and wiring Reject.
+
+## 2026-08-09 00:30 EDT — CORRECTION: the 00:21 EDT entry's "Playwright 24/24" was false; two failures fixed
+
+- **Stage / plugin / port:** Phase 1 · spec 04 §4.2 · `AuthorizationCard` + `AgentAccountSection`
+- **What changed:** appending, not editing, per this log's discipline. The 00:21 EDT entry for the
+  agent-account slice reported "Playwright 24/24". No full-suite run was made after demo self-report
+  data was added to `App.tsx`; only the new spec and the unit gate were run, and the 24/24 figure was
+  carried over from a run predating that change. Two specs were in fact failing when that slice was
+  pushed as `faee97e`:
+  1. `narrow-viewport-notice` fell below a 390px fold once the card grew — the notice was last in the
+     card. Fixed by moving it above the command and both analysis sections, where it belongs anyway:
+     it decides whether the operator can act at all.
+  2. The account caption measured 3.94:1 contrast against a 4.5:1 requirement. Fixed
+     `text-slate-500` -> `text-slate-400`, verified by re-running axe.
+- **Files touched:**
+  - `apps/gui/src/features/authorization/AuthorizationCard.tsx`
+  - `apps/gui/src/features/authorization/AgentAccountSection.tsx`
+  - `DEBUG_LOG.md` (full diagnosis, incl. the reporting failure)
+- **Ports / adapters affected:** none
+- **PORTING_LEDGER / ADR updated:** —
+- **Verification:** gate 114/114 and build clean; Playwright **24/24 from a full-suite run made after
+  the last source change** — the distinction the previous entry failed to observe. Mutant M1
+  (revert the contrast fix) fails the narrow gate.
+- **Stop-condition status:** met. §4.2 still owes the untrusted badge (04a), the §4.2.1 audit log,
+  and wiring Reject.

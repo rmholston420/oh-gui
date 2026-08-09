@@ -124,6 +124,24 @@ export default function AuthorizationCard({
         )}
       </div>
 
+      {/* Above the command and the analysis sections, not below them. This notice governs whether
+          the operator can act at all, so it must be legible before they invest in reading anything
+          else. It was previously last, and the agent-account section pushed it off a 390px screen
+          entirely — caught by the narrow-viewport gate, which is why that gate asserts viewport
+          presence rather than mere existence in the DOM. */}
+      {!canAct && (
+        <p
+          data-testid="narrow-viewport-notice"
+          role="status"
+          className="mt-3 rounded border border-amber-600 bg-amber-950 p-3 text-sm text-amber-100"
+        >
+          <span className="font-semibold">Read-only at this window size. </span>
+          Approving, rejecting, or relaxing needs a window at least {APPROVAL_MIN_WIDTH}px wide, so
+          the command and its effects can be read together before you decide. Widen the window to
+          act.
+        </p>
+      )}
+
       <p className="mt-1 text-sm text-slate-300">
         <span className="font-medium text-slate-200">{action.toolName}</span> is about to run:
       </p>
@@ -144,18 +162,6 @@ export default function AuthorizationCard({
       {/* Below the radius, deliberately: derived first, self-report second. Order is asserted. */}
       {account !== null && <AgentAccountSection account={account} />}
 
-      {!canAct && (
-        <p
-          data-testid="narrow-viewport-notice"
-          role="status"
-          className="mt-3 rounded border border-amber-600 bg-amber-950 p-3 text-sm text-amber-100"
-        >
-          <span className="font-semibold">Read-only at this window size. </span>
-          Approving, rejecting, or relaxing needs a window at least {APPROVAL_MIN_WIDTH}px wide, so
-          the command and its effects can be read together before you decide. Widen the window to
-          act.
-        </p>
-      )}
 
       <div className="mt-3">
         <label htmlFor={reasonId} className="block text-sm text-slate-300">

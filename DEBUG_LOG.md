@@ -1621,3 +1621,48 @@ fully-qualified kind, silent fallthrough.
 
 **Search terms:** mutation survived, mutant did not apply, comment-only edit, first-occurrence
 replace, false negative mutation.
+
+## 2026-08-09 00:29 EDT — the agent-account section pushed the read-only notice off a 390px screen, and its own caption failed contrast
+
+- **Symptom:** two Playwright failures, both introduced by the §4.2 agent-account slice and both
+  missed before it was pushed:
+
+  ```
+  1) authorization-narrow.spec.ts:28 › phone portrait (390px): every action is unavailable
+     Error: expect(locator).toBeInViewport() failed
+     Locator:  getByTestId('narrow-viewport-notice')
+     Expected: in viewport
+     Received: viewport ratio 0
+
+  2) authorization-narrow.spec.ts:100 › the card has no accessibility violations, narrow or wide
+     + "390px: color-contrast — Elements must meet minimum color contrast ratio thresholds"
+  ```
+
+- **Affected stage / plugin / port:** Phase 1 · spec 04 §4.2 · `AuthorizationCard` + `AgentAccountSection`
+- **Root cause, two independent faults:**
+  1. `narrow-viewport-notice` was the **last** child of the card. Adding the account section made the
+     card tall enough that at 390 x 844 the notice fell entirely below the fold. Nothing was broken
+     in the notice itself — it rendered, it was in the DOM, and it was invisible. This is exactly why
+     that gate asserts `toBeInViewport()` and not `toBeVisible()`; a weaker assertion would have
+     passed and shipped a read-only card that never says it is read-only.
+  2. The section's caption used `text-slate-500` on `bg-night-950`, measured by axe at **3.94:1**
+     against a 4.5:1 requirement at 12px. Chosen by eye from neighbouring classes; never measured.
+- **Fix applied:**
+  1. The notice moved **above** the command and both analysis sections. It governs whether the
+     operator can act at all, so it must be legible before they invest in reading anything else.
+     This is a better arrangement than the original regardless of height, so it is not a workaround.
+  2. Caption `text-slate-500` -> `text-slate-400`. Verified by re-running axe, not by eye. Mutant M1
+     (reverting to `slate-500`) fails the narrow gate, so the fix is load-bearing.
+- **Files changed:**
+  - `apps/gui/src/features/authorization/AuthorizationCard.tsx`
+  - `apps/gui/src/features/authorization/AgentAccountSection.tsx`
+- **Related BUILD_LOG entry:** 2026-08-09 00:21 EDT (the slice that introduced both)
+
+**Process failure that let this reach `main`, recorded because it matters more than the bugs:**
+the 00:21 EDT BUILD_LOG entry claims "Playwright 24/24". That was **false when written**. After
+adding demo self-report data to `App.tsx` I ran only the one new spec (`agent-account-walkthrough`,
+1 passed) plus the unit gate, and reported a full-suite figure from an earlier run made *before* the
+demo data existed. The card's other e2e specs render the same demo actions, so they were precisely
+the specs most likely to be affected by that change, and they were the ones not run. Rule going
+forward: a full-suite count may only be quoted from a full-suite run made after the last source
+change. A per-spec run is reported as a per-spec run.
