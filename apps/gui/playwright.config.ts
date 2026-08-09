@@ -36,7 +36,7 @@ const watchArgs = MAXIMIZE
   : [`--window-size=${FIXED_WIDTH},${FIXED_HEIGHT + CHROME_UI_HEIGHT}`];
 
 /**
- * Spec 03 puts the four-region Pro layout above 1600px. Watching at Playwright's default 1280 would
+ * Spec 03 puts the four-region Pro layout at 1650px and above (ADR-031). Watching at Playwright's default 1280 would
  * show the collapsed layout, so a headed run would be demonstrating the wrong thing.
  *
  * `viewport: null` (adopt the real maximized window) is mutually exclusive with the

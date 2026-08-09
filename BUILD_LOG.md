@@ -3986,3 +3986,36 @@ The applied diff is now printed for every mutant.
   default warm latency; K actually answered in 1.9 s cold. Confirmatory run unchanged at 105 min.
 - **Verification:** 29 bench tests pass; hard constraints `=== PASSED ===`
 - **Stop-condition status:** unchanged — awaiting operator approval of the manifest, then the run.
+## 2026-08-09 04:53 EDT — Spec 15 middleware residue + requirement IDs
+
+- **Stage / plugin / port:** Phase 1 · living specs (ADR-028)
+- **What changed:** Added Spec 15 with 23 stable middleware-residue requirements; registered all as SPECCED. Existing Phase 1 specs already had IDs and were not renumbered.
+- **Files touched:** docs/specs/15-middleware-harness.md; docs/specs/COVERAGE.md
+- **Verification:** Marker-aware duplicate check passed (393 unique IDs); enrollment simulation passed. Committed coverage and hard-constraint gates are blocked only because scripts/spec_coverage.py does not enroll 15.
+- **Stop-condition status:** BLOCKED — authorize adding 15 to scripts/spec_coverage.py enrollment sets, then rerun coverage + hard constraints.
+
+## 2026-08-09 05:02 EDT — ADR-031: four-region breakpoint corrected to 1650px
+
+- **Stage / plugin / port:** Phase 1 · shell layout · no port
+- **What changed:** REQ-03-014 declared the four-region layout at >=1600px while REQ-03-007
+  (280px rail), REQ-03-008 (60% stage) and REQ-03-009 (380px conversation) make that width
+  impossible — 640px of remainder for 660px of minimums. `Shell.css` had been masking the misfit
+  with `overflow-x: auto` and a comment explaining the tradeoff.
+- **Correction of a previous error:** the carried note recorded the requirement as ">=1620px" from
+  `280 + 960 + 380`. That is wrong; it holds the 960px stage floor fixed while the viewport moves,
+  but the floor is 60% *of the viewport*. The constraint is a fixed point: `660 / 0.4 = 1650`.
+  1620px still overflows by 12px. Adopting the carried figure would have shipped the same defect.
+- **Files touched:** `adrs/ADR-031-four-region-breakpoint-is-1650px.md` (new),
+  `docs/specs/03-layout.md`, `docs/specs/COVERAGE.md`, `apps/gui/src/shell/Shell.css`,
+  `apps/gui/src/shell/breakpoint-arithmetic.test.ts` (new),
+  `apps/gui/e2e/breakpoint-overflow.spec.ts` (new), `apps/gui/playwright.config.ts`,
+  `scripts/spec_coverage.py`, `KNOWN_ISSUES.md`
+- **Ports / adapters affected:** none
+- **Verification:** 6 new unit tests green; mutation-tested with 3 mutants (breakpoint reverted to
+  1600 → 3 red; conversation min shrunk to 360 → 1 red; `overflow-x` reintroduced → 1 red), tree
+  restored and green after each. Hard constraints `=== PASSED ===`. The new browser spec is
+  **not yet verified** — the dev port was occupied by concurrent agents; it runs before the
+  benchmark starts.
+- **Also:** enrolled spec `15` in `scripts/spec_coverage.py`, which the spec subagent correctly
+  declined to edit as out-of-scope; register regenerated at 393 requirements across 17 specs.
+- **Stop-condition status:** ADR-031 closed. Browser verification outstanding.

@@ -24,10 +24,11 @@ REGISTER = SPECS / "COVERAGE.md"
 #: ADR-028 Phase 1 pass. `02` remains deliberately outside this enrollment: it is a closed
 #: Phase 0 setup record, while the 11 un-enrolled live files are now visible here.
 ENROLLED = (
-    "00", "01", "03", "04", "04a", "05", "06", "07", "08", "09", "10", "11", "12", "13", "14", "16"
+    "00", "01", "03", "04", "04a", "05", "06", "07", "08", "09", "10", "11", "12", "13", "14",
+    "15", "16"
 )
 PHASE1_PASS_PREFIXES = frozenset(
-    {"03", "06", "07", "08", "09", "10", "11", "12", "13", "14", "16"}
+    {"03", "06", "07", "08", "09", "10", "11", "12", "13", "14", "15", "16"}
 )
 
 ID_RE = re.compile(r"\[(REQ-[0-9a-z]+-\d{3})\]")

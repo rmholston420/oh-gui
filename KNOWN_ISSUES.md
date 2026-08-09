@@ -453,3 +453,20 @@ better than another. They are a baseline of record for the app, not a model rank
   Only then pull `laguna-xs-2.1` and `ornith:35b`.
 - **Related DEBUG_LOG search terms:** 412, pull model manifest, requires a newer version of Ollama,
   model not found, laguna-xs-2.1, ornith, tool_calls probe
+
+### 2026-08-09 — COVERAGE.md note cells never refresh once written
+
+- **Blocks:** nothing today; it is a correctness trap in the ADR-028 register, not a build blocker.
+- **Symptom:** `scripts/spec_coverage.py` renders each note cell as
+  `note = note or (text[:90] + "...")`. The auto-generated snippet is written into the register on
+  the first pass, and from then on it is indistinguishable from a hand-written note, so `--write`
+  preserves it verbatim. When the underlying requirement text changes, the register keeps
+  displaying the superseded wording and no gate objects. Found when REQ-03-014 moved from 1600px
+  to 1650px (ADR-031) and the register kept advertising `>=1600px` through two regenerations.
+- **Attempted fixes:** blanked the REQ-03-014 note cell and re-ran `--write`, which regenerated it
+  correctly. That is a manual per-row workaround, not a fix.
+- **Next investigation:** mark auto-generated snippets distinguishably (e.g. an `auto:` prefix or a
+  separate column) so `--write` can refresh them while still preserving genuine operator notes.
+  Then add a gate asserting every auto note matches the current requirement text — the gate is the
+  actual deliverable, since the current failure mode is silence.
+- **Related DEBUG_LOG search terms:** COVERAGE.md, spec_coverage, note cell, stale requirement text

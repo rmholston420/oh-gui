@@ -4,7 +4,7 @@
 or evidence cell, then re-run with `--write` to reconcile. Requirement ids are permanent
 and are never reused, including after a requirement is dropped (ADR-028).
 
-**Enrolled specs:** 00, 01, 03, 04, 04a, 05, 06, 07, 08, 09, 10, 11, 12, 13, 14, 16. This is ADR-028's completed Phase 1 pass; `02`
+**Enrolled specs:** 00, 01, 03, 04, 04a, 05, 06, 07, 08, 09, 10, 11, 12, 13, 14, 15, 16. This is ADR-028's completed Phase 1 pass; `02`
 remains excluded because it is the closed Phase 0 setup record. `SPECCED` is the explicit
 uncovered default: it makes no implementation claim without named repository evidence.
 
@@ -66,7 +66,7 @@ uncovered default: it makes no implementation claim without named repository evi
 | REQ-03-011 | SPECCED |  | The lens switch: a single binary toggle in the global command bar - CSS/layout transition,... |
 | REQ-03-012 | SPECCED |  | The unmodified Agent Canvas is not a third mode. Retained only as: a pinned reference chec... |
 | REQ-03-013 | SPECCED |  | One-keystroke maximize for any surface, with restore. <!-- |
-| REQ-03-014 | SPECCED |  | Breakpoints: >=1600px (up to 4 regions), 1200-1599px (2 panes + collapsible sides), 900-11... |
+| REQ-03-014 | SPECCED |  | Breakpoints: >=1650px (up to 4 regions), 1200-1649px (2 panes + collapsible sides), 900-11... |
 | REQ-03-015 | SPECCED |  | Mobile/tablet approval policy: below 900px, authorization cards are read-only - Approve/Re... |
 | REQ-03-016 | SPECCED |  | Save per-mode layouts. (v4.3, ADR-003: the delegated-review exception and the <!-- |
 | REQ-03-017 | SPECCED |  | Terminal pane and command palette: port Qovery/react-xtermjs and cmdk/react-cmdk as commod... |
@@ -402,6 +402,34 @@ uncovered default: it makes no implementation claim without named repository evi
 | REQ-14-009 | SPECCED |  | The Spec Wizard never bypasses the Change Review Workbench or authorization architecture f... |
 | REQ-14-010 | SPECCED |  | Exit criteria: a trivial request correctly takes the fast path without full ceremony; ever... |
 
+## 15-middleware-harness.md
+
+| id | status | evidence | note |
+|---|---|---|---|
+| REQ-15-001 | SPECCED |  | OH-GUI must consume OpenHands only through its published interfaces: it must not fork, pat... |
+| REQ-15-002 | SPECCED |  | The middleware is a separate OH-GUI process that composes the Agent Server over its HTTP <... |
+| REQ-15-003 | SPECCED |  | Middleware must not implement a plan–act–observe loop, own tool dispatch, or orchestrate a... |
+| REQ-15-004 | SPECCED |  | A capability enters middleware only when all three admission conditions hold: it is not ad... |
+| REQ-15-005 | SPECCED |  | Middleware uses the lowest capable tier before admitting residue: guidance belongs in a sk... |
+| REQ-15-006 | SPECCED |  | The agent-side OH-GUI footprint remains one versioned, uninstallable OpenHands plugin; the... |
+| REQ-15-007 | SPECCED |  | Middleware projections must preserve native event kinds, states, identifiers, and terminal... |
+| REQ-15-008 | SPECCED |  | The upstream conversation event log remains the source of truth for agent execution histor... |
+| REQ-15-009 | SPECCED |  | Middleware owns anti-corruption adapters and generated-or-explicitly-provisional DTO bound... |
+| REQ-15-010 | SPECCED |  | Middleware is the sole policy-bearing boundary between the GUI and OpenHands. A GUI contro... |
+| REQ-15-011 | SPECCED |  | Middleware maps task type and the operator's trust-dial decision to the applicable native ... |
+| REQ-15-012 | SPECCED |  | Middleware receives and validates authorization-card decisions, including reject-with-reas... |
+| REQ-15-013 | SPECCED |  | Middleware owns the cross-run authorization audit record and captures provenance at decisi... |
+| REQ-15-014 | SPECCED |  | Middleware carries trust-class and provenance references through its projections, includin... |
+| REQ-15-015 | SPECCED |  | Middleware coordinates the restricted-capability quarantine primitive required by <!-- |
+| REQ-15-016 | SPECCED |  | Middleware owns cross-run budget accounting and the provider-aware budget decision boundar... |
+| REQ-15-017 | SPECCED |  | Middleware owns the versioned telemetry adapter that normalizes native conversation update... |
+| REQ-15-018 | SPECCED |  | Middleware projects native stuck detection, execution state, and interruption outcomes for... |
+| REQ-15-019 | SPECCED |  | Middleware provides the capability-manifest, emergency-stop, and speculative-execution con... |
+| REQ-15-020 | SPECCED |  | Middleware must not replace native `MEMORY.md`, native context condensation, agent event <... |
+| REQ-15-021 | SPECCED |  | Middleware must not use `Conversation.execute_tool()` as an authorization shortcut. The na... |
+| REQ-15-022 | SPECCED |  | A requested capability that fails the admission test, lacks the required native-absence fi... |
+| REQ-15-023 | SPECCED |  | Phase 1 exit evidence must demonstrate the middleware boundary with both Vibe and Pro clie... |
+
 ## 16-stack-layers.md
 
 | id | status | evidence | note |
@@ -467,4 +495,4 @@ uncovered default: it makes no implementation claim without named repository evi
 
 ## Totals
 
-370 requirements across 16 enrolled specs - 50 deferred · 3 dropped · 25 implemented · 292 specced
+393 requirements across 17 enrolled specs - 50 deferred · 3 dropped · 25 implemented · 315 specced

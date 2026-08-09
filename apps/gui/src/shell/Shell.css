@@ -1,8 +1,11 @@
 /*
  * docs/specs/03-layout.md §§3.0–3.2 and docs/specs/07-visual-design.md §7.2.
  * The largest desktop mode keeps the center stage at a 60% minimum; the
- * specified side ranges make a small overflow at the 1600px lower boundary
- * preferable to silently shrinking the center stage below that requirement.
+ * four-region breakpoint is 1650px, not 1600px (ADR-031). The 280px rail and
+ * 380px conversation minimums must fit the 40% left by the 60% stage floor,
+ * so the threshold is 660/0.4 = 1650px exactly. 1600px was 20px short and
+ * 1620px is still 12px short, because the stage floor scales with the
+ * viewport rather than staying at 960px.
  */
 .oh-shell {
   box-sizing: border-box;
@@ -163,8 +166,8 @@
   }
 }
 
-/* 1200–1599px: center stage plus the persistent conversation pane. */
-@media (min-width: 1200px) and (max-width: 1599px) {
+/* 1200–1649px: center stage plus the persistent conversation pane. */
+@media (min-width: 1200px) and (max-width: 1649px) {
   .oh-shell--pro .oh-shell__workspace {
     grid-template-areas: "stage conversation";
     grid-template-columns: minmax(0, 1fr) clamp(380px, 32vw, 440px);
@@ -175,15 +178,15 @@
   }
 }
 
-/* >=1600px: command bar + rail + >=60% center stage + conversation column. */
-@media (min-width: 1600px) {
+/* >=1650px: command bar + rail + >=60% center stage + conversation column.
+   Provably fits at the lower boundary, so no overflow fallback is needed. */
+@media (min-width: 1650px) {
   .oh-shell--pro .oh-shell__workspace {
     grid-template-areas: "rail stage conversation";
     grid-template-columns:
       clamp(280px, 18vw, 360px)
       minmax(60%, 1fr)
       clamp(380px, 24vw, 440px);
-    overflow-x: auto;
   }
 
   .oh-shell--pro.oh-shell--left-rail-collapsed .oh-shell__workspace {
