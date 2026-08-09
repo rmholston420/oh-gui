@@ -1506,3 +1506,52 @@ the snap daemon. Recorded in `docs/forge-oh-port-survey.md`.
   alarm an operator learns to ignore, and it nearly caused a real upstream-drift claim to be
   written into the ADR.
 - **Files changed:** `scripts/compare_bytecode.py`, `scripts/extract_image_sdk.py`
+
+## 2026-08-08 22:34 EDT — Playwright mutation testing silently ran against unmutated code
+
+- **Symptom:** three e2e mutants "survived" (`8 passed` with the mutation applied). A probe printed
+  the class list actually served: `text-amber-100` — the pre-mutation value — while the file on
+  disk read `text-amber-800`.
+- **Affected stage / plugin / port:** Phase 1 · Authorization slice · `e2e/authorization-narrow.spec.ts`
+- **Root cause:** two independent faults stacked.
+  1. `perl -0pi` and `sed -i` write a new file and rename it over the old one, changing the inode.
+     Vite's watcher holds the original inode, so the edit is never seen and the browser is served
+     the pre-mutation module. Playwright's `reuseExistingServer: true` keeps that stale server
+     alive across every mutant in the run.
+  2. One mutant was a **broken mutant**: the pattern `bg-amber-950 text-amber-100` does not occur
+     in the file (the real class list has `p-3 text-sm` between the two), so the substitution was a
+     no-op. It was reported as "survived" when nothing had been mutated.
+- **Fix applied:** `scripts/mutate-authz-e2e.sh` kills whatever is listening on 5173 before every
+  run, and `verify_applied()` greps for a post-mutation marker and reports `BROKEN MUTANT` rather
+  than `SURVIVED` when the edit did not land. All 5 e2e mutants are caught with a fresh server.
+- **Files changed:** `scripts/mutate-authz-e2e.sh`
+- **Related BUILD_LOG entry:** 2026-08-08 22:42 EDT
+
+## 2026-08-08 22:36 EDT — `pkill -f "vite.*5173"` killed the harness that ran it
+
+- **Symptom:** `bash scripts/mutate-authz-e2e.sh` exited 143 (SIGTERM) with no output.
+- **Affected stage / plugin / port:** Phase 1 · tooling
+- **Root cause:** `pkill -f` matches against full command lines, and the harness's own process
+  tree carried the pattern. The script signalled itself.
+- **Fix applied:** kill by listening socket instead — `ss -lptnH "sport = :5173"`, extract the pid,
+  then poll until the port is free. Targets the thing actually in the way.
+- **Files changed:** `scripts/mutate-authz-e2e.sh`
+- **Related BUILD_LOG entry:** 2026-08-08 22:42 EDT
+
+## 2026-08-08 22:20 EDT — vitest reported "4 passed" while a test file crashed at collection
+
+- **Symptom:** `npx vitest run` printed `Test Files 4 passed (4) / Tests 30 passed (30)` on Node
+  20 while `first-run-wizard.test.tsx` failed to collect with
+  `TypeError: webidl.util.markAsUncloneable is not a function`. The crash is reported as an
+  *error*, not a failed file, so the summary line looks clean.
+- **Affected stage / plugin / port:** Phase 1 · frontend test runner
+- **Root cause:** jsdom 30 pulls an undici requiring Node >=22.14; the sandbox runs Node 20.20.1.
+  Already known and documented in `apps/gui/vite.config.ts`. The new fault was **mine, in
+  reporting**: I filtered the output with `grep -E "Test Files|Tests "`, which drops the error
+  line, and reported the suite as green. Vitest's exit code was 1 throughout — the information was
+  there and I discarded it.
+- **Fix applied:** none in-repo; `npm run gate` was always correct because it propagates the exit
+  code. Recorded so the reporting mistake is not repeated: **read the exit code, not the summary
+  line.** Colossus runs Node >=22.14, so the suite is genuinely green there.
+- **Files changed:** none
+- **Related BUILD_LOG entry:** 2026-08-08 22:42 EDT

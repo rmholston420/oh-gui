@@ -374,14 +374,38 @@ better than another. They are a baseline of record for the app, not a model rank
      hard-constraint gates distinct from `deterministic_replay`.
   4. §8.5/§8.6 — tool-call-depth budget axis (distinct from turns and wall clock) and the
      30-concurrent-tool soft warning.
-  5. §3.2 / v4.3 gate — below 900px authorization cards are read-only with **no exception
-     path**; needs a headed Playwright assertion at a narrow viewport.
+  5. ~~§3.2 / v4.3 gate — below 900px authorization cards are read-only with no exception path.~~
+     **CLOSED 2026-08-08 22:38 EDT** by ADR-022 + `e2e/authorization-narrow.spec.ts`. Struck rather
+     than removed because items 1-4 and 6 are still numbered against this list.
   6. §04a — quarantine invocations must be written to the authorization audit log with
      source and trust class, and batched when several untrusted items arrive in one turn.
      The audit shape is now fixed by ADR-020; the batching behaviour is not.
-- **Attempted fixes:** none yet — recorded, not resolved.
+- **Attempted fixes:** item 5 closed (see above). Items 1-4 and 6 still recorded, not resolved.
 - **Next investigation:** these six are build work, not decisions — none appears to need an ADR.
   Item 5 is the cheapest and is a headed-Playwright assertion, which is how the operator wants
   frontend behaviour proven; do it first so the pattern exists for the rest.
 - **Related DEBUG_LOG search terms:** per task type, tool-call depth, 900px, quarantine audit,
   batching triggers, model profile fields
+
+### 2026-08-08 — The authorization card is one bullet of §4.2, not the section
+
+- **Blocks:** Phase 1 exit criteria (§4.12). Not blocking any current slice.
+- **Symptom:** `AuthorizationCard` was built as the minimum surface needed to make the 900px gate
+  real (a gate needs something to gate). It renders the exact command, the LLM-attributed risk,
+  and the three actions. The rest of `docs/specs/04-authorization.md` §4.2 is absent:
+  - **Blast radius** — files, paths, hosts, credentials. DERIVED under ADR-015, so it needs one
+    declared per-tool-class projection, the native inputs displayed inline at their native field
+    names (condition e), and `null` rather than an empty list for tool classes with no projection.
+    Deliberately not stubbed: an empty list and an uncomputed list must never look alike.
+  - **Untrusted-content badge** (04a), distinct from the risk badge.
+  - **The agent's own account** — `ActionEvent.summary`, `thought`, `reasoning_content`, each
+    labelled as the agent's account rather than an analyzer's justification.
+  - **§4.2.1 audit log** — approvals, rejections-with-reason, relax grants; session-scoped
+    expiry; the live relaxation badge count on the trust dial.
+  - **Reject is not wired to `conversation.reject_pending_actions(reason)`** — the card takes an
+    `onReject` callback and the harness passes none. Nothing is transmitted anywhere yet.
+- **Also carried:** `App.tsx` selects the surface from `?surface=`, a seam standing in for the
+  §3.1 shell. Trivial by design so there is nothing to migrate when the shell lands.
+- **Next investigation:** blast radius first — it is the one item with an ADR-015 obligation
+  attached, so getting it wrong is expensive.
+- **Related DEBUG_LOG search terms:** blast radius, DERIVED, authorization card, reject_pending_actions

@@ -3225,3 +3225,56 @@ a rewording test was comparing a file with itself and could never have failed.
     source and cookieless binary still fail. No regression from the prelude extraction.
 - **Stop-condition status:** the highest-risk remaining hand-written mirror is now checked against
   upstream. It is **not** retired — Phase 1 still owes driving it from the middleware.
+
+## 2026-08-08 22:42 EDT — 900px read-only gate built, proven headed, and mutation-tested (ADR-022)
+
+- **Stage / plugin / port:** Phase 1 · Authorization slice · §3.2 responsiveness + §4.2 card ·
+  KNOWN_ISSUES item 5
+- **What changed:**
+  - **ADR-022** — the 900px rule is a **UI affordance gate, not an enforcement boundary**, and is
+    enforced frontend-only. A middleware check on a client-reported viewport would trust the same
+    client it claims to guard, buy zero adversarial strength, and appear in the audit log as an
+    enforced control that is not one. No viewport field is added to any IPC schema.
+  - `features/authorization/viewport.ts` — `APPROVAL_MIN_WIDTH = 900` (inclusive) and
+    `useViewportWidth` via `useSyncExternalStore`, server snapshot `0` (fail-closed).
+  - `features/authorization/AuthorizationCard.tsx` — minimal §4.2 card: exact command, risk
+    attributed as the agent's assessment per ADR-015, three actions, free-text-required Reject.
+    Read-only below 900px with the reason stated in the UI. The rest of §4.2 is tracked in
+    KNOWN_ISSUES, not stubbed.
+  - `App.tsx` — `?surface=` seam so the card can be driven headed before the §3.1 shell exists.
+  - `e2e/authorization-narrow.spec.ts` — headed gate at 390 / 820 / 899 / 900 / 1280px, plus
+    overflow and axe checks. `npx playwright test authorization-narrow --headed` to watch it.
+  - `13-hard-constraints.md` line 101 checked; line 49 annotated **partially** done — the
+    "hunk-level swipe review remains available" half has no diff surface to be available on, and
+    stays unchecked rather than being quietly counted.
+- **Files touched:**
+  - `adrs/ADR-022-narrow-viewport-gate-is-a-ui-affordance.md` (new)
+  - `apps/gui/src/features/authorization/{viewport.ts,AuthorizationCard.tsx}` (new)
+  - `apps/gui/src/__tests__/{authorization-card.test.tsx,authorization-card.ssr.test.tsx}` (new)
+  - `apps/gui/e2e/authorization-narrow.spec.ts` (new)
+  - `scripts/{mutate-authz.sh,mutate-authz-e2e.sh}` (new)
+  - `apps/gui/src/App.tsx`, `docs/specs/13-hard-constraints.md`, `KNOWN_ISSUES.md`
+- **Ports / adapters affected:** none. Frontend only; no middleware or schema change (ADR-022).
+- **PORTING_LEDGER / ADR updated:** ADR-022 added. Nothing vendored — no ledger entry.
+- **Mutation records — 11 unit, 5 e2e, all caught:**
+  - Unit: off-by-one at 900 · wrong breakpoint (768) · no resize listener · fail-open server
+    snapshot · Approve live below breakpoint · relax-as-exception-path · whitespace reject reason ·
+    notice never renders · risk shown as unattributed verdict · no-assessment shown as assessment ·
+    render-time snapshot ignores real width.
+  - E2E: Approve live below 900px · command block stops scrolling · notice fails contrast ·
+    scrollable block loses keyboard access · off-by-one at 900.
+  - **Three harness faults found and fixed before the results could be trusted** — the unit
+    harness counted a glyph vitest never prints (every mutant "survived"); the e2e harness reused
+    a Vite server that served stale code after inode-replacing edits; one mutant's pattern never
+    matched. See DEBUG_LOG 22:20 / 22:34 / 22:36 EDT.
+  - **A surviving mutant changed the design, not the test:** the `useState` + `useEffect` version
+    rendered actionable for one frame in an already-narrow window. jsdom cannot see frames, so no
+    unit test could close it. Replaced with `useSyncExternalStore`, which reads during render, so
+    the hole no longer exists to be tested for.
+- **Defect found by the headed run, not by review:** at 390px the command block scrolls
+  horizontally and had no keyboard access (axe `scrollable-region-focusable`) — a keyboard user
+  could not read the tail of the command being authorized. Fixed with `tabIndex`/`role`/label.
+- **Gates:** vitest 50 passed · playwright 17 passed · pytest 60 passed · `verify-local.sh
+  --constraints-only` PASSED (1 warning, pytest lives in the middleware venv) · lint and build clean.
+- **Stop-condition status:** KNOWN_ISSUES item 5 **closed**. Item 49 of hard-constraints partially
+  closed. The card itself is one bullet of §4.2 — new KNOWN_ISSUES entry filed for the rest.

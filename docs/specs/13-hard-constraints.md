@@ -46,7 +46,9 @@
 - [ ] The scope-shape review screen renders before hunk-level review is reachable.
 - [ ] Budget ceiling is denominated correctly per provider and is orthogonal to the trust dial.
 - [ ] Kinetic-feedback/motion treatments never relax a diff-performance gate or an accessibility gate.
-- [ ] Authorization-card actions above read-only are unavailable below the 900px breakpoint; hunk-level swipe review remains available.
+- [ ] Authorization-card actions above read-only are unavailable below the 900px breakpoint (**done** —
+  `AuthorizationCard` + `e2e/authorization-narrow.spec.ts`, ADR-022); hunk-level swipe review
+  remains available (**not done** — no diff surface exists yet; unchecked until it does).
 - [ ] Vibe Mode and Pro Mode share one data model; switching lenses never triggers a route change, data refetch, or loss of in-progress input.
 - [ ] Notifications for the five specified event types write to the inbox as the record of truth, independent of desktop-notification delivery success.
 - [ ] Air-gapped mode passes CI under network-namespace isolation with all network-dependent features disabled.
@@ -98,7 +100,10 @@
 - [ ] No schema carries a user/owner/profile identity field. One operator, no attribution dimension.
 - [ ] No UI surface references profiles, proficiency tiers, delegates, assist mode, or a household-wide view.
 - [ ] The authorization safety plane is intact: trust dial, authorization cards, capability manifest, emergency stop, `execute_tool()` bypass closure, untrusted-content quarantine, and audit log all ship in Phase 1. Removing multi-user must not weaken any of these.
-- [ ] Below 900px the surface is read-only with no exception path. Approve/reject/relax require >=900px.
+- [x] Below 900px the surface is read-only with no exception path. Approve/reject/relax require >=900px.
+  Enforced frontend-only and deliberately not mirrored in the middleware — viewport is
+  client-reported, so a server-side check would be theatre ([ADR-022](../../adrs/ADR-022-narrow-viewport-gate-is-a-ui-affordance.md)).
+  Proven headed at 390/820/899/900/1280px, and mutation-tested (5 browser mutants, 11 unit mutants).
 - [ ] Vibe and Pro lenses remain a semantic-zoom pair for one operator; every Phase 1-5 exit criterion is still demonstrated in both.
 
 ## v4.4 additions (ADR-015 - native-fidelity boundary)
