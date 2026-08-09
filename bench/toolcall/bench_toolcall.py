@@ -43,6 +43,9 @@ MEASURED_WARM_SECONDS = {
     "qwen3.5:9b-q8_0": 0.89,
     "qwen3.5:4b-q8_0": 0.73,
     "qwen3.5:2b-q8_0": 0.65,
+    # Probed 2026-08-09 05:34 EDT when H was promoted to the confirmatory arm.
+    # cold=0.58s warm=0.71s out=87 tokens, native tool_calls emitted.
+    "glm-4.7-flash:q4_K_M": 0.71,
 }
 # The probe task emitted ~100 output tokens against one short goal. Real tasks
 # carry larger schemas and some produce longer calls, so the projection is

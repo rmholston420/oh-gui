@@ -4184,3 +4184,15 @@ The applied diff is now printed for every mutant.
   measured warm latency and falls back to the conservative default, which inflates the confirm
   figure; a timing probe on H would tighten it.
 - **Stop-condition status:** design registration complete. Benchmark is dispatchable.
+
+## 2026-08-09 05:36 EDT — Cell H timing probed; projection tightened to 3.33 h
+
+- **Stage / plugin / port:** ADR-016 tool-call benchmark · timing budget
+- **What changed:** `glm-4.7-flash:q4_K_M` measured on Colossus at cold 0.58 s / warm 0.71 s,
+  87 output tokens, native `tool_calls` emitted. Recorded in `MEASURED_WARM_SECONDS`.
+- **Effect:** the conservative default had inflated H by roughly 4x. Projection falls from
+  screen 77.5 / confirm 206.5 min to **screen 69.9 / confirm 130.2 min, 3.33 h total** against
+  the 8 h cap — so promoting H costs about 25 min of real runtime, not the ~100 min projected.
+- **Files touched:** `bench/toolcall/bench_toolcall.py`
+- **Stop-condition status:** benchmark dispatchable; every confirmatory cell now runs on measured
+  latency rather than a fallback.
