@@ -2968,3 +2968,73 @@ split.
 - **PORTING_LEDGER / ADR updated:** none
 - **Stop-condition status:** MET. Phase 0 is closed. Next work is the Phase 1 authorization slice,
   which begins with creating `services/middleware/`.
+
+## 2026-08-08 20:52 EDT — ADR-017 filed: three Phase 1 exit criteria resolved before building to them
+
+- **Stage / plugin / port:** Phase 1 · Authorization slice · exit-criteria definition
+- **What changed:** Reading all three Phase 1 scope files together surfaced three items that could
+  not be built to as written. (a) `08-telemetry.md` §8.6 made Phase 1 exit depend on the rewind/fork
+  UI, which is `05-plan-model.md` — a **Phase 3** file not in Phase 1's list. Split at the layer
+  boundary: Phase 1 owns the `deterministic_replay` field and read path, Phase 3 owns the UI read.
+  (b) §6.4.2's security checklist ships in Phase 1 but its only assertion sat under Phase 2 exit
+  criteria — promoted the seven-pattern fixture to a Phase 1 gate (ADR-006 / Principle 8: an inert
+  control is worse than none). (c) **The Vibe/Pro lens split does not exist.**
+  `grep -rn "Vibe\|Pro lens\|lens" apps/gui/src apps/gui/e2e` at `52fa9e6` returns zero matches,
+  yet that qualifier gates all eleven criteria. The lens *mechanism* is added to Phase 1 scope.
+  Separately, the exit-criteria list was an unnumbered trailing paragraph already being miscited as
+  "§4.10" (which is Speculative execution); numbered it **§4.12**. Numbering only, text unchanged.
+- **Files touched:**
+  - `adrs/ADR-017-phase-1-exit-criteria-resolution.md` (new)
+  - `adrs/README.md` (index row)
+  - `docs/specs/04-authorization.md` (§4.12 heading)
+  - `docs/specs/08-telemetry.md` (§8.6 amendment)
+  - `docs/specs/06-change-review.md` (§6.5 amendment)
+  - `docs/specs/11-dev-plan.md` (Phase 1 + Phase 3 amendments)
+- **Ports / adapters affected:** none
+- **PORTING_LEDGER / ADR updated:** ADR-017 (Ratified). Ledger unaffected by this entry.
+- **Stop-condition status:** met — exit target fixed before code.
+
+## 2026-08-08 21:10 EDT — `services/middleware` scaffolded: fail-closed IPC seam, pre-enforcement
+
+- **Stage / plugin / port:** Phase 1 · Authorization slice · slice 1 (middleware skeleton)
+- **What changed:** Created the policy-plane package. Deliberately **pre-enforcement**: ADR-014 is
+  Proposed and its lock-in clause forbids enforcement code before its four-item executable
+  verification gate passes on Colossus, so the seam exists and denies everything, by construction,
+  with the reason stated in the response body.
+  - `ipc/failclosed.py` — the guard inverting the SDK's fail-open default. Denies on timeout,
+    cancellation, any `BaseException`, a non-`Decision` return, and an unrecognised verdict string
+    (the donor's exact `{"decision":"block"}` defect). No cache — ADR-014 clause 5.
+  - `ipc/schema.py` — the `pre_tool_use` envelope verbatim, `extra="allow"` so an upstream field
+    addition cannot turn the gate into a 422. `Decision.source` distinguishes a *policy* deny from
+    a *failclosed* deny, so a broken gate never looks like a working strict one.
+  - `ipc/server.py` — `/healthz`, `/v1/upstream`, `/v1/authorize`. Always HTTP 200; the verdict
+    lives in the body, because a non-2xx is an error result and the SDK reads that as proceed.
+  - `upstream/sdk.py` — anti-corruption layer (ADR-001 item 7), sole `openhands*` import site.
+    **Mirrors nothing** (ADR-015): reports installed-vs-pinned for the four 1.41.0 packages and
+    stops. `trust-dial.ts` already shipped one wrong decision from a hand-written mirror.
+  - `config.py` — loopback-only. `0.0.0.0`, `::` and hostnames are a hard `ConfigError`.
+  - `scripts/verify-local.sh` — new `--middleware-only` / `--skip-middleware` flags and a gate that
+    creates a dedicated `services/middleware/.venv`, enforces the `>=3.12` floor from
+    UPSTREAM_PINS §2, lints, tests, then **live-probes the running server**: binds loopback, asks it
+    to authorize `cat ~/.ssh/id_ed25519`, requires a deny, and requires a `0.0.0.0` bind to be
+    refused. Also fixed a pre-existing bug in that script's node check, which demanded `>=22`
+    outright and would have red-flagged a compliant node 20.19+.
+- **Gate:** 48 middleware assertions + ruff clean + 2 live probes. **Mutation-tested, five mutants,
+  all killed:** guard bypassed → suite aborts; loopback check removed → 2 failures; malformed-body
+  guard removed → 2 failures; `extra="allow"` → `"forbid"` → 1 failure; verdict-shape check removed
+  → 1 failure. Every fault case is additionally paired with an *unguarded control* asserting the
+  same faulty resolver does **not** deny when called directly — without that half the suite would
+  pass with the guard replaced by an unconditional deny.
+- **Files touched:** `services/middleware/{pyproject.toml,README.md}`,
+  `services/middleware/src/ohgui_middleware/{__init__,__main__,config}.py`,
+  `.../upstream/{__init__,sdk}.py`, `.../ipc/{__init__,schema,failclosed,server}.py`,
+  `services/middleware/tests/{test_failclosed,test_import_boundary,test_ipc_contract}.py`,
+  `scripts/verify-local.sh`, `.gitignore`
+- **Ports / adapters affected:** anti-corruption layer established (ADR-001 item 7), enforced by
+  AST scan in `test_import_boundary.py`, which is itself mutation-checked against a planted import.
+- **PORTING_LEDGER / ADR updated:** `PORTING_LEDGER.md` — new "middleware scaffold dependencies"
+  subsection. **No code vendored this slice**; all five deps permissive (MIT / BSD-3 / Apache-2.0).
+  Donor hook files remain excluded per ADR-014 clause 8.
+- **Stop-condition status:** met for slice 1. **Not started:** the hook, the policy plane, the audit
+  log, the trust dial, the lens mechanism. Next gate is ADR-014's four-item verification, which
+  requires the pinned agent-server running on Colossus.

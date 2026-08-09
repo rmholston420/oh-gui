@@ -61,4 +61,10 @@ Given a synthetic diff with a moved function, renamed symbol, and extracted-to-n
 
 Phase 1 addition (v4.0): sections 6.4.1 and 6.4.2 ship in Phase 1.
 
+> **AMENDED 2026-08-08 20:52 EDT by [ADR-017](../../adrs/ADR-017-phase-1-exit-criteria-resolution.md).**
+> The seven-pattern synthetic-fixture assertion below is a **Phase 1** gate, not only a Phase 2 one.
+> §6.4.2 ships in Phase 1, so its fixture ships with it; shipping the checklist a phase ahead of
+> anything that proves its patterns fire is the inert-control failure of ADR-006 and Principle 8.
+> The clause stays in the Phase 2 list as a regression gate.
+
 Phase 2 exit criteria: a 10,000-line synthetic diff meets all four gates; semantic-diff comprehension gate passes for all three change types; Accept All above threshold requires explicit override; security checklist correctly flags each of the seven patterns in a synthetic fixture.

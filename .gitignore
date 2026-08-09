@@ -1,3 +1,10 @@
 
 __pycache__/
 *.pyc
+
+# middleware venv (created by scripts/verify-local.sh; never committed)
+services/middleware/.venv/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/

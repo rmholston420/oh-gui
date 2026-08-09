@@ -42,6 +42,17 @@ Files: 04-authorization.md, 04a-prompt-injection.md, 08-telemetry.md (8.0-8.1, 8
 Trust dial, interrupt/authorization cards, reject-with-reason, capability manifest, emergency stop, execute_tool bypass closure, untrusted-content quarantine, authorization audit log, thin telemetry seed, speculative-execution hooks, stuck-state intervention surface, budget model, cloud-fallback escape hatch, reliability-tier display, scope-shape review screen.
 Exit criterion: cumulative across 04-authorization.md, 08-telemetry.md, and 06-change-review.md §§6.4.1-6.4.2. All must be demonstrated in both Vibe and Pro lenses (Principle 11).
 
+> **AMENDED 2026-08-08 20:52 EDT by [ADR-017](../../adrs/ADR-017-phase-1-exit-criteria-resolution.md).**
+> Three resolutions, all binding on Phase 1 exit:
+> 1. `deterministic_replay` — Phase 1 owns the middleware field and its read path; the rewind/fork
+>    UI half moves to **Phase 3** (`05-plan-model.md`, which is not in Phase 1's file list).
+> 2. The §6.4.2 seven-pattern security-checklist fixture is a **Phase 1** gate.
+> 3. **The Vibe/Pro lens primitive is added to Phase 1 scope.** The qualifier above gates all
+>    eleven criteria, and at `52fa9e6` the lens system does not exist anywhere in `apps/gui/`.
+>    Phase 1 builds the mechanism only — persisted lens selector, lens-aware render path, and
+>    Playwright coverage driving each Phase 1 surface once per lens. `03-layout.md`'s full two-lens
+>    information architecture is unaffected.
+
 ## Phase 2 - Change Review Workbench slice (remainder)
 Files: 06-change-review.md (6.1-6.3, 6.5-6.11)
 Benchmark diff engines against the five-metric gate. Worker-side/virtualized diff rendering, risk-ranked file ordering, configurable batch-review gate, verification strip, author-class provenance, precise accept/merge/push semantics, explain affordance.
@@ -50,7 +61,7 @@ Exit criterion: see 06-change-review.md.
 ## Phase 3 - Plan/drift/rewind slice
 Files: 05-plan-model.md
 Evolve the vendored planner-tab.tsx donor copy (ADR-001) into a durable Plan object + hybrid trace projection + drift indicator + fork taxonomy + explicit Plan-revision forking + plan-level provenance gate + Session Profile Card + conditional non-determinism disclosure.
-Exit criterion: see 05-plan-model.md.
+Exit criterion: see 05-plan-model.md. **Plus (ADR-017):** `deterministic_replay` correctly read by the rewind/fork UI, deferred here from the Phase 1 list.
 
 ## Phase 4 - Design system extraction
 Files: 07-visual-design.md

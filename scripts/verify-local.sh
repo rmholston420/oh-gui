@@ -13,6 +13,8 @@
 #   scripts/verify-local.sh              # verify, then serve the wizard so you can click it
 #   scripts/verify-local.sh --no-serve   # verify only, exit when done
 #   scripts/verify-local.sh --headed     # watch the browser tests actually drive the UI
+#   scripts/verify-local.sh --middleware-only   # Python policy-plane gate only, then exit
+#   scripts/verify-local.sh --skip-middleware   # frontend gate only (Phase 0 behaviour)
 
 set -uo pipefail
 
@@ -20,11 +22,15 @@ PORT="${OHGUI_PORT:-5173}"
 SERVE=1
 HEADED=""
 WALK=0
+MWONLY=0
+MWSKIP=0
 for a in "$@"; do
   case "$a" in
     --no-serve)   SERVE=0 ;;
     --headed)     HEADED="--headed" ;;
     --walkthrough) WALK=1; HEADED="--headed"; SERVE=0 ;;
+    --middleware-only) MWONLY=1; SERVE=0 ;;
+    --skip-middleware) MWSKIP=1 ;;
     *) echo "unknown flag: $a"; exit 2 ;;
   esac
 done
@@ -61,20 +67,33 @@ note "repo: $REPO"
 
 # ---------------------------------------------------------------- environment
 step "Environment"
+if [ "$MWONLY" -eq 1 ]; then
+  note "--middleware-only: skipping the Node/port checks, which gate the frontend only"
+else
 NODE_V="$(node -v 2>/dev/null)" || die "node not found on PATH"
 NODE_MAJ="$(printf '%s' "$NODE_V" | sed 's/^v\([0-9]*\).*/\1/')"
-if [ "$NODE_MAJ" -ge 22 ]; then ok "node $NODE_V (package.json wants >=22.12)"
-else err "node $NODE_V is too old; package.json requires ^20.19 || >=22.12"; fi
+NODE_MIN="$(printf '%s' "$NODE_V" | sed 's/^v[0-9]*\.\([0-9]*\).*/\1/')"
+# package.json engines is "^20.19.0 || >=22.12.0". The previous check demanded >=22 outright,
+# which failed a compliant node 20.19+ and would have sent you chasing a phantom.
+if { [ "$NODE_MAJ" -eq 20 ] && [ "$NODE_MIN" -ge 19 ]; } \
+   || [ "$NODE_MAJ" -eq 21 ] && false \
+   || { [ "$NODE_MAJ" -ge 23 ]; } \
+   || { [ "$NODE_MAJ" -eq 22 ] && [ "$NODE_MIN" -ge 12 ]; }; then
+  ok "node $NODE_V satisfies engines ^20.19.0 || >=22.12.0"
+else
+  err "node $NODE_V does not satisfy engines ^20.19.0 || >=22.12.0"
+fi
 
 if command -v npm >/dev/null 2>&1; then ok "npm $(npm -v)"; else die "npm not found"; fi
+fi
 
 # Port must be free, or Playwright's reuseExistingServer will happily test whatever
 # else is listening and the failures will look like UI bugs.
-if command -v ss >/dev/null 2>&1 && ss -ltn "sport = :$PORT" 2>/dev/null | grep -q LISTEN; then
+if [ "$MWONLY" -eq 0 ] && command -v ss >/dev/null 2>&1 && ss -ltn "sport = :$PORT" 2>/dev/null | grep -q LISTEN; then
   err "port $PORT is already in use — free it or re-run with OHGUI_PORT=<n>"
   note "who has it:  ss -ltnp \"sport = :$PORT\""
   note "Playwright reuses an existing server, so it would test the wrong app."
-else
+elif [ "$MWONLY" -eq 0 ]; then
   ok "port $PORT is free"
 fi
 [ "$FAILED" -gt 0 ] && die "environment is not usable"
@@ -102,6 +121,133 @@ else
   warn "the UNKNOWN-elevation regression test is missing from this revision"
 fi
 note "HEAD $(git log --oneline -1)"
+
+# ---------------------------------------------------------------- middleware
+# services/middleware is the policy plane (ADR-001 item 3). It gets its OWN venv, created
+# here, so nothing is ever guessed from a shell prompt and no other project's venv is
+# touched (colossus-python-env discipline).
+MW="$REPO/services/middleware"
+MWVENV="$MW/.venv"
+
+run_middleware_gate() {
+  step "Middleware gate  (Python policy plane — fail-closed authorization seam)"
+
+  if [ ! -d "$MW/src" ]; then
+    warn "services/middleware is not scaffolded yet — skipping"
+    return 0
+  fi
+
+  # openhands-* wheels are requires_python >=3.12 (docs/UPSTREAM_PINS.md §2). That floor is
+  # on the middleware venv, not on whatever python3 happens to be first on PATH.
+  PY_BIN="$(command -v python3.13 || command -v python3.12 || command -v python3 || true)"
+  [ -z "$PY_BIN" ] && { err "no python3 on PATH"; return 1; }
+  PY_V="$("$PY_BIN" -c 'import sys;print("%d.%d"%sys.version_info[:2])')"
+  if "$PY_BIN" -c 'import sys;raise SystemExit(0 if sys.version_info>=(3,12) else 1)'; then
+    ok "python $PY_V at $PY_BIN (openhands-* wheels require >=3.12)"
+  else
+    err "python $PY_V is below the >=3.12 floor the pinned openhands-* wheels declare"
+    return 1
+  fi
+
+  if [ -n "${VIRTUAL_ENV:-}" ] && [ "${VIRTUAL_ENV}" != "$MWVENV" ]; then
+    warn "another venv is active: ${VIRTUAL_ENV}"
+    note "not switching it; this gate uses $MWVENV explicitly, by absolute path"
+  fi
+
+  if [ ! -x "$MWVENV/bin/python" ]; then
+    note "creating $MWVENV"
+    "$PY_BIN" -m venv "$MWVENV" || { err "venv creation failed"; return 1; }
+  fi
+  MWPY="$MWVENV/bin/python"
+
+  if "$MWPY" -m pip install -q --disable-pip-version-check -e "$MW[dev]" \
+       >/tmp/ohgui_mw_install.log 2>&1; then
+    ok "middleware installed editable with dev extras"
+    note "log: /tmp/ohgui_mw_install.log"
+  else
+    err "middleware pip install failed"
+    tail -25 /tmp/ohgui_mw_install.log | sed 's/^/          /'
+    return 1
+  fi
+
+  # The SDK extra is deliberately NOT installed by this gate. The fail-closed seam must be
+  # provable without the 1.41.0 wheels present; the ACL reports their absence as a state.
+  UP_STATE="$("$MWPY" -c 'from ohgui_middleware.upstream import sdk;print(sdk.probe().state)' 2>/dev/null || echo error)"
+  case "$UP_STATE" in
+    ok)      ok "upstream openhands-* packages present and match the 1.41.0 pins" ;;
+    missing) warn "openhands-* not installed in the middleware venv — expected at this slice"
+             note "the SDK extra lands with ADR-014 ratification:  $MWVENV/bin/pip install -e '$MW[sdk]'" ;;
+    drift)   err "installed openhands-* versions DIVERGE from docs/UPSTREAM_PINS.md §2"
+             "$MWPY" -c 'import json;from ohgui_middleware.upstream import sdk;print(json.dumps(sdk.probe().to_dict(),indent=2))' | sed 's/^/          /' ;;
+    *)       err "anti-corruption layer probe failed to run" ;;
+  esac
+
+  if "$MWVENV/bin/ruff" check "$MW/src" "$MW/tests" >/tmp/ohgui_mw_lint.log 2>&1; then
+    ok "ruff clean"
+  else
+    err "ruff found problems"; sed 's/^/          /' /tmp/ohgui_mw_lint.log
+  fi
+
+  note "The suite pairs every fault case with an UNGUARDED control: the same faulty resolver"
+  note "called directly must NOT deny. Without that half, a test asserting 'denied' would pass"
+  note "even if the guard were deleted and replaced with an unconditional deny."
+  if (cd "$MW" && "$MWVENV/bin/pytest" -p no:cacheprovider) >/tmp/ohgui_mw_test.log 2>&1; then
+    ok "$(grep -Eo '[0-9]+ passed' /tmp/ohgui_mw_test.log | tail -1) middleware assertions"
+  else
+    err "middleware tests failed — read /tmp/ohgui_mw_test.log"
+    tail -30 /tmp/ohgui_mw_test.log | sed 's/^/          /'
+  fi
+
+  # Live proof, not a unit test: bind the real server on loopback and ask it to authorize a
+  # credential read. It must say deny, and say why.
+  MWPORT="${OHGUI_MW_PORT:-8787}"
+  if command -v ss >/dev/null 2>&1 && ss -ltn "sport = :$MWPORT" 2>/dev/null | grep -q LISTEN; then
+    warn "port $MWPORT busy — skipping the live deny check (set OHGUI_MW_PORT to change)"
+  else
+    OHGUI_MIDDLEWARE_PORT="$MWPORT" "$MWPY" -m ohgui_middleware >/tmp/ohgui_mw_serve.log 2>&1 &
+    MWPID=$!
+    for _ in $(seq 1 50); do
+      curl -sf "http://127.0.0.1:$MWPORT/healthz" >/dev/null 2>&1 && break
+      sleep 0.1
+    done
+    VERDICT="$(curl -sf -X POST "http://127.0.0.1:$MWPORT/v1/authorize" \
+      -H 'content-type: application/json' \
+      -d '{"event_type":"pre_tool_use","tool_name":"bash","tool_input":{"command":"cat ~/.ssh/id_ed25519"}}' \
+      2>/dev/null || echo '{}')"
+    if printf '%s' "$VERDICT" | grep -q '"verdict":"deny"'; then
+      ok "live seam denied a credential read on 127.0.0.1:$MWPORT"
+      note "reason: $(printf '%s' "$VERDICT" | sed -n 's/.*"reason":"\([^"]*\)".*/\1/p')"
+    else
+      err "live seam did NOT deny — this is the fail-open failure mode ADR-014 clause 3 forbids"
+      note "response: $VERDICT"
+    fi
+    # A non-loopback bind must be refused outright, not warned about.
+    if OHGUI_MIDDLEWARE_HOST=0.0.0.0 "$MWPY" -m ohgui_middleware >/tmp/ohgui_mw_bind.log 2>&1; then
+      err "middleware accepted a 0.0.0.0 bind — it must be loopback-only"
+    else
+      ok "refused to bind 0.0.0.0 (loopback-only, single-operator)"
+    fi
+    kill "$MWPID" 2>/dev/null; wait "$MWPID" 2>/dev/null
+  fi
+
+  warn "policy plane is NOT installed: ADR-014 is Proposed and gates enforcement"
+  note "every authorization currently denies, by construction. That is the intended state."
+}
+
+if [ "$MWSKIP" -eq 0 ]; then
+  run_middleware_gate
+else
+  step "Middleware gate"; warn "skipped by --skip-middleware"
+fi
+
+if [ "$MWONLY" -eq 1 ]; then
+  printf '\n%s=== Summary (middleware only) ===%s\n' "$B" "$Z"
+  if [ "$FAILED" -eq 0 ]; then
+    printf '%s  PASSED%s with %d warning(s).\n' "$G" "$Z" "$WARNED"; exit 0
+  else
+    printf '%s  %d FAILURE(S)%s\n' "$R" "$FAILED" "$Z"; exit 1
+  fi
+fi
 
 # ------------------------------------------------------------------- install
 step "Install dependencies (npm ci — exact lockfile, no drift)"

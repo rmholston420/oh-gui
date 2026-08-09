@@ -71,6 +71,26 @@ that file wins.
 | `openhands-sdk`, `openhands-tools`, `openhands-workspace`, `openhands-agent-server` | **1.41.0** (all four) | `requires_python >=3.12`. Middleware-side; owns the policy plane |
 | `@openhands/typescript-client` | **1.37.0** | MIT. **Four minor versions behind the server**, no compat matrix. Ships a working `LocalConversation` and a hard `@openrouter/sdk` dependency — both must be gated out of the frontend (ADR-001 Amdt #1) |
 
+### 2026-08-08 20:52 EDT — middleware scaffold dependencies (Phase 1 slice 1)
+
+pip dependencies of `services/middleware`, declared in `services/middleware/pyproject.toml`.
+**No code was vendored in this slice**, so there is no port entry to make. Recorded here only so
+the distinction stays explicit.
+
+| Artifact | Pin | License | Notes |
+|---|---|---|---|
+| `fastapi` | `0.121.2` | MIT | Loopback IPC surface. Same framework the pinned `openhands-agent-server` uses, so no second HTTP stack enters the tree |
+| `uvicorn` | `0.41.0` | BSD-3-Clause | ASGI server, loopback-bound |
+| `pydantic` | `2.13.2` | MIT | Wire types for the hook envelope |
+| `hatchling` | `>=1.27` | MIT | Build backend |
+| `pytest` / `pytest-asyncio` / `httpx` / `ruff` | `9.0.1` / `1.3.0` / `0.29.2` / `0.15.1` | MIT · Apache-2.0 · BSD-3-Clause · MIT | Dev extra only |
+
+All permissive. Nothing GPL/AGPL/BUSL/SSPL entered the tree.
+
+**Donor hook files remain excluded** per ADR-014 clause 8: Forge-OH `verify/hook.py` and
+`trajectory` are stop hooks with a defect certified by their own tests; `gpu/hook.py` is a seam
+reference only. None were read into this slice, which contains no hook.
+
 ## Pre-identified port candidates (not yet ported)
 
 From `docs/specs/12-portable-components.md`. These are **candidates only** - no
