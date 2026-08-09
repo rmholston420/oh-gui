@@ -584,6 +584,53 @@ def test_unconsumed_native_fields_not_wired_catches_a_middleware_reference(repo_
     assert checks.unconsumed_native_fields_not_wired() is not None
 
 
+# -------------------------------------------------------------- ADR-028 living specs
+
+
+def test_spec_requirements_have_ids_catches_a_removed_id(repo_copy):
+    """A list requirement without its stable marker must turn the corpus gate red."""
+    spec = repo_copy / "docs" / "specs" / "03-layout.md"
+    spec.write_text(
+        spec.read_text(encoding="utf-8").replace(" <!-- [REQ-03-001] -->", "", 1),
+        encoding="utf-8",
+    )
+    assert checks.spec_requirements_have_ids() is not None
+
+
+def test_spec_coverage_register_is_current_catches_a_missing_row(repo_copy):
+    """A declared ID cannot be omitted from the generated coverage register."""
+    register = repo_copy / "docs" / "specs" / "COVERAGE.md"
+    lines = register.read_text(encoding="utf-8").splitlines()
+    register.write_text(
+        "\n".join(line for line in lines if not line.startswith("| REQ-03-001 |")) + "\n",
+        encoding="utf-8",
+    )
+    assert checks.spec_coverage_register_is_current() is not None
+
+
+def test_spec_coverage_evidence_resolves_catches_a_line_past_end(repo_copy):
+    """An IMPLEMENTED claim cannot cite a plausible-looking but nonexistent source line."""
+    register = repo_copy / "docs" / "specs" / "COVERAGE.md"
+    text = register.read_text(encoding="utf-8")
+    mutated, n = re.subn(
+        r"scripts/hard_constraints/checks\.py:\d+",
+        "scripts/hard_constraints/checks.py:999999",
+        text,
+        count=1,
+    )
+    assert n == 1
+    register.write_text(mutated, encoding="utf-8")
+    assert checks.spec_coverage_evidence_resolves() is not None
+
+
+def test_spec_cross_references_resolve_catches_a_dangling_document(repo_copy):
+    """A new relative Markdown document link must not point at a nonexistent file."""
+    (repo_copy / "docs" / "specs" / "ADR-028-mutant.md").write_text(
+        "[missing register](COVERAGE-forge-oh.md)\n", encoding="utf-8"
+    )
+    assert checks.spec_cross_references_resolve() is not None
+
+
 # ---------------------------------------------------------------------------- coverage
 
 

@@ -1,0 +1,44 @@
+
+## spec_requirements_have_ids — remove an ID from a live normative statement
+
+$ run_gate spec_requirements_have_ids
+RED spec_requirements_have_ids: requirement-id drift: 03-layout.md:8 is a live normative statement without a requirement id; REQ-03 ids are not contiguous in first-appearance order: found [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38], expected [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37]
+[exit 1]
+
+$ run_gate spec_requirements_have_ids
+GREEN spec_requirements_have_ids: predicate returned None
+[exit 0]
+
+
+## spec_coverage_register_is_current — remove a declared requirement row
+
+$ run_gate spec_coverage_register_is_current
+RED spec_coverage_register_is_current: coverage-register drift: coverage register is missing 1 id(s), first: REQ-03-001
+[exit 1]
+
+$ run_gate spec_coverage_register_is_current
+GREEN spec_coverage_register_is_current: predicate returned None
+[exit 0]
+
+
+## spec_coverage_evidence_resolves — cite a line past end of an IMPLEMENTED evidence file
+
+$ run_gate spec_coverage_evidence_resolves
+RED spec_coverage_evidence_resolves: coverage-evidence drift: REQ-13-001: evidence path 'scripts/hard_constraints/checks.py:999999' cites a line beyond end of file
+[exit 1]
+
+$ run_gate spec_coverage_evidence_resolves
+GREEN spec_coverage_evidence_resolves: predicate returned None
+[exit 0]
+
+
+## spec_cross_references_resolve — add a dangling local Markdown document link
+
+$ run_gate spec_cross_references_resolve
+RED spec_cross_references_resolve: unresolvable spec/ADR document references: docs/specs/99-adr028-cross-reference-mutant.md:1 links missing COVERAGE-forge-oh.md
+[exit 1]
+
+$ run_gate spec_cross_references_resolve
+GREEN spec_cross_references_resolve: predicate returned None
+[exit 0]
+

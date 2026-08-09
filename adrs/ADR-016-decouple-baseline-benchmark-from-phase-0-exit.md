@@ -1,6 +1,11 @@
 # ADR-016 — The benchmark gates a claim, not the code: decouple the baseline report from Phase 0 exit
 
-**Status:** Ratified
+> **STATUS AMENDMENT (2026-08-09):** Clause 5's one-hour GPU cap is superseded for the
+> tool-call benchmark only, by operator instruction 2026-08-09 03:56 EDT. See
+> "Amendment — budget resized to preserve ADR-013 clause 1" below. The original
+> clause 5 text is retained unaltered for the record.
+
+**Status:** Ratified · Amended 2026-08-09
 **Lock-in phase:** Phase 0 / Phase 1 boundary
 **Supersedes:** — (amends the Consequences of ADR-013)
 
@@ -47,6 +52,38 @@ ADR resolves them by separating *when Phase 0 closes* from *when a model claim m
    *before* any GPU time: if the selected task set cannot reach ≥ 5 discordant pairs within the
    budget, the run is not started and the budget is not spent. Per ADR-013 clause 7 a
    non-compliant run is unpublishable, so starting one we know cannot comply is pure waste.
+
+## Amendment — budget resized to preserve ADR-013 clause 1 (2026-08-09)
+
+The one-hour cap in clause 5 and the ADR-013 clause 1 discrimination floor turned out to be in
+direct conflict once the attainability arithmetic was actually done, rather than assumed.
+
+The first compliant design that fit one hour was 20 tasks, and it cleared the five-discordant-pair
+floor only at an assumed outcome correlation of rho = 0.50. That assumption does not survive
+contact with the setup: both cells are graded on an identical task set, so they share its difficulty
+structure and their per-task outcomes are positively correlated. At the realistic rho = 0.60-0.80,
+20 tasks yield 4.12 to 2.16 expected discordant pairs - below the floor. Under ADR-013 clause 7
+such a run is unpublishable, so the one-hour design would have spent the hour and produced nothing
+citable. That is the precise waste clause 5 was written to prevent, arrived at from the other side.
+
+Given the choice between a cheap unpublishable run and a longer publishable one, the operator chose
+the latter on 2026-08-09 03:56 EDT, selecting 47 tasks x 3 repetitions.
+
+**Amended budget.** For the tool-call benchmark registered in `bench/toolcall/MANIFEST.md`, the GPU
+budget is capped at **3.5 hours** rather than one hour. Measured harness estimate is 24.2 s/call:
+114 minutes for two cells (47 x 3 x 2 = 282 calls), or 171 minutes if a third cell is registered.
+The run is unattended and overnight, so wall-clock cost to the operator is sleep time, not
+working time - which is the specific reason the original cap does not apply to it.
+
+**What is unchanged.** Clause 5's go/no-go structure survives intact and still binds: the
+attainability gate runs *before* any GPU time, and if the registered design cannot reach five
+discordant pairs the run is not started and the budget is not spent. The amendment resizes the
+budget; it does not remove the gate, and it does not touch ADR-013's seven clauses. Clause 3's
+publication ban likewise still holds until a compliant run says otherwise.
+
+**Scope.** This amendment is specific to the tool-call benchmark. It sets no precedent for
+open-ended GPU spend; any future benchmark re-inherits the one-hour default unless separately
+amended.
 
 ## Rationale
 

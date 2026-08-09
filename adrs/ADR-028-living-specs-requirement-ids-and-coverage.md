@@ -127,6 +127,28 @@ This amendment is itself an application of clause 3: the four gates in decision 
 `DEFERRED` to Phase 1 rather than half-built, because the ids and the register deliver most of the
 value on their own and the gates are separable.
 
+## Amendment 2 (2026-08-09 03:45 EDT) — Phase 1 pass is enrolled and executable
+
+The deferred gate work is now complete. This amendment records the narrow implementation decision
+needed to make the original four gates enforceable without redefining their intent:
+
+1. `ENROLLED` is now `00`, `01`, `03`, `04`, `04a`, `05`, `06`, `07`, `08`, `09`, `10`, `11`,
+   `12`, `13`, `14`, and `16`. `02-repo-setup.md` remains outside the set because it is the closed
+   Phase 0 setup record; the other eleven live un-enrolled files are the Phase 1 pass.
+2. The four ADR-028 checks are `STATIC` entries in the hard-constraints registry. They are
+   mutation-tested: an absent ID, a missing coverage row, a source line beyond an IMPLEMENTED
+   citation, and a dangling local Markdown link each turn the corresponding gate red.
+3. `SPECCED` is the explicit honest default. A status changes to `IMPLEMENTED` only when the
+   register names a resolving repository `path:line` or a resolving test. `DEFERRED` names its
+   owning phase; `DROPPED` names an existing ADR.
+4. The cross-reference gate covers live files directly under `docs/specs/` plus ADRs. Archived
+   specifications retain historical links and are not live document contracts.
+
+**Correction to Context item 3 / Consequences.** The asserted fourteen
+`COVERAGE-forge-oh.md` provenance headers are not present in the ratified-tree corpus, so they
+cannot be corrected as a current-file change. The gate instead enforces the general defect class:
+any new relative Markdown reference between a live spec and an ADR must resolve.
+
 ## Lock-in phase
 
 Phase 1. Binding on every spec edit from ratification onward.

@@ -1,0 +1,16 @@
+Registered design (expected PASS):
+attainability design: Design(task_count=20, acceptance_a=0.6, acceptance_b=0.5, correlation=0.5, minimum_discordant_pairs=5)
+expected discordant pairs: 5.1010; required: >= 5.0
+GO: pre-registered design clears ADR-013's >=5 expected-discordant-pair floor.
+
+Mutant: too-small N=19 (expected FAIL):
+NO-GO: design cannot reach ADR-013's >=5 expected-discordant-pair floor; do not spend GPU time.
+attainability design: Design(task_count=19, acceptance_a=0.6, acceptance_b=0.5, correlation=0.5, minimum_discordant_pairs=5)
+expected discordant pairs: 4.8460; required: >= 5.0
+exit=1
+
+Mutant: ceiling pA=pB=.90 rho=.80 (expected FAIL):
+NO-GO: design cannot reach ADR-013's >=5 expected-discordant-pair floor; do not spend GPU time.
+attainability design: Design(task_count=20, acceptance_a=0.9, acceptance_b=0.9, correlation=0.8, minimum_discordant_pairs=5)
+expected discordant pairs: 0.7200; required: >= 5.0
+exit=1

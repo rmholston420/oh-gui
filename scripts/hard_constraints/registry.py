@@ -155,6 +155,12 @@ REGISTRY: dict[str, Entry] = {
     "4b173c05b1": _s("cited_evidence_paths_resolve"),
     # ---- ADR-015 amendment 2 (PRESENT-BUT-UNCONSUMED).
     "e2fbb01781": _s("unconsumed_native_fields_not_wired"),
+    # ---- ADR-028 (living specs). The corpus is local, so each drift condition is
+    # decidable from the working tree and is enforced immediately rather than deferred.
+    "e36cdf75a6": _s("spec_requirements_have_ids"),
+    "c461a1fdcc": _s("spec_coverage_register_is_current"),
+    "a801bcb9b6": _s("spec_coverage_evidence_resolves"),
+    "8a41ef9847": _s("spec_cross_references_resolve"),
 }
 
 

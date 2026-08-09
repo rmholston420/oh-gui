@@ -3864,3 +3864,26 @@ The applied diff is now printed for every mutant.
 - **Ports / adapters affected:** none
 - **PORTING_LEDGER / ADR updated:** —
 - **Stop-condition status:** met
+
+## 2026-08-09 03:51 EDT — Phase 0 parallel-track tool-call benchmark harness and attainability gate
+
+- **Stage / plugin / port:** Phase 0 parallel benchmark track · tool-call measurement harness · paired mid-p McNemar port.
+- **What changed:** Added a pre-registered 2-cell, 20-task, 3-repetition unattended tool-call benchmark; a pure JSON/tool/argument grader; the pre-GPU ADR-013 attainability gate and mutation evidence; and a zero-GPU dry-run stub. Vendored the MIT paired mid-p McNemar implementation and documented its resolved=None and repetition-folding limits.
+- **Files touched:**
+  - bench/lib/mcnemar.py
+  - bench/toolcall/MANIFEST.md, attainability.py, bench_toolcall.py, grading.py, tasks.py
+  - bench/toolcall/tasks/01-*.json through 20-*.json
+  - bench/toolcall/tests/*.py
+  - bench/toolcall/evidence/attainability-mutations.txt
+- **Ports / adapters affected:** Paired mid-p McNemar comparison utility only; no application runtime port or adapter.
+- **PORTING_LEDGER / ADR updated:** ADR-013 and ADR-016 requirements implemented; staged ledger entry: /tmp/ledger-mcnemar.md.
+- **Stop-condition status:** Met for this harness slice. No GPU/model call was made. The registered gate passes at 5.101 expected discordant pairs; N=19 and the 90% ceiling mutant fail.
+
+## 2026-08-09 03:45 EDT — ADR-028 requirement IDs and drift gates
+
+- **Stage / plugin / port:** Phase 1 · living-spec integrity · ADR-028
+- **What changed:** Enrolled the remaining eleven live Phase 1 specs (`03`, `06`–`14`, `16`), assigned 292 stable requirement IDs (370 total), populated evidence-backed coverage states, and added four enforced drift gates for IDs, coverage parity, evidence resolution, and local spec/ADR links.
+- **Files touched:** `docs/specs/{03,06,07,08,09,10,11,12,13,14,16}-*.md`, `docs/specs/COVERAGE.md`, `scripts/spec_coverage.py`, `scripts/hard_constraints/{checks,registry}.py`, `scripts/tests/test_check_hard_constraints.py`, `docs/evidence/adr028-gates/mutations.txt`, `adrs/ADR-028-living-specs-requirement-ids-and-coverage.md`
+- **Ports / adapters affected:** none
+- **PORTING_LEDGER / ADR updated:** ADR-028 Amendment 2; PORTING_LEDGER unchanged
+- **Stop-condition status:** implementation and four red→green mutation transcripts complete. Full hard-constraints verification is externally blocked by concurrent untracked `bench/toolcall/` evidence citations and unrecorded `review/_sdk_src/**/__pycache__/*.pyc`; neither surface was modified by this slice.

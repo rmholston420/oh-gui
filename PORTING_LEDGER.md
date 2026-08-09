@@ -456,3 +456,13 @@ chain, and §4.2 is about the account, so the conclusion leads.
 | Nullable native `ActionEvent.action` is dereferenced and/or rejected, silently losing a valid non-executable event. | `should-render-event.ts:63-69`; `get-action-event-title.ts:37`; `get-action-content.ts:218-220`; `group-events.ts:23-25`. SDK confirms `Action | None` at `action.py:40-43`. | **Fixed in port:** visibility preserves the event; title describes native non-executable state; content stays `null`. |
 | Optional wire discriminators cause silent content loss when donors filter only `type === "text"` or `type === "thinking"`. | Requested `should-render-event.ts:28-36`; requested `get-observation-content.ts:34-40,70-73` and other filters; related `event-thought-helpers.ts:15-19,33-37`. Installed generated client declares `TextContent.type?`, `ThinkingBlock.type?`, and `RedactedThinkingBlock.type?` at `agent-server-schema.d.ts:11411,11514,9183`. | **Fixed by adaptation:** the port does not discriminate individual content blocks. It preserves the verified opaque native action/observation payload as JSON. The unrelated donor thought helper was not ported. |
 | Missing native outcome is converted to fabricated success. | `get-observation-result.ts:37-45` returns `success` when terminal exit/error state is absent, and `:67-68` defaults every unrecognised observation to `success`. | **Not ported:** no result-status helper or fallback success state was copied; missing native signal returns `null` and unknown kinds are UNHANDLED. |
+
+#### Paired mid-p McNemar test — VENDORED
+- **Source:** https://github.com/rmholston420/Forge-OH/blob/df73ebed2d6d9df9397f7e95dd1eb66bd3dd98b2/bench/lib/mcnemar.py
+- **Commit / Version:** `df73ebed2d6d9df9397f7e95dd1eb66bd3dd98b2`
+- **License:** MIT
+- **OH-GUI location:** `bench/lib/mcnemar.py`
+- **Port(s):** paired mid-p McNemar comparison for tool-call benchmark outcomes
+- **Modifications:** retained the donor algorithm; added vendoring provenance and an ADR-013 limits notice to the module docstring. The notice documents that `resolved=None` records are excluded before pairing and that repetitions must be folded outside the test.
+- **ADR:** [ADR-013](adrs/ADR-013-benchmark-discrimination-floor.md)
+- **Logged:** 2026-08-09 03:45 EDT

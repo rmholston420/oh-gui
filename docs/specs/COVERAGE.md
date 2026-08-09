@@ -4,13 +4,14 @@
 or evidence cell, then re-run with `--write` to reconcile. Requirement ids are permanent
 and are never reused, including after a requirement is dropped (ADR-028).
 
-**Enrolled specs:** 00, 01, 04, 04a, 05. Coverage is partial by design; a spec joins
-the enrolled set when it is next edited. Specs not listed carry no ids yet.
+**Enrolled specs:** 00, 01, 03, 04, 04a, 05, 06, 07, 08, 09, 10, 11, 12, 13, 14, 16. This is ADR-028's completed Phase 1 pass; `02`
+remains excluded because it is the closed Phase 0 setup record. `SPECCED` is the explicit
+uncovered default: it makes no implementation claim without named repository evidence.
 
 | Status | Meaning | Evidence required |
 |---|---|---|
-| `SPECCED` | Stated, not yet built | - |
-| `IMPLEMENTED` | Built | a `path:line` or test name that resolves |
+| `SPECCED` | Stated, not yet built or not evidenced | - |
+| `IMPLEMENTED` | Built | a repo-relative `path:line` or test name that resolves |
 | `DEFERRED` | Postponed to a named phase | the phase name |
 | `DROPPED` | No longer a requirement | an ADR reference |
 
@@ -47,6 +48,49 @@ the enrolled set when it is next edited. Specs not listed carry no ids yet.
 | REQ-01-009 | SPECCED | ADR-029 | Reaffirmed unchanged by ADR-029 d.5. Vibe/Pro are dial defaults over one data model. |
 | REQ-01-010 | SPECCED |  | Design for one capable local model, not a fleet. Every surface assuming multiple simultane... |
 | REQ-01-011 | SPECCED | ADR-029 | Reaffirmed unchanged by ADR-029 d.5. Two lenses, one operator, different hours. |
+
+## 03-layout.md
+
+| id | status | evidence | note |
+|---|---|---|---|
+| REQ-03-001 | SPECCED |  | Single-column, centered, generous-whitespace layout. <!-- |
+| REQ-03-002 | SPECCED |  | Plans, diffs, and authorization cards expand inline as interactive cards with spring-physi... |
+| REQ-03-003 | SPECCED |  | No terminal pane, plan tree, or telemetry strip visible by default - one "expand" affordan... |
+| REQ-03-004 | SPECCED |  | Touch/swipe support on tablet viewports for hunk-level review. Authorization cards above L... |
+| REQ-03-005 | SPECCED |  | (v4.0) Permanent home surface, not a ramp - must pass same exit criteria as Pro Mode. <!-- |
+| REQ-03-006 | SPECCED |  | Global command bar: project/repo selector, branch/worktree indicator, active agent+model, ... |
+| REQ-03-007 | SPECCED |  | Left rail (280-360px, collapsible): projects, conversations, worktrees, automations, "need... |
+| REQ-03-008 | SPECCED |  | Center stage (fluid, >=60% width): Build / Review / Debug / Compare. <!-- |
+| REQ-03-009 | SPECCED |  | Right conversation column (380-440px, always present): structured intent capture, streamed... |
+| REQ-03-010 | SPECCED |  | Full keyboard model, Vim-modal tier, telemetry strip, plan tree, terminal - persistently v... |
+| REQ-03-011 | SPECCED |  | The lens switch: a single binary toggle in the global command bar - CSS/layout transition,... |
+| REQ-03-012 | SPECCED |  | The unmodified Agent Canvas is not a third mode. Retained only as: a pinned reference chec... |
+| REQ-03-013 | SPECCED |  | One-keystroke maximize for any surface, with restore. <!-- |
+| REQ-03-014 | SPECCED |  | Breakpoints: >=1600px (up to 4 regions), 1200-1599px (2 panes + collapsible sides), 900-11... |
+| REQ-03-015 | SPECCED |  | Mobile/tablet approval policy: below 900px, authorization cards are read-only - Approve/Re... |
+| REQ-03-016 | SPECCED |  | Save per-mode layouts. (v4.3, ADR-003: the delegated-review exception and the <!-- |
+| REQ-03-017 | SPECCED |  | Terminal pane and command palette: port Qovery/react-xtermjs and cmdk/react-cmdk as commod... |
+| REQ-03-018 | SPECCED |  | Frontend motion/visual stack (v4.0 correction): use motion (import from motion/react) - fr... |
+| REQ-03-019 | SPECCED |  | Screen-reader model: suppresses per-token announcements in favor of debounced status; auth... |
+| REQ-03-020 | SPECCED |  | Connect a model/agent - detected local backends pre-populate from the model-profile scan. ... |
+| REQ-03-021 | SPECCED |  | Walk trust-dial stops with one live, harmless example action shown at each stop. <!-- |
+| REQ-03-022 | SPECCED |  | State and justify default stop explicitly: ConfirmRisky(). NeverConfirm() is opt-in-only a... |
+| REQ-03-023 | SPECCED |  | Seed "lines accepted without inspection" counter at zero with a one-line explanation. <!-- |
+| REQ-03-024 | SPECCED |  | Show a sample plan tree (clearly labeled "example"). <!-- |
+| REQ-03-025 | SPECCED |  | Thinking/generating state: organic, low-amplitude pulsing gradient, honoring prefers-reduc... |
+| REQ-03-026 | SPECCED |  | Diff materialization: brief spring-physics entrance in Vibe Mode; disabled under reduced-m... |
+| REQ-03-027 | SPECCED |  | Authorization card emphasis: z-axis emphasis with background dimming when WAITING_FOR_CONF... |
+| REQ-03-028 | SPECCED |  | Cosmetic layer, out of scope for Hard Constraints Checklist gates. <!-- |
+| REQ-03-029 | SPECCED |  | To make Principle 11 testable instead of aspirational, every phase that introduces a new i... |
+| REQ-03-030 | SPECCED |  | Phase 1 authorization slice: the operator in Vibe Mode can read an authorization card, <!-... |
+| REQ-03-031 | SPECCED |  | Phase 2 review slice: the scope-shape screen, security checklist, and review batching rema... |
+| REQ-03-032 | SPECCED |  | Phase 3 planning slice: plan drift, fork-from-step, and provenance interstitials render in... |
+| REQ-03-033 | SPECCED |  | Phase 5 mission-control slice: return-to-context and "needs you" inbox flows work in Vibe ... |
+| REQ-03-034 | SPECCED |  | Reverts to Phase 6, opt-in, low-priority. <!-- |
+| REQ-03-035 | SPECCED |  | Design unchanged: shared context baseline; diff-of-diffs; cost/latency leaderboard; three-... |
+| REQ-03-036 | SPECCED |  | Phase 2 diff-virtualization benchmark still built with future reuse in mind, but no Compar... |
+| REQ-03-037 | SPECCED |  | Speculative execution similarly demoted: trust-dial-adjacent control, audit-log wiring, bu... |
+| REQ-03-038 | SPECCED |  | Phase 6 exit criterion (when built): Compare mode's diff-of-diffs and merge viewer pass th... |
 
 ## 04-authorization.md
 
@@ -117,14 +161,310 @@ the enrolled set when it is next edited. Specs not listed carry no ids yet.
 | REQ-05-020 | SPECCED |  | Narrative layer - human-readable account of what is happening and why. |
 | REQ-05-021 | SPECCED |  | Event layer - raw actions/observations/timestamps, on demand. |
 
-## Retired ids
-
-Ids recorded here but no longer present in any spec. An id reaches this table only via a
-`DROPPED` status with an ADR reference; anything else appearing here is drift.
+## 06-change-review.md
 
 | id | status | evidence | note |
 |---|---|---|---|
+| REQ-06-001 | SPECCED |  | Agent Canvas's src/routes/changes-tab.tsx, commits-tab.tsx (per-commit diffs, v1.5.0), and... |
+| REQ-06-002 | SPECCED |  | Reviewers either rubber-stamp AI-generated diffs or over-scrutinize every line. A prominen... |
+| REQ-06-003 | SPECCED |  | Benchmark two paths: (1) extend Monaco Diff Editor, (2) port react-virtualized-diff (see 1... |
+| REQ-06-004 | SPECCED |  | Fourth benchmark metric: peak memory under a 50,000-line diff - memory contention, not fra... |
+| REQ-06-005 | SPECCED |  | Default sort: auth/secrets/migrations/CI config/dependency manifests first; generated file... |
+| REQ-06-006 | SPECCED |  | Before opening any file/hunk, present a scope-shape screen showing: <!-- |
+| REQ-06-007 | SPECCED |  | Declared-vs-actual file scope, with delta flagged. <!-- |
+| REQ-06-008 | SPECCED |  | "While I'm here" detector: files modified with no corresponding plan task. <!-- |
+| REQ-06-009 | SPECCED |  | Test-claim summary: one-line extracted claim per test file. <!-- |
+| REQ-06-010 | SPECCED |  | Converts review from "read N lines" to "verify five architectural claims." v4.0: promoted ... |
+| REQ-06-011 | SPECCED |  | Sub-panel checking: service-role keys in client bundles/public env vars, permissive row-le... |
+| REQ-06-012 | SPECCED |  | When a turn exceeds a review-line threshold, split into review batches with a visible prog... |
+| REQ-06-013 | SPECCED |  | Five levels: entire run, task, checkpoint, file, hunk. Every turn begins from a known chec... |
+| REQ-06-014 | SPECCED |  | Persistent strip: last test run, pass/fail delta, coverage on changed lines. Every hunk ta... |
+| REQ-06-015 | SPECCED |  | Account for: new/deleted/renamed files, binary assets, lockfiles, migrations, generated co... |
+| REQ-06-016 | SPECCED |  | Hard gates: 10,000-line diff first paint under 200ms; scroll sustains 60fps; hunk-nav unde... |
+| REQ-06-017 | SPECCED |  | Any event supports an inline explain affordance backed by conversation.ask_agent(question)... |
+| REQ-06-018 | SPECCED |  | Given a synthetic diff with a moved function, renamed symbol, and extracted-to-new-file ch... |
+| REQ-06-019 | SPECCED |  | Phase 1 addition (v4.0): sections 6.4.1 and 6.4.2 ship in Phase 1. <!-- |
+| REQ-06-020 | SPECCED |  | Phase 2 exit criteria: a 10,000-line synthetic diff meets all four gates; semantic-diff co... |
+
+## 07-visual-design.md
+
+| id | status | evidence | note |
+|---|---|---|---|
+| REQ-07-001 | SPECCED |  | Base: deep lapis/monastery-night palette, #040814 to #0B132B, luminance-stepped panels. <!... |
+| REQ-07-002 | SPECCED |  | Accent: saffron/amber (#F59E0B or #FBBF24) reserved exclusively for "agent active" states.... |
+| REQ-07-003 | SPECCED |  | Typography: geometric sans/monospace pairing for code/diffs/metrics (tabular numerals); Vi... |
+| REQ-07-004 | SPECCED |  | Green/red reserved strictly for diff and pass/fail status. <!-- |
+| REQ-07-005 | SPECCED |  | Glassmorphism first-class material via vendored source (see 7.2.1). Caps: <=12px blur, sem... |
+| REQ-07-006 | SPECCED |  | Neobrutalist weight-tiering preserved: Accept All never the visually heaviest button on an... |
+| REQ-07-007 | SPECCED |  | Parallel-agent color exception budget: accent equals user attention; each parallel run get... |
+| REQ-07-008 | SPECCED |  | High-contrast diff palette: verified at 7:1 contrast for all diff token types, part of the... |
+| REQ-07-009 | SPECCED |  | framer-motion was renamed to motion in 2025; import path is motion/react. The old framer-m... |
+| REQ-07-010 | SPECCED |  | Aceternity UI and Magic UI are copy-paste component libraries, not installable dependencie... |
+| REQ-07-011 | SPECCED |  | Every theme token ships with a measured contrast ratio, checked automatically in CI. <!-- |
+| REQ-07-012 | SPECCED |  | Minimum interactive-border alpha meeting 3:1 non-text contrast. <!-- |
+| REQ-07-013 | SPECCED |  | Non-color redundancy for all diff/status indicators. <!-- |
+| REQ-07-014 | SPECCED |  | Full keyboard navigation, logical focus order, visible focus states. <!-- |
+| REQ-07-015 | SPECCED |  | prefers-reduced-motion and reduce-transparency honored everywhere. <!-- |
+| REQ-07-016 | SPECCED |  | Light theme, high-contrast theme, density modes alongside dark-first. <!-- |
+| REQ-07-017 | SPECCED |  | Conformance labeling, corrected: Target Size Minimum is Level AA (24x24 CSS px or spaced e... |
+| REQ-07-018 | SPECCED |  | Screen-reader mode extended to plan tree (flat list) and diff view (semantic descriptions)... |
+| REQ-07-019 | SPECCED |  | High-contrast diff palette verified at 7:1, in the CI token-check set. <!-- |
+
+## 08-telemetry.md
+
+| id | status | evidence | note |
+|---|---|---|---|
+| REQ-08-001 | SPECCED |  | Extract a minimal telemetry strip - tok/s, VRAM used/total, context-window pressure percen... |
+| REQ-08-002 | SPECCED |  | Hosted: tokens, dollar burn rate, rate-limit headroom. <!-- |
+| REQ-08-003 | SPECCED |  | Local: tok/s (prompt vs generate, tracked separately), VRAM used/total, KV-cache occupancy... |
+| REQ-08-004 | SPECCED |  | Universal: context-window pressure percent, wall-clock elapsed, turns since last human inp... |
+| REQ-08-005 | SPECCED |  | GPU temperature and power-draw-vs-limit polled via vendor tooling at the same cadence as t... |
+| REQ-08-006 | SPECCED |  | Diagnosed-state fusion: when both warnings fire simultaneously, fuse into one diagnosed me... |
+| REQ-08-007 | SPECCED |  | Telemetry MUST route through a versioned adapter layer you own. Use the generic Conversati... |
+| REQ-08-008 | SPECCED |  | StuckDetector already ships with configurable thresholds. Remaining work is wiring - surfa... |
+| REQ-08-009 | SPECCED |  | Reusable profiles for Ollama, vLLM, llama.cpp, SGLang, OpenAI-compatible endpoints, ACP-ba... |
+| REQ-08-010 | SPECCED |  | Model generation/family version - distinct field from parameter count, more predictive of ... |
+| REQ-08-011 | SPECCED |  | Architecture: dense vs mixture-of-experts. For Qwen3 27B-35B, default to dense unless conf... |
+| REQ-08-012 | SPECCED |  | Auto-detect from manifest metadata; fall back to manual field. <!-- |
+| REQ-08-013 | SPECCED |  | deterministic_replay (boolean, v4.0 addition): true when the active backend runs in a batc... |
+| REQ-08-014 | SPECCED |  | Scope: per-conversation, project-level defaults inherited at start. <!-- |
+| REQ-08-015 | SPECCED |  | Denomination provider-aware: hosted maps to dollar ceiling; local maps to wall-clock time ... |
+| REQ-08-016 | SPECCED |  | Soft limit: non-blocking nudge to the inbox. <!-- |
+| REQ-08-017 | SPECCED |  | Hard limit: pauses (never kills), presents a summary, offers Extend or Review only. <!-- |
+| REQ-08-018 | SPECCED |  | Orthogonal to trust dial: NeverConfirm never bypasses a hard budget ceiling. <!-- |
+| REQ-08-019 | SPECCED |  | Speculative execution: N parallel attempts counted against ceiling before commit. <!-- |
+| REQ-08-020 | SPECCED |  | Tool-call-depth ceiling, a distinct budget axis independent of turn count and wall-clock t... |
+| REQ-08-021 | SPECCED |  | Reliability tier display: derived from observed session-level success rate. Dense Qwen3 27... |
+| REQ-08-022 | SPECCED |  | Local-failure-signature vocabulary: malformed tool-call output (retry-with-diagnostic, not... |
+| REQ-08-023 | SPECCED |  | Cloud-fallback escape hatch: a single action to re-run the current task against a configur... |
+| REQ-08-024 | SPECCED |  | Tool/skill count warning: soft warning at 30 concurrently enabled tools. <!-- |
+| REQ-08-025 | SPECCED |  | Phase 1 exit criterion addition: reliability-tier indicator displays correctly for a loade... |
+
+## 09-missing-states.md
+
+| id | status | evidence | note |
+|---|---|---|---|
+| REQ-09-001 | SPECCED |  | WebSocket disconnect / sandbox death mid-run: plan tree freezes at last known event with a... |
+| REQ-09-002 | SPECCED |  | Empty states for every zone. <!-- |
+| REQ-09-003 | SPECCED |  | Agent stuck/failing repeatedly: loop-detection surfacing, an escalation path when confiden... |
+| REQ-09-004 | SPECCED |  | Cost/budget anxiety: soft and hard limits per 08-telemetry.md section 8.5. <!-- |
+| REQ-09-005 | SPECCED |  | Three-class error model (never merge into one toast type): AgentErrorEvent (non-terminal, ... |
+| REQ-09-006 | SPECCED |  | 08-telemetry.md section 8.6's local-failure-signature vocabulary is additive to, not a rep... |
+| REQ-09-007 | SPECCED |  | Notification model: desktop notification fires on run completion, run error, WAITING_FOR_C... |
+| REQ-09-008 | SPECCED |  | Return-to-context re-orientation view: on return, present a summary combining plan-tree st... |
+
+## 10-mission-control.md
+
+| id | status | evidence | note |
+|---|---|---|---|
+| REQ-10-001 | SPECCED |  | Mission control dashboard: homescreen listing all conversations with pause/resume/cancel, ... |
+| REQ-10-002 | SPECCED |  | Context Inspector: exposes exactly what composes the next model call - prompt, system inst... |
+| REQ-10-003 | SPECCED |  | Condensation UX: two-pane view - left is forgotten events as a collapsed transcript, right... |
+| REQ-10-004 | SPECCED |  | Markdown-first export: default agent-authored docs to rendered Markdown with one-click PDF... |
+| REQ-10-005 | SPECCED |  | Project Skill panel: wired into existing skills/MCP configuration, first-class diffable pa... |
+| REQ-10-006 | SPECCED |  | Air-gapped mode: disables all network-dependent features, persistent badge, tested in CI u... |
+
+## 11-dev-plan.md
+
+| id | status | evidence | note |
+|---|---|---|---|
+| REQ-11-001 | SPECCED |  | Exit criterion (v4.3): architecture decision record + baseline metrics report + upstream a... |
+| REQ-11-002 | SPECCED |  | Exit criterion: cumulative across 04-authorization.md, 08-telemetry.md, and 06-change-revi... |
+| REQ-11-003 | SPECCED |  | Exit criterion: see 06-change-review.md. <!-- |
+| REQ-11-004 | SPECCED |  | Exit criterion: see 05-plan-model.md. **Plus (ADR-017):** `deterministic_replay` correctly... |
+| REQ-11-005 | SPECCED |  | Exit criterion: see 07-visual-design.md. <!-- |
+| REQ-11-006 | SPECCED |  | Exit criterion: see 09-missing-states.md and 10-mission-control.md. <!-- |
+| REQ-11-007 | SPECCED |  | Exit criterion: see 14-spec-wizard.md. <!-- |
+| REQ-11-008 | SPECCED |  | Compare mode's full design and speculative-execution spawn mechanism. May be deferred inde... |
+
+## 12-portable-components.md
+
+| id | status | evidence | note |
+|---|---|---|---|
+| REQ-12-001 | SPECCED |  | | Diff virtualization | Zhang-JiahangH/react-virtualized-diff | v4.0 verified: combines di... |
+| REQ-12-002 | SPECCED |  | | Terminal pane | Qovery/react-xtermjs | No OpenHands-specific logic; port as commodity UI... |
+| REQ-12-003 | SPECCED |  | | Command palette | cmdk / react-cmdk | No OpenHands-specific logic; port as commodity UI.... |
+| REQ-12-004 | SPECCED |  | | Rewind/fork UX reference | microsoft/agdebugger | v4.0 verified: send/step/edit messages... |
+| REQ-12-005 | SPECCED |  | | Authorization card UX reference | agentkitai/agentgate | v4.0 verified: full HITL approv... |
+| REQ-12-006 | SPECCED |  | | Agent inbox UX reference | langchain-ai/agent-inbox | v4.0 verified: production interrup... |
+| REQ-12-007 | SPECCED |  | | Stuck detection | StuckDetector, already in openhands-sdk | First-party SDK code. Wire d... |
+| REQ-12-008 | SPECCED |  | | Explain affordance backing | conversation.ask_agent(), already in openhands-sdk | Thread... |
+| REQ-12-009 | SPECCED |  | | Untrusted-content enforcement | state.block_action() / state.block_message(), already in... |
+| REQ-12-010 | SPECCED |  | | GPU/accelerator telemetry | nvidia-smi / rocm-smi / powermetrics / /sys/class/thermal | ... |
+| REQ-12-011 | SPECCED |  | | Motion/visual stack | motion (import motion/react), plus vendored Aceternity UI and Magi... |
+| REQ-12-012 | SPECCED |  | | Screen-reader mode reference | VS Code's screen-reader-optimized mode | Interaction patt... |
+| REQ-12-013 | SPECCED |  | | Spec Wizard: thinking-model routing | SDK's built-in switch_llm tool | Already exists; u... |
+| REQ-12-014 | SPECCED |  | | Spec Wizard: web search | SDK's MCP integration | For air-gapped mode, swap to a self-ho... |
+| REQ-12-015 | SPECCED |  | | Conversation UI, terminal, files, settings, browser panes | OpenHands/agent-canvas `src/... |
+| REQ-12-016 | SPECCED |  | | Planner / changes / commits / task-list surfaces | agent-canvas `src/routes/planner-tab.... |
+| REQ-12-017 | SPECCED |  | | Agent Server transport | `@openhands/typescript-client` | Alpha, API may change without ... |
+| REQ-12-018 | SPECCED |  | | Agent runtime | `ghcr.io/openhands/agent-server` Docker image | Pin by digest. Tags are ... |
+| REQ-12-019 | SPECCED |  | Non-finding, confirmed unchanged: the durable Plan object, drift detection, capability man... |
+
+## 13-hard-constraints.md
+
+| id | status | evidence | note |
+|---|---|---|---|
+| REQ-13-001 | IMPLEMENTED | scripts/hard_constraints/checks.py:343 | Enforced by `no_execute_tool_ui_path`. |
+| REQ-13-002 | DEFERRED | Phase 1 | Deferred by hard-constraint registry. |
+| REQ-13-003 | DEFERRED | Phase 1 | Deferred by hard-constraint registry. |
+| REQ-13-004 | DEFERRED | Phase 1 | ADR-006: elevates to HIGH, not MEDIUM |
+| REQ-13-005 | DEFERRED | Phase 1 | Deferred by hard-constraint registry. |
+| REQ-13-006 | DROPPED | ADR-015 | ADR-015 Status amendment. Analyzer identity is not recoverable: SecurityAnalyzerBase.security_risk() returns a bare enum and EnsembleSecurityAnalyzer discards child attribution at the return boundary. Spec 04 §4.2 already removed it; this gate demanded what ADR-015 proved cannot be supplied. |
+| REQ-13-007 | DEFERRED | Phase 1 | Deferred by hard-constraint registry. |
+| REQ-13-008 | DEFERRED | Phase 1 | record side per ADR-020 |
+| REQ-13-009 | DEFERRED | Phase 5 | Deferred by hard-constraint registry. |
+| REQ-13-010 | IMPLEMENTED | scripts/hard_constraints/checks.py:308 | Enforced by `no_nonexistent_stats_event`. |
+| REQ-13-011 | DEFERRED | Phase 1 | §8.1 telemetry seed |
+| REQ-13-012 | SPECCED |  | Witness-only gate; diff benchmark report (four gates) plus operator timing record for the fifth |
+| REQ-13-013 | SPECCED |  | Witness-only gate; operator-witnessed headed Playwright walkthrough, recorded in BUILD_LOG.md |
+| REQ-13-014 | DEFERRED | Phase 2 | §6.5 |
+| REQ-13-015 | IMPLEMENTED | scripts/hard_constraints/checks.py:351 | Enforced by `no_coauthored_by_trailer`. |
+| REQ-13-016 | DEFERRED | Phase 4 | Deferred by hard-constraint registry. |
+| REQ-13-017 | DEFERRED | Phase 4 | Deferred by hard-constraint registry. |
+| REQ-13-018 | DEFERRED | Phase 3 | Deferred by hard-constraint registry. |
+| REQ-13-019 | DEFERRED | Phase 3 | Deferred by hard-constraint registry. |
+| REQ-13-020 | DROPPED | ADR-001 | ADR-001 — extend-in-place retired |
+| REQ-13-021 | DEFERRED | Phase 1 | §4.11 / §8.3 |
+| REQ-13-022 | DEFERRED | Phase 2 | §6.10 |
+| REQ-13-023 | DEFERRED | Phase 1 | Deferred by hard-constraint registry. |
+| REQ-13-024 | DEFERRED | Phase 5 | Context Inspector half; see ADR-020 |
+| REQ-13-025 | DEFERRED | Phase 3 | Deferred by hard-constraint registry. |
+| REQ-13-026 | DEFERRED | Phase 1 | §6.4.1 |
+| REQ-13-027 | DEFERRED | Phase 1 | §8.5 |
+| REQ-13-028 | DEFERRED | Phase 4 | Deferred by hard-constraint registry. |
+| REQ-13-029 | DEFERRED | Phase 1 | reworded by ADR-022; was 861e753d64 |
+| REQ-13-030 | DEFERRED | Phase 1 | lens mechanism added to Phase 1 by ADR-017 |
+| REQ-13-031 | DEFERRED | Phase 5 | Deferred by hard-constraint registry. |
+| REQ-13-032 | DEFERRED | Phase 5 | Deferred by hard-constraint registry. |
+| REQ-13-033 | DEFERRED | Phase 1 | lens mechanism, ADR-017 |
+| REQ-13-034 | DEFERRED | Phase 1 | lens mechanism, ADR-017 |
+| REQ-13-035 | DEFERRED | Phase 1 | fields the §8.6 reliability tier reads must exist in Phase 1; the full profile surface is Phase 5 |
+| REQ-13-036 | DEFERRED | Phase 1 | §8.5 |
+| REQ-13-037 | DEFERRED | Phase 1 | §8.6 |
+| REQ-13-038 | DEFERRED | Phase 1 | §8.6 |
+| REQ-13-039 | DEFERRED | Phase 3 | ADR-017 split |
+| REQ-13-040 | IMPLEMENTED | scripts/hard_constraints/checks.py:359 | Enforced by `no_phase_6_surface`. |
+| REQ-13-041 | DEFERRED | Phase 1 | §6.4.2 |
+| REQ-13-042 | DEFERRED | Phase 1 | 04a §4.9.1; primitive scope fixed by ADR-019 |
+| REQ-13-043 | DEFERRED | Phase 1 | writes into the ADR-020 provenance shape |
+| REQ-13-044 | DEFERRED | Phase 1 | Deferred by hard-constraint registry. |
+| REQ-13-045 | DEFERRED | Phase 1 | Deferred by hard-constraint registry. |
+| REQ-13-046 | IMPLEMENTED | scripts/hard_constraints/checks.py:114 | Enforced by `no_framer_motion`. |
+| REQ-13-047 | IMPLEMENTED | scripts/hard_constraints/checks.py:123 | Enforced by `no_copypaste_libs_as_deps`. |
+| REQ-13-048 | DEFERRED | Phase 3 | ADR-017: field + read path land in Phase 1, UI in Phase 3 |
+| REQ-13-049 | IMPLEMENTED | scripts/hard_constraints/checks.py:372 | Enforced by `no_shared_visibility_toggle`. |
+| REQ-13-050 | SPECCED |  | Witness-only gate; operator-witnessed headed Playwright walkthrough, recorded in BUILD_LOG.md |
+| REQ-13-051 | IMPLEMENTED | scripts/hard_constraints/checks.py:131 | Enforced by `upstream_source_not_vendored`. |
+| REQ-13-052 | IMPLEMENTED | scripts/hard_constraints/checks.py:151 | Enforced by `upstream_pinned_by_digest`. |
+| REQ-13-053 | SPECCED |  | Witness-only gate; a PORTING_LEDGER.md entry, or a recorded decision not to vendor |
+| REQ-13-054 | IMPLEMENTED | scripts/hard_constraints/checks.py:176 | Enforced by `policy_logic_not_in_browser`. |
+| REQ-13-055 | DEFERRED | Phase 1 | no frontend network layer exists yet to check |
+| REQ-13-056 | IMPLEMENTED | scripts/hard_constraints/checks.py:193 | Enforced by `ts_client_confined`. |
+| REQ-13-057 | IMPLEMENTED | scripts/hard_constraints/checks.py:215 | Enforced by `no_identity_fields`. |
+| REQ-13-058 | IMPLEMENTED | scripts/hard_constraints/checks.py:224 | Enforced by `no_household_surface`. |
+| REQ-13-059 | DEFERRED | Phase 1 | Deferred by hard-constraint registry. |
+| REQ-13-060 | DEFERRED | Phase 1 | Deferred by hard-constraint registry. |
+| REQ-13-061 | SPECCED |  | Witness-only gate; operator-witnessed headed Playwright walkthrough, recorded in BUILD_LOG.md |
+| REQ-13-062 | DEFERRED | Phase 1 | ADR-021: AuthorizeRequest is PROVISIONAL until verified |
+| REQ-13-063 | DEFERRED | Phase 1 | Deferred by hard-constraint registry. |
+| REQ-13-064 | DEFERRED | Phase 1 | Deferred by hard-constraint registry. |
+| REQ-13-065 | DEFERRED | Phase 1 | Deferred by hard-constraint registry. |
+| REQ-13-066 | DEFERRED | Phase 1 | null vs empty must be distinguishable; ADR-020 |
+| REQ-13-067 | SPECCED |  | Witness-only gate; mutation-test records in BUILD_LOG.md, one per shipped control |
+| REQ-13-068 | IMPLEMENTED | scripts/hard_constraints/checks.py:236 | Enforced by `agent_server_dtos_generated`. |
+| REQ-13-069 | DEFERRED | Phase 1 | §8.0–8.1 telemetry seed |
+| REQ-13-070 | DEFERRED | Phase 1 | trust-dial.ts is the outstanding mirror |
+| REQ-13-071 | IMPLEMENTED | scripts/hard_constraints/checks.py:316 | Enforced by `ledger_records_native_basis`. |
+| REQ-13-072 | IMPLEMENTED | scripts/hard_constraints/checks.py:270 | Enforced by `provisional_types_not_wired`. |
+| REQ-13-073 | IMPLEMENTED | scripts/hard_constraints/checks.py:397 | Enforced by `evidence_snapshot_not_imported`. |
+| REQ-13-074 | IMPLEMENTED | scripts/hard_constraints/checks.py:422 | Enforced by `openhands_not_pinned_to_fork`. |
+| REQ-13-075 | IMPLEMENTED | scripts/hard_constraints/checks.py:440 | Enforced by `evidence_snapshot_matches_upstream`. |
+| REQ-13-076 | IMPLEMENTED | scripts/hard_constraints/checks.py:480 | Enforced by `cited_evidence_paths_resolve`. |
+| REQ-13-077 | IMPLEMENTED | scripts/hard_constraints/checks.py:522 | Enforced by `unconsumed_native_fields_not_wired`. |
+| REQ-13-078 | IMPLEMENTED | scripts/hard_constraints/checks.py:552 | Enforced by `spec_requirements_have_ids`. |
+| REQ-13-079 | IMPLEMENTED | scripts/hard_constraints/checks.py:558 | Enforced by `spec_coverage_register_is_current`. |
+| REQ-13-080 | IMPLEMENTED | scripts/hard_constraints/checks.py:564 | Enforced by `spec_coverage_evidence_resolves`. |
+| REQ-13-081 | IMPLEMENTED | scripts/hard_constraints/checks.py:573 | Enforced by `spec_cross_references_resolve`. |
+
+## 14-spec-wizard.md
+
+| id | status | evidence | note |
+|---|---|---|---|
+| REQ-14-001 | SPECCED |  | The Spec Wizard converts a natural-language feature request into a structured, reviewable ... |
+| REQ-14-002 | SPECCED |  | A first-party OH-GUI feature built on native SDK primitives - not a generic plugin, not a ... |
+| REQ-14-003 | SPECCED |  | Every requirement in a wizard-produced draft spec is expressible in one of the five EARS p... |
+| REQ-14-004 | SPECCED |  | Presented as a distinct artifact from the draft spec - never silently merged into it or si... |
+| REQ-14-005 | SPECCED |  | A trivial/small request can skip full four-phase ceremony via an explicit fast-path, wizar... |
+| REQ-14-006 | SPECCED |  | Ships early enough (Phase 0/1 boundary) to be usable for this project's own subsequent-pha... |
+| REQ-14-007 | SPECCED |  | Fires only on trigger conditions - external library/API/integration references, security-p... |
+| REQ-14-008 | SPECCED |  | Uses the SDK's built-in switch_llm tool (see 12-portable-components.md) to route the wizar... |
+| REQ-14-009 | SPECCED |  | The Spec Wizard never bypasses the Change Review Workbench or authorization architecture f... |
+| REQ-14-010 | SPECCED |  | Exit criteria: a trivial request correctly takes the fast path without full ceremony; ever... |
+
+## 16-stack-layers.md
+
+| id | status | evidence | note |
+|---|---|---|---|
+| REQ-16-001 | SPECCED |  | This file is the register of record. Every component gets one status. Nothing enters `apps... |
+| REQ-16-002 | SPECCED |  | | **ADOPTED** | In shipped code, or specced with a named phase | <!-- |
+| REQ-16-003 | SPECCED |  | | **CANDIDATE** | Approved direction, no adopting spec or ADR yet | <!-- |
+| REQ-16-004 | SPECCED |  | | **NATIVE-FIRST PENDING** | Cannot be adopted until a cited finding shows OpenHands does ... |
+| REQ-16-005 | SPECCED |  | | **REJECTED** | Refused, with reason. Reversal requires an ADR | <!-- |
+| REQ-16-006 | SPECCED |  | | SGLang | CANDIDATE | Shared-prefix workload favours RadixAttention; settle by bake-off, ... |
+| REQ-16-007 | SPECCED |  | | vLLM | CANDIDATE | Council-Synthesis slice 7.0 infra bundle | <!-- |
+| REQ-16-008 | SPECCED |  | | llama.cpp | CANDIDATE | Fallback for quantisations the servers will not host | <!-- |
+| REQ-16-009 | SPECCED |  | | Ollama | ADOPTED | Present in shipped config | <!-- |
+| REQ-16-010 | SPECCED |  | Selection is deferred to ADR-016's unrun baseline benchmark. No superiority claim may be m... |
+| REQ-16-011 | SPECCED |  | | Git | ADOPTED | | <!-- |
+| REQ-16-012 | SPECCED |  | | Docker | ADOPTED | Per-session sandbox isolation via NVIDIA Container Toolkit | <!-- |
+| REQ-16-013 | SPECCED |  | | Podman | REJECTED | Rootless is the only advantage and this is a single-user workstation... |
+| REQ-16-014 | SPECCED |  | | LiteLLM | CANDIDATE | Donor Phase 4, explicitly "optional, after baseline validation" (`... |
+| REQ-16-015 | SPECCED |  | | OpenTelemetry | ADOPTED | Present in code | <!-- |
+| REQ-16-016 | SPECCED |  | | Langfuse | CANDIDATE | LLM-trace layer above OTel; adopt only once there are traces wort... |
+| REQ-16-017 | SPECCED |  | So this is a genuine gap and not a duplication — the native-first burden is discharged for... |
+| REQ-16-018 | SPECCED |  | | Mem0 | NATIVE-FIRST PENDING | | <!-- |
+| REQ-16-019 | SPECCED |  | | Letta | NATIVE-FIRST PENDING | Stateful-agent framework; check clause 4 — if it owns the... |
+| REQ-16-020 | SPECCED |  | | Qdrant | NATIVE-FIRST PENDING | | <!-- |
+| REQ-16-021 | SPECCED |  | | Chroma | NATIVE-FIRST PENDING | | <!-- |
+| REQ-16-022 | SPECCED |  | | Zep | NATIVE-FIRST PENDING | | <!-- |
+| REQ-16-023 | SPECCED |  | | Graphiti | NATIVE-FIRST PENDING | Temporal knowledge graph | <!-- |
+| REQ-16-024 | SPECCED |  | Binding constraint on all six: whatever is adopted sits behind a port and **augments** <!-... |
+| REQ-16-025 | SPECCED |  | | LangGraph | REJECTED | ADR-027 clause 4 — runs its own loop. A second harness inside the... |
+| REQ-16-026 | SPECCED |  | | CrewAI | REJECTED | ADR-027 clause 4 | <!-- |
+| REQ-16-027 | SPECCED |  | | AutoGen | REJECTED | ADR-027 clause 4 | <!-- |
+| REQ-16-028 | SPECCED |  | | Temporal | CANDIDATE | Durable-execution engine, not an agent loop, so clause 4 does not... |
+| REQ-16-029 | SPECCED |  | | React | ADOPTED | | <!-- |
+| REQ-16-030 | SPECCED |  | | TypeScript | ADOPTED | | <!-- |
+| REQ-16-031 | SPECCED |  | | Vite | ADOPTED | | <!-- |
+| REQ-16-032 | SPECCED |  | | Tailwind | ADOPTED | | <!-- |
+| REQ-16-033 | SPECCED |  | | Monaco | CANDIDATE | Specced, not yet in code | <!-- |
+| REQ-16-034 | SPECCED |  | | Xterm | CANDIDATE | Specced, not yet in code | <!-- |
+| REQ-16-035 | SPECCED |  | | WebSocket | ADOPTED | | <!-- |
+| REQ-16-036 | SPECCED |  | | TanStack Query | CANDIDATE | Server-state cache for agent-server reads | <!-- |
+| REQ-16-037 | SPECCED |  | | Zustand | CANDIDATE | Client-only state. Scope it to what TanStack Query does not own, o... |
+| REQ-16-038 | SPECCED |  | | Framer Motion | ADOPTED | | <!-- |
+| REQ-16-039 | SPECCED |  | | GSAP | REJECTED | Overlaps Framer Motion, which is already shipping. Two animation runti... |
+| REQ-16-040 | SPECCED |  | | Lottie | CANDIDATE | Only for designed illustrative motion; not a Framer Motion substitu... |
+| REQ-16-041 | SPECCED |  | | D3 | CANDIDATE | Referenced once in specs | <!-- |
+| REQ-16-042 | SPECCED |  | | Playwright | ADOPTED | 12 files. Operator requirement: headed, watchable | <!-- |
+| REQ-16-043 | SPECCED |  | | React Flow | CANDIDATE | Node-and-edge editors — plan graphs, pipeline views | <!-- |
+| REQ-16-044 | SPECCED |  | | Cytoscape | CANDIDATE | Large static graph analysis | <!-- |
+| REQ-16-045 | SPECCED |  | | Sigma | CANDIDATE | WebGL, large graphs | <!-- |
+| REQ-16-046 | SPECCED |  | | react-force-graph | CANDIDATE | Force-directed, 2D/3D | <!-- |
+| REQ-16-047 | SPECCED |  | | three-forcegraph | CANDIDATE | The 3D engine under react-force-graph; adopting both is o... |
+| REQ-16-048 | SPECCED |  | Exactly one force-directed renderer should survive selection, and it should be chosen agai... |
+| REQ-16-049 | SPECCED |  | ADR-026 D3 puts these at the cheapest tier that can carry them. All were dropped from the ... |
+| REQ-16-050 | SPECCED |  | | Serena | CANDIDATE | Semantic code navigation. Overlaps Council-Synthesis slice 7.4 tree... |
+| REQ-16-051 | SPECCED |  | | Context7 | CANDIDATE | Documentation grounding | <!-- |
+| REQ-16-052 | SPECCED |  | | Chrome DevTools MCP | CANDIDATE | Browser debugging; distinct from Playwright automation... |
+| REQ-16-053 | SPECCED |  | | SearXNG | CANDIDATE | Self-hosted search, already referenced in live specs | <!-- |
+| REQ-16-054 | SPECCED |  | | GitHub | ADOPTED | Repo ops. Local-first constraint stands: no GitHub-native CI | <!-- |
+| REQ-16-055 | SPECCED |  | A component with no entry here may not be added to `apps/` or `services/`. <!-- |
+| REQ-16-056 | SPECCED |  | NATIVE-FIRST PENDING clears only by a cited `review/_sdk_src/<version>/...:<line>` finding... |
+| REQ-16-057 | SPECCED |  | REJECTED reverses only by ADR. <!-- |
+| REQ-16-058 | SPECCED |  | Every adoption is logged in `PORTING_LEDGER.md` with source URL, commit or version, SPDX l... |
 
 ## Totals
 
-78 requirements across 5 enrolled specs - 78 specced
+370 requirements across 16 enrolled specs - 50 deferred · 3 dropped · 25 implemented · 292 specced

@@ -18,6 +18,8 @@ import json
 import re
 from pathlib import Path
 
+from spec_coverage import evidence_problems, register_problems, requirement_id_problems
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 GUI_SRC = REPO_ROOT / "apps" / "gui" / "src"
@@ -544,6 +546,70 @@ def unconsumed_native_fields_not_wired() -> str | None:
     return None
 
 
+# ---------------------------------------------------------------- ADR-028: living-spec drift
+
+
+def spec_requirements_have_ids() -> str | None:
+    """Every curated live requirement declaration has one stable, valid, unique REQ id."""
+    problems = requirement_id_problems(REPO_ROOT)
+    return "requirement-id drift: " + "; ".join(problems[:6]) if problems else None
+
+
+def spec_coverage_register_is_current() -> str | None:
+    """The generated register has one current row for each declared REQ id."""
+    problems = register_problems(REPO_ROOT)
+    return "coverage-register drift: " + "; ".join(problems[:6]) if problems else None
+
+
+def spec_coverage_evidence_resolves() -> str | None:
+    """IMPLEMENTED evidence and DROPPED ADR citations resolve in the working tree."""
+    problems = evidence_problems(REPO_ROOT)
+    return "coverage-evidence drift: " + "; ".join(problems[:6]) if problems else None
+
+
+_MD_LINK_RE = re.compile(r"(?<!!)\[[^\]]*\]\((?P<target>[^)\s]+)(?:\s+['\"][^)]*['\"])?\)")
+
+
+def spec_cross_references_resolve() -> str | None:
+    """Every local Markdown document link in the spec/ADR corpus resolves.
+
+    Historical prose may name a former file in backticks; only a Markdown reference claims
+    that the named document is available to open, so only that syntactic form is gated.
+    """
+    roots = (REPO_ROOT / "docs" / "specs", REPO_ROOT / "adrs")
+    offenders: list[str] = []
+    for root in roots:
+        if not root.is_dir():
+            continue
+        # ADR-028 governs live specs. `docs/specs/archive/` is historical material whose
+        # links intentionally retain their original relative locations; it is not a current
+        # document contract.
+        sources = (
+            sorted(root.glob("*.md"))
+            if root == REPO_ROOT / "docs" / "specs"
+            else _sources(root, (".md",))
+        )
+        for source in sources:
+            for lineno, line in enumerate(source.read_text(encoding="utf-8").splitlines(), 1):
+                for match in _MD_LINK_RE.finditer(line):
+                    target = match.group("target").strip("<>")
+                    if target.startswith(("#", "http://", "https://", "mailto:", "data:")):
+                        continue
+                    target = target.split("#", 1)[0].split("?", 1)[0]
+                    if not target.endswith(".md"):
+                        continue
+                    resolved = (source.parent / target).resolve()
+                    if not resolved.is_file():
+                        offenders.append(
+                            f"{source.relative_to(REPO_ROOT)}:{lineno} links missing {target}"
+                        )
+    if offenders:
+        return "unresolvable spec/ADR document references: " + "; ".join(offenders[:6]) + (
+            f" (+{len(offenders) - 6} more)" if len(offenders) > 6 else ""
+        )
+    return None
+
+
 REGISTRY_CHECKS = {
     "no_framer_motion": no_framer_motion,
     "no_copypaste_libs_as_deps": no_copypaste_libs_as_deps,
@@ -566,4 +632,8 @@ REGISTRY_CHECKS = {
     "evidence_snapshot_matches_upstream": evidence_snapshot_matches_upstream,
     "cited_evidence_paths_resolve": cited_evidence_paths_resolve,
     "unconsumed_native_fields_not_wired": unconsumed_native_fields_not_wired,
+    "spec_requirements_have_ids": spec_requirements_have_ids,
+    "spec_coverage_register_is_current": spec_coverage_register_is_current,
+    "spec_coverage_evidence_resolves": spec_coverage_evidence_resolves,
+    "spec_cross_references_resolve": spec_cross_references_resolve,
 }
