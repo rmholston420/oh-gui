@@ -95,6 +95,7 @@ CELLS: dict[str, dict[str, str]] = {
     "H": {"model": "glm-4.7-flash:q4_K_M", "arm": EXPLORATORY},
     "I": {"model": "lfm2.5:8b", "arm": EXPLORATORY},
     "J": {"model": "ornith:35b", "arm": EXPLORATORY},
+    "K": {"model": "qwen3.5:0.8b-q8_0", "arm": EXPLORATORY},
 }
 
 

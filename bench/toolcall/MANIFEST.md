@@ -23,8 +23,9 @@ confirmatory arm may carry an inferential claim.
 | H | `glm-4.7-flash:q4_K_M` | exploratory | 1/task | none; raw rate only |
 | I | `lfm2.5:8b` | exploratory | 1/task | none; raw rate only |
 | J | `ornith:35b` | exploratory | 1/task | none; raw rate only |
+| K | `qwen3.5:0.8b-q8_0` | exploratory | 1/task | none; raw rate only |
 
-All ten cells were probed for native `tool_calls` emission before registration.
+All eleven cells were probed for native `tool_calls` emission before registration.
 `deepseek-r1:32b-qwen-distill-q4_K_M` and `deepseek-r1:8b-0528-qwen3-q8_0` were
 probed and **excluded**: both accepted the `tools` parameter and returned no
 `tool_calls`, so they cannot produce a measurable outcome under ADR-013 clause
@@ -33,6 +34,14 @@ probed and **excluded**: both accepted the `tools` parameter and returned no
 installed runtime and are registered but expected to be skipped as unavailable;
 the harness skips a missing exploratory cell and hard-fails a missing
 confirmatory one.
+
+`qwen3.5:0.8b-q8_0` (cell K) was added at 2026-08-09 04:47 EDT to anchor the bottom of the
+parameter-scale curve, after probing PASS with a well-formed `terminal` call in 1.9 s. Published
+tool-calling results show a sharp capability cliff below 9B, so the prior expectation was failure;
+it passed, which is itself the reason to measure it rather than assume. It is exploratory only and
+cannot affect the confirmatory arm or the Holm family. Cells run at 0.8b/2b/4b/9b/27b/35b give the
+GUI's observed-reliability-tier surface a scale curve with a measured floor instead of scattered
+points.
 
 **Multiplicity.** McNemar is pairwise. The confirmatory arm is therefore
 restricted to **baseline-vs-each**, giving *k*−1 = 3 comparisons (A–B, A–C,

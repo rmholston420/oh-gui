@@ -3967,3 +3967,22 @@ The applied diff is now printed for every mutant.
 - **PORTING_LEDGER / ADR updated:** none — environment capture, not a decision
 - **Verification:** 29 bench tests pass; hard constraints `=== PASSED ===`
 - **Stop-condition status:** unchanged — awaiting operator approval of the manifest, then the run.
+
+## 2026-08-09 04:48 EDT — Cell K registered: qwen3.5:0.8b-q8_0 (exploratory)
+
+- **Stage / plugin / port:** Phase 0 parallel track · ADR-016 tool-call benchmark · no port
+- **What changed:** probed `qwen3.5:0.8b-q8_0` (1.0 GB) before registering it, per the manifest's
+  probe-before-registration rule. Result **PASS** — one well-formed `terminal` call with correct
+  arguments in 1.9 s, against a prior expectation of failure from the published sub-9B
+  tool-calling cliff. Registered as cell **K**, exploratory arm only.
+- **Rationale:** anchors the bottom of the parameter-scale curve (0.8b/2b/4b/9b/27b/35b), which
+  turns the GUI's observed-reliability-tier surface into a curve with a measured floor rather than
+  scattered points. Cannot affect the confirmatory arm or the Holm family.
+- **Files touched:** `bench/toolcall/bench_toolcall.py`, `bench/toolcall/MANIFEST.md`, `BUILD_LOG.md`
+- **Ports / adapters affected:** none
+- **PORTING_LEDGER / ADR updated:** none — exploratory cell addition, no decision surface
+- **Budget impact:** screen projection 66.3 -> 77.5 min (11 cells x 40 tasks). The increase is
+  larger than the model's real cost because unmeasured cells fall back to the conservative 3.0 s
+  default warm latency; K actually answered in 1.9 s cold. Confirmatory run unchanged at 105 min.
+- **Verification:** 29 bench tests pass; hard constraints `=== PASSED ===`
+- **Stop-condition status:** unchanged — awaiting operator approval of the manifest, then the run.
