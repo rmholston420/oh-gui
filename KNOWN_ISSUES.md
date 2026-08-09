@@ -440,12 +440,12 @@ better than another. They are a baseline of record for the app, not a model rank
      environment, not an incidental detail.
 - **Attempted fixes:** none attempted by design. No upgrade, no `--insecure` pull, no manual
   manifest fetch.
-- **Known gap in the record:** the installed Ollama version was **never captured** before the
-  overnight run, so the registered environment is under-specified. This should have been recorded
-  alongside the timing probe. Capture it with:
-  ```bash
-  ollama --version && curl -s http://127.0.0.1:11434/api/version
-  ```
+- **Known gap in the record — CLOSED 2026-08-09 04:42 EDT.** The installed Ollama version was not
+  captured alongside the timing probe, leaving the registered environment under-specified. Now
+  captured as **0.30.7** (`ollama --version` and `/api/version` agree) and recorded in
+  `bench/toolcall/MANIFEST.md` under "Registered runtime environment". Captured after the probes
+  but before any benchmark cell ran, with no upgrade or restart in between, so the probe results
+  are attributable to 0.30.7.
 - **Next investigation:** while awake and with no run in flight — record the current version,
   upgrade Ollama, then **re-probe all four confirmatory models (A-D)** for tool-call emission and
   re-run `timing_probe.py`. If any confirmatory cell's behaviour changes, the completed benchmark

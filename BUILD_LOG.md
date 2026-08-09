@@ -3951,3 +3951,19 @@ The applied diff is now printed for every mutant.
   recorded. If the upgrade later changes confirmatory-cell behaviour, that becomes an ADR-016
   amendment rather than a log entry.
 - **Stop-condition status:** unchanged — awaiting operator approval of the manifest, then the run.
+
+## 2026-08-09 04:43 EDT — Ollama 0.30.7 captured and registered as bench environment
+
+- **Stage / plugin / port:** Phase 0 parallel track · ADR-016 tool-call benchmark · no port
+- **What changed:** added a "Registered runtime environment" section to
+  `bench/toolcall/MANIFEST.md` recording Ollama **0.30.7**, the endpoint, and GPU state at
+  capture, plus a comparability rule requiring re-probe of all four confirmatory cells after any
+  upgrade. Noted explicitly that the version was captured after the probes but before any
+  benchmark cell ran, with no upgrade or restart between, so probe results are attributable to
+  0.30.7 — rather than implying the version had been pinned up front. Closed the corresponding
+  gap in `KNOWN_ISSUES.md`.
+- **Files touched:** `bench/toolcall/MANIFEST.md`, `KNOWN_ISSUES.md`, `BUILD_LOG.md`
+- **Ports / adapters affected:** none
+- **PORTING_LEDGER / ADR updated:** none — environment capture, not a decision
+- **Verification:** 29 bench tests pass; hard constraints `=== PASSED ===`
+- **Stop-condition status:** unchanged — awaiting operator approval of the manifest, then the run.

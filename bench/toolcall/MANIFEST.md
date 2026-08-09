@@ -76,6 +76,32 @@ only during subsequent paired analysis. A task with fewer than two measured
 false or zero. The paired mid-p McNemar test then drops `null` tasks by its
 inherited limits and consumes the one folded boolean outcome per task.
 
+## Registered runtime environment
+
+Tool-call emission is a property of the serving runtime's chat and tool templates, not of the
+model weights alone. The runtime version is therefore part of the registered design, and results
+are scoped to it.
+
+| Field | Value | Captured |
+|---|---|---|
+| Ollama version | **0.30.7** (`ollama --version`, `/api/version` agree) | 2026-08-09 04:42 EDT |
+| Endpoint | `http://127.0.0.1:11434/v1` | — |
+| GPU | RTX 5090, 32607 MiB total, 11268 MiB in use at capture | 2026-08-09 04:42 EDT |
+| Host | Colossus (Kubuntu, 128 GB RAM, Blackwell SM_120) | — |
+
+This version was captured **after** the timing and tool-call probes but **before** any benchmark
+cell ran, and Ollama was not upgraded or restarted between the probes and this capture, so the
+probe results are attributable to 0.30.7. Recording that ordering rather than implying the version
+was pinned up front.
+
+`laguna-xs-2.1:q4_K_M` and `ornith:35b` return HTTP 412 on 0.30.7 (`requires a newer version of
+Ollama`) and cannot be pulled. Both are exploratory cells; no confirmatory cell is affected. The
+upgrade is deferred by decision, not oversight — see `KNOWN_ISSUES.md`.
+
+**Comparability rule.** Any Ollama upgrade invalidates cross-runtime comparison until all four
+confirmatory models (A–D) are re-probed for tool-call emission and re-timed. Results produced
+under 0.30.7 must be labelled as such and must not be silently pooled with post-upgrade results.
+
 ## ADR-013 pre-run discrimination gate
 
 **Target baseline acceptance:** 50–70%; the registered calibration target for
