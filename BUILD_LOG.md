@@ -4241,3 +4241,25 @@ The applied diff is now printed for every mutant.
   `adrs/ADR-032-audit-confidence-is-record-fidelity.md`, `KNOWN_ISSUES.md`
 - **Stop-condition status:** met. 220 unit / 49 browser / 5 live green, 0 lint errors,
   hard constraints PASSED.
+
+## 2026-08-09 06:03 EDT — ADR-033 drafted: code index is an MCP server, and it is Serena
+
+- **Stage / plugin / port:** Phase 2 · agent capability configuration (no Phase 1 dependency)
+- **What changed:** ADR-033 filed as Proposed. Decision: a code index is harness configuration
+  under ADR-026/ADR-027, so it ships as an MCP server declaration with **no port, no adapter, and
+  no source vendored**. Serena (MIT, `430fc62e`) is the choice. Semantic search deferred.
+- **Rejected candidate verified rather than assumed:** codebase-memory-mcp is a genuine active MIT
+  project and arXiv:2603.27277 genuinely exists; my initial suspicion that the metrics were
+  fabricated was wrong and is recorded in the ADR. It is rejected on other grounds — its own
+  abstract reports 83% answer quality vs 92% for file exploration, a 9-point regression traded for
+  token efficiency, which inverts the quality-first rule. Plus self-authored evidence, opaque
+  `curl | bash` binary distribution, and bundled weights whose stated identity (768d int8
+  "nomic-embed-code") does not match upstream (7B, 3584d).
+- **Caught by hand what the missing gate should catch:** ADR-033 initially cited
+  `ADR-016-tool-call-benchmark.md`, which does not exist (real file is
+  `ADR-016-decouple-baseline-benchmark-from-phase-0-exit.md`). This is the third fabricated ADR
+  cross-reference in one session; the gate in KNOWN_ISSUES is now clearly worth building.
+- **Files touched:** `adrs/ADR-033-code-index-is-an-mcp-server-not-a-vendored-index.md`,
+  `adrs/README.md` (ADR-033 row; ADR-032 status corrected to Ratified), `PORTING_LEDGER.md`
+- **Stop-condition status:** ADR is Proposed and awaits the operator on the deferred-embeddings
+  question. Adoption is gated on ADR-016 measurement, so nothing installs yet.

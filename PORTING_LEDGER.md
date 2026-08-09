@@ -466,3 +466,28 @@ chain, and §4.2 is about the account, so the conclusion leads.
 - **Modifications:** retained the donor algorithm; added vendoring provenance and an ADR-013 limits notice to the module docstring. The notice documents that `resolved=None` records are excluded before pairing and that repetitions must be folded outside the test.
 - **ADR:** [ADR-013](adrs/ADR-013-benchmark-discrimination-floor.md)
 - **Logged:** 2026-08-09 03:45 EDT
+
+#### Serena (code index MCP server) — CONFIGURED (not vendored)
+- **Source:** https://github.com/oraios/serena
+- **Commit / Version:** `430fc62e72d3a82059b870560e4a2ea60bbb9cf5` (2026-08-08)
+- **License:** MIT — verified at https://github.com/oraios/serena/blob/main/LICENSE
+- **OH-GUI location:** none — declared in OpenHands MCP configuration, no source in this tree
+- **Port(s):** none. An MCP server is a capability of the agent, not a dependency of our code, so
+  it is not wrapped behind a port (ADR-033 clause 1, ADR-026 lowest-tier-wins).
+- **Modifications:** none
+- **ADR:** [ADR-033](adrs/ADR-033-code-index-is-an-mcp-server-not-a-vendored-index.md)
+- **Logged:** 2026-08-09 06:03 EDT
+
+#### codebase-memory-mcp — REJECTED
+- **Source:** https://github.com/DeusData/codebase-memory-mcp
+- **License:** MIT (repository); bundled embedding weights carry no stated license
+- **Grounds:** its own preprint ([arXiv:2603.27277](https://arxiv.org/abs/2603.27277)) reports 83%
+  answer quality vs 92% for file exploration — a 9-point regression traded for 10x fewer tokens,
+  the inverse of our quality-first rule. Evidence is self-authored (first author is the dominant
+  committer). Distribution is an opaque `curl | bash` prebuilt binary with compiled-in weights,
+  which cannot be pinned or inspected. Advertised `nomic-embed-code` at 768d int8 does not match
+  upstream (7B, 3584d), so the bundled weights are an undisclosed variant.
+- **Verified, not assumed:** the repository, star count, and preprint are all genuine. An initial
+  suspicion that the metrics were fabricated was checked and found wrong.
+- **ADR:** [ADR-033](adrs/ADR-033-code-index-is-an-mcp-server-not-a-vendored-index.md)
+- **Logged:** 2026-08-09 06:03 EDT
