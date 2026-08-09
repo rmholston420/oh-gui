@@ -1422,3 +1422,28 @@ the snap daemon. Recorded in `docs/forge-oh-port-survey.md`.
   itself mention the number without tripping the rule.
 - **Files changed:** `scripts/verify-local.sh`, `scripts/tests/test_check_hard_constraints.py`
 - **Related BUILD_LOG entry:** 2026-08-08 21:25 EDT
+
+## 2026-08-08 21:32 EDT — capture-hook-envelope.sh: "could not locate hooks/types.py in the image"
+
+- **Symptom:** operator run on Colossus, 21:30 EDT. Image pulled fine, then:
+  `FAIL  could not locate hooks/types.py in the image` and exit 1. No further detail.
+- **Affected stage / plugin / port:** Phase 1 · ADR-014 verification item 5 ·
+  `scripts/capture-hook-envelope.sh`
+- **Root cause:** two faults, one of them mine and worse than the other.
+  1. The probe ran `python -c ...`. The pinned image installs the SDK into a venv and does not
+     necessarily expose a bare `python` on `PATH` under `/bin/sh -c`.
+  2. **The probe redirected stderr to `/dev/null`.** So the script printed a *diagnosis*
+     ("could not locate hooks/types.py") when all it had was a *symptom* (a non-zero exit). It
+     did not know the file was missing; it knew a command failed, and it had thrown away the
+     only evidence of why. That is the same defect class as a manufactured default: asserting a
+     specific cause you did not observe. It cost a full round-trip to the operator.
+- **Fix applied:** the probe now tries `/bin/sh` and `/bin/bash` against six candidate
+  interpreters, keeps stderr, and reports which combination worked. On total failure it prints
+  the captured stderr and then runs a Python-free `find` for `*hooks*/types.py` so the next
+  message contains the answer rather than another request. Separately, `RC=$?` after the differ
+  was unreachable under `set -e` — a mismatch (the expected first result) would have killed the
+  script before printing the explanation. Now `|| RC=$?`.
+- **Verified by:** executing the whole script against a stub `docker` that emulates the image,
+  including the failure path, the interpreter fallback, and a 4-mismatch success path.
+- **Files changed:** `scripts/capture-hook-envelope.sh`
+- **Related BUILD_LOG entry:** 2026-08-08 21:25 EDT
