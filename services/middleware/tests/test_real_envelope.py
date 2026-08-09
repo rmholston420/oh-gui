@@ -45,6 +45,20 @@ def captured_payload() -> dict:
     return json.loads(EVIDENCE.read_text(encoding="utf-8"))["example_payload"]
 
 
+def test_the_evidence_directory_holds_nothing_but_evidence() -> None:
+    """Only the capture and its README may live here.
+
+    The first capture script left `locate.err` and `types-path.txt` in this directory when it
+    failed. They were never committed, but debris in an evidence directory is how a hand-made
+    file eventually gets read as a capture. Anything new here is either evidence — in which case
+    name it in this test and say in the README how it is produced — or it does not belong.
+    """
+    present = {p.name for p in EVIDENCE.parent.iterdir() if not p.name.startswith(".")}
+    assert present == {"README.md", "envelope.json"}, (
+        f"unexpected files in the evidence directory: {sorted(present - {'README.md', 'envelope.json'})}"
+    )
+
+
 def test_the_evidence_file_still_looks_like_a_capture() -> None:
     """Guard against the evidence being replaced by something hand-written.
 

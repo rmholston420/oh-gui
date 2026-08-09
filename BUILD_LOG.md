@@ -3167,3 +3167,21 @@ a rewording test was comparing a file with itself and could never have failed.
     sha256 — 3/3 fail correctly.
 - **Stop-condition status:** item 5 met. **Items 1-4 unrun** — they need a live agent-server;
   the capture is static. ADR-014 remains *Proposed*.
+
+## 2026-08-08 22:06 EDT — evidence capture reproduced on Colossus; evidence directory guarded
+
+- **Stage / plugin / port:** Phase 1 · Authorization slice · ADR-014 item 5
+- **What changed:**
+  - Operator ran `scripts/capture-hook-envelope.sh` on Colossus against the real image with real
+    `docker`. `git status --porcelain` on the evidence directory showed `envelope.json`
+    unmodified — the capture is **reproducible** across machines and across 3.13 patch versions
+    (sandbox 3.13.12, Colossus 3.13.15). Marshal format is stable within the 3.13 series.
+  - Added `test_the_evidence_directory_holds_nothing_but_evidence`. The run surfaced two
+    untracked leftovers from the first broken script (`locate.err`, `types-path.txt`) sitting in
+    the evidence directory. Never committed, but debris there is how a hand-made file eventually
+    gets read as a capture.
+- **Files touched:** `services/middleware/tests/test_real_envelope.py`
+- **Ports / adapters affected:** none
+- **PORTING_LEDGER / ADR updated:** none — ADR-014 item 5 already recorded at 22:10 EDT
+- **Mutation record:** stray file in the evidence directory → gate fails. 1/1 caught.
+- **Stop-condition status:** item 5 closed and independently reproduced. Items 1-4 still unrun.
