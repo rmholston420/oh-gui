@@ -1754,3 +1754,26 @@ change. A per-spec run is reported as a per-spec run.
   **`&&`-chained behind the gate's own exit status**. Printing an exit code is not checking it. This
   is the fourth entry in the recurring "gate that quietly stops gating" class, and the first where
   the gate worked perfectly and was simply ignored.
+
+## 2026-08-09 02:44 EDT — a passing enforcement test that was never armed
+
+- **Symptom:** `verify-adr014-item1.sh` reported `✔ PASS destination state clean — canary does not
+  exist` on three consecutive runs while the conversation ended in `execution_status=error`.
+  Server log: `Tool 'bash' not found. Available: ['finish', 'think']`.
+- **Affected stage / plugin / port:** Phase 1 · authorization enforcement seam · ADR-014 item 1
+- **Root cause:** three stacked omissions in `StartConversationRequest`, each producing an identical
+  clean filesystem for the wrong reason. (1) `Agent.tools` omitted, so no tool existed to deny.
+  (2) `tools` named without `tool_module_qualnames`, so the registry was never populated
+  (`conversation_service.py:1382`) → HTTP 500 `ToolDefinition 'TerminalTool' is not registered`.
+  (3) Class names used as registry keys, but `__init_subclass__` derives them via
+  `_camel_to_snake(cls.__name__).removesuffix("_tool")` (`tool.py:236-241`) → `terminal`,
+  `file_editor`. The `Tool.name` docstring examples in the SDK are wrong.
+- **Fix applied:** populated `tools` + `tool_module_qualnames` with derived keys; added an arming
+  check that greps the server log for an actually-dispatched tool action, so absence-of-effect can
+  no longer be read as proof-of-deny.
+- **Files changed:** `scripts/verify-adr014-item1.sh`, `docs/evidence/adr014-item1/README.md`
+- **Related BUILD_LOG entry:** 2026-08-09 02:45 EDT
+
+**Generalisation.** A negative assertion (nothing happened) is only evidence when paired with proof
+the thing was attempted. This is the fifth instance of the recurring "gate that quietly stops
+gating" defect class in this repo.

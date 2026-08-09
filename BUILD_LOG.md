@@ -3731,3 +3731,21 @@ The applied diff is now printed for every mutant.
   amendment 1 clause 3, not half-built
 - **Verification:** all 8 cross-referenced ADR and spec paths checked to resolve before commit ·
   constraints runner PASSED (21 enforced · 48 deferred · 6 witnessed · 2 retired)
+
+## 2026-08-09 02:45 EDT — ADR-014 item 1 verified against the pinned agent-server
+
+- **Stage / plugin / port:** Phase 1 · authorization enforcement seam · hook deny gate
+- **What changed:** Stood up the pinned agent-server on Colossus and drove a real conversation
+  with a wildcard `pre_tool_use` COMMAND hook. Deny (`{"decision":"deny"}` + exit 2) blocked the
+  terminal action; canary file absent on the container filesystem. Item 1 discharged.
+  Items 2-4 deferred to Phase 1b per ADR-014 status amendment.
+- **Files touched:**
+  - `scripts/verify-adr014-item1.sh` (new)
+  - `scripts/inspect-conversation.sh` (new)
+  - `scripts/diagnose-run.sh` (new)
+  - `scripts/lib/say.sh` (new)
+  - `docs/evidence/adr014-item1/README.md` (new)
+  - `adrs/ADR-014-authorization-enforcement-seam.md` (status amendment)
+- **Ports / adapters affected:** none yet — verification only; no middleware written
+- **PORTING_LEDGER / ADR updated:** ADR-014 amended
+- **Stop-condition status:** met — deny path proven, landable boundary reached

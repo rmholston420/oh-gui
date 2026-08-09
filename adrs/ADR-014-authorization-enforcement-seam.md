@@ -1,6 +1,14 @@
 # ADR-014 — The SDK hook is a deny gate, not a policy plane: where Phase 1 enforcement lives
 
-**Status:** Proposed — ratification gated on executable verification (see Verification gate)
+**Status:** Proposed — item 1 verified 2026-08-09; items 2-4 deferred to Phase 1b (see Verification gate)
+
+> **STATUS AMENDMENT (2026-08-09):** Item 1 is discharged against the pinned 1.41.0 server —
+> evidence `docs/evidence/adr014-item1/README.md`, harness `scripts/verify-adr014-item1.sh`.
+> Items 2-4 are **DEFERRED to Phase 1b**, not dropped: under a constrained credit budget the
+> operator directed remaining effort at live GUI wiring, and the deny path — the one the
+> approval UI is built on — is now proven. The seam therefore ships **partially verified**:
+> deny proven; hook-timeout behaviour and per-tool-class `tool_input` coverage unproven.
+> No middleware may assume timeout-denies-closed until item 2 passes.
 
 > **RATIFICATION REVIEW 2026-08-09 01:38 EDT.** Reviewed for ratification and **not ratified.**
 > The static shape is now verified — `scripts/extract_image_sdk.py` pulls `openhands.sdk.hooks.types`
@@ -78,7 +86,7 @@ Recorded as a gate because ADR-001 Amendment #1 had to retract four Context clai
 reading prose instead of artifacts. This ADR's claims come from the sdists, which is better, but
 **no hook has yet been executed against the pinned 1.41.0 server.** Required, on Colossus:
 
-- [ ] A hook returning `{"decision":"deny"}` + exit 2 demonstrably prevents the tool from running —
+- [x] **VERIFIED 2026-08-09.** A hook returning `{"decision":"deny"}` + exit 2 demonstrably prevents the tool from running —
       asserted on the destination state (the file is unchanged / the command left no trace), not on
       the hook's own log line.
 - [ ] A hook that times out demonstrably **denies** under our wrapper, and demonstrably **allows**
