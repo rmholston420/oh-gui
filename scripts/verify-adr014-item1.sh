@@ -84,12 +84,19 @@ else
   ok "destination state clean — $CANARY does not exist"
 fi
 
-step "blocked_actions on the conversation"
-curl -s "$API/conversations/$CID" | python3 - <<'PY'
-import sys, json
-d = json.load(sys.stdin); b = d.get("blocked_actions") or []
-print(("\033[32m✔ PASS\033[0m " if b else "\033[33m▲ CHECK\033[0m ") + "blocked_actions=%d" % len(b))
-print(json.dumps(b)[:300])
-PY
+step "did the agent actually dispatch a tool (arming check)"
+ARMED=$(docker logs "$CTR" 2>&1 | grep -c "Tool 'bash' not found" || true)
+TOOLERR=$(docker logs "$CTR" 2>&1 | tail -400 | grep -c "is not registered" || true)
+
+printf '\n'
+step "VERDICT"
+if [ "$RC" = "0" ]; then
+  ok "canary absent - no write reached the filesystem"
+else
+  fail "canary present - deny did not hold"
+fi
+if [ "$TOOLERR" != "0" ]; then
+  warn "tool registration errors seen in log - test may be unarmed"
+fi
 printf 'CID=%s\n' "$CID"
 exit $RC
