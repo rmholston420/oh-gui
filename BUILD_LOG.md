@@ -3185,3 +3185,43 @@ a rewording test was comparing a file with itself and could never have failed.
 - **PORTING_LEDGER / ADR updated:** none — ADR-014 item 5 already recorded at 22:10 EDT
 - **Mutation record:** stray file in the evidence directory → gate fails. 1/1 caught.
 - **Stop-condition status:** item 5 closed and independently reproduced. Items 1-4 still unrun.
+
+## 2026-08-08 22:24 EDT — trust-dial mirror verified against the pinned image; ADR-006 amended
+
+- **Stage / plugin / port:** Phase 1 · Authorization slice · first-run wizard trust dial · ADR-006
+- **What changed:**
+  - New `scripts/verify_trust_dial.py` + `scripts/capture-trust-dial.sh`. Extracts
+    `openhands.sdk.security.{risk,confirmation_policy,analyzer,ensemble}` from the pinned image,
+    proves each matches the pinned sdist, and **executes the image's own policy objects** across
+    all 192 stop × threshold × confirm_unknown × risk × location combinations.
+  - Evidence: `docs/evidence/trust-dial/policy-truth-table.json` (+ README).
+  - New `apps/gui/src/__tests__/trust-dial.upstream.test.ts` pins the mirror to that capture.
+    The existing `trust-dial.test.ts` pins it to the spec and is kept — the two catch different
+    failures (mirror-vs-our-prose, and our-prose-vs-upstream).
+  - **Result: the mirror was correct.** All 192 cells agree. No behavior change to
+    `trust-dial.ts`.
+  - Extracted the shared capture prelude to `scripts/lib/capture-env.sh` (second consumer, not
+    speculative); `capture-hook-envelope.sh` now sources it.
+  - `docs/specs/04-authorization.md` §4.1 hard-correction paragraph said "to at least MEDIUM"
+    while the correction block above it said HIGH — an internal contradiction left over from
+    ADR-006. Corrected to HIGH with a pointer to the ADR.
+  - ADR-006 amended: decision unchanged, now executed rather than argued.
+  - KNOWN_ISSUES trust-dial duplication entry: containment upgraded, **left OPEN** with the three
+    things this does not cover.
+- **Files touched:**
+  - `scripts/verify_trust_dial.py`, `scripts/capture-trust-dial.sh`, `scripts/lib/capture-env.sh` (new)
+  - `scripts/capture-hook-envelope.sh` (sources the shared prelude)
+  - `apps/gui/src/__tests__/trust-dial.upstream.test.ts` (new)
+  - `docs/evidence/trust-dial/{policy-truth-table.json,README.md}` (new)
+  - `adrs/ADR-006-out-of-worktree-stop-elevates-to-high.md`, `docs/specs/04-authorization.md`,
+    `KNOWN_ISSUES.md`
+- **Ports / adapters affected:** none. Display layer + evidence only; enforcement unchanged.
+- **PORTING_LEDGER / ADR updated:** ADR-006 amended. No new port — nothing vendored.
+- **Mutation records:**
+  - `trust-dial.upstream.test.ts` vs mirror: old UNKNOWN-guard bug / elevate-to-MEDIUM /
+    non-reflexive threshold / wrong default threshold — 4/4 caught.
+  - Staleness gate: digest in `UPSTREAM_PINS.md` changed without re-capture — caught.
+  - `capture-hook-envelope.sh` post-refactor regression check: end-to-end still green, tampered
+    source and cookieless binary still fail. No regression from the prelude extraction.
+- **Stop-condition status:** the highest-risk remaining hand-written mirror is now checked against
+  upstream. It is **not** retired — Phase 1 still owes driving it from the middleware.

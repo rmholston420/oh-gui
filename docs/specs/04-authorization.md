@@ -27,8 +27,17 @@
 > instead makes ordinary in-scope MEDIUM edits pause, contradicting "in-scope writes proceed".
 > Elevating to **HIGH** against the standard HIGH threshold is the only combination that matches.
 > This does not re-litigate the hard correction below - the analyzer still does the path-scoping.
+>
+> **Confirmed against upstream 2026-08-08 22:20 EDT.** The above was reasoned from the SDK's
+> documented behavior. It has since been *executed*: `scripts/capture-trust-dial.sh` runs the
+> pinned image's own `ConfirmRisky` and `EnsembleSecurityAnalyzer` and records the result in
+> `docs/evidence/trust-dial/policy-truth-table.json`. It confirms both load-bearing facts -
+> `ConfirmRisky(threshold=HIGH).should_confirm(HIGH)` is true because `is_riskier` is reflexive,
+> and ensemble fusion at the default `propagate_unknown=False` filters UNKNOWN and returns
+> `max(concrete)`, so a concrete HIGH from the worktree analyzer reaches the policy even when the
+> incoming assessment is UNKNOWN.
 
-Hard correction (final, do not re-litigate): ConfirmationPolicyBase.should_confirm() receives only a SecurityRisk enum value - path-scoping logic is architecturally impossible at the policy layer. The correct implementation is a custom SecurityAnalyzerBase subclass (whose security_risk(action) DOES receive the full action) that elevates any out-of-worktree write to at least MEDIUM, composed into EnsembleSecurityAnalyzer, paired with standard ConfirmRisky(). Do not subclass ConfirmationPolicyBase for this stop.
+Hard correction (final, do not re-litigate): ConfirmationPolicyBase.should_confirm() receives only a SecurityRisk enum value - path-scoping logic is architecturally impossible at the policy layer. The correct implementation is a custom SecurityAnalyzerBase subclass (whose security_risk(action) DOES receive the full action) that elevates any out-of-worktree write to **HIGH** (corrected from "at least MEDIUM" by ADR-006; see the correction block above), composed into EnsembleSecurityAnalyzer, paired with standard ConfirmRisky(). Do not subclass ConfirmationPolicyBase for this stop.
 
 - Must be settable per task type, not only globally.
 - Must be mutable mid-run without cancelling the conversation - wire directly to conversation.set_confirmation_policy().

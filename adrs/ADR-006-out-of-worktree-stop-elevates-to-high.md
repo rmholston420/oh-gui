@@ -1,6 +1,20 @@
 # ADR-006 — The out-of-worktree trust-dial stop elevates to HIGH
 
-**Status:** Ratified
+> **STATUS AMENDMENT (2026-08-08 22:20 EDT):** the decision below was reached by reasoning over
+> the SDK's *documented* behavior. It has now been **executed against the pinned image** and is
+> confirmed unchanged. `scripts/capture-trust-dial.sh` extracts
+> `openhands.sdk.security.{risk,confirmation_policy,analyzer,ensemble}` from
+> `agent-server@sha256:f0244fd7…`, proves each matches the pinned sdist, and runs the real policy
+> objects across all 192 (stop × threshold × confirm_unknown × risk × location) combinations.
+> Evidence: `docs/evidence/trust-dial/policy-truth-table.json`.
+>
+> Both load-bearing premises hold: `SecurityRisk.is_riskier` is reflexive (so threshold=HIGH
+> pauses on HIGH), and `EnsembleSecurityAnalyzer` defaults to `propagate_unknown=False`, filtering
+> UNKNOWN and returning `max(concrete)` — so the worktree analyzer's concrete HIGH reaches the
+> policy even when the incoming assessment is UNKNOWN, and `confirm_unknown` is never consulted.
+> The decision needed no change; what changed is that it is now checked rather than argued.
+
+**Status:** Ratified · Amended 2026-08-08 (verified against upstream; decision unchanged)
 **Lock-in phase:** Phase 0 (display mirror) · binding on Phase 1 (middleware)
 **Supersedes:** —
 
