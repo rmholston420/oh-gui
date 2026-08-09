@@ -3445,3 +3445,71 @@ The applied diff is now printed for every mutant.
   `WATCH`, so the walkthrough costs the headless suite ~1.3s. Mutation: forcing the
   `not-executable` branch off fails the walkthrough (exit 1) — it gates, it does not merely record.
 - **Stop-condition status:** met.
+
+## 2026-08-09 00:02 EDT — Correction: the two preceding entries are timestamped in UTC, not EDT
+
+- **Stage / plugin / port:** log hygiene
+- **What changed:** nothing in the tree. Recording an error in this log's own discipline. The
+  entries headed `2026-08-09 03:45 EDT` and `2026-08-09 03:58 EDT` were written when the wall
+  clock in America/Detroit read **2026-08-08 23:45** and **23:58 EDT**. Both are UTC values
+  mislabelled `EDT`, four hours ahead. The entries either side of them are correct, so the drift
+  is visible in the file. Per append-only discipline the headings are left as written and this
+  entry is the correction of record. Read those two as 23:45 and 23:58 on 2026-08-08.
+- **Files touched:** `BUILD_LOG.md`
+- **Stop-condition status:** met.
+
+## 2026-08-09 00:02 EDT — Canvas reclassified as a primary donor; ADR-025 ratified, ADR-024 amended
+
+- **Stage / plugin / port:** Phase 1 · project scope · ADR-025
+- **What changed:** The operator clarified that OH-GUI is a restructuring and extension of Agent
+  Canvas, meant to expose everything useful across the full OpenHands suite, reusing what canvas
+  offers while adding better things. Three consequences, all recorded:
+  1. **ADR-025 ratified.** Canvas is a primary donor, reused at *source* level; the npm package is
+     never a runtime dependency. Evidence drove the choice and inverted the obvious answer: the
+     areas cheap to consume (`files`/`terminal`/`browser` = 8 files, ~6 k chars) are cheaper to
+     vendor than to depend on, since depending would drag in HeroUI, react-router 7, Monaco and
+     xterm; while the areas that would save real work (`conversation-panel` 30 `#/api` imports,
+     `settings` 12, `chat` tanstack + sockets) fetch agent-server directly, which ADR-001 forbids.
+  2. **ADR-024 amended.** Its `canvas_extensions` deferral trigger waited on canvas shipping a
+     consumer; under ADR-025 OH-GUI *is* that consumer. Deferral stands, trigger corrected.
+  3. **`UPSTREAM_PINS.md` §3a reclassified** from "reference only, not consumed" to donor.
+- **Key discovery:** canvas's npm tarball ships its complete original source inside sourcemaps
+  (400/400 sampled maps carry `sourcesContent`; 745 files, ~2.84 M chars) — a hash-pinned,
+  offline-inspectable donor, so "inspect donor code before porting" needs no monorepo access.
+- **Course correction this forces:** the next planned slice — rendering the agent's own account
+  (`summary` / `thought` / `reasoning_content` / `thinking_blocks` / `critic_result`, all six
+  confirmed present on the wire in the 1.37.0 client schema) — **canvas already solves**, in
+  `event-thought-helpers.ts` (3.8 k), `handle-event-for-ui.ts` (15.0 k),
+  `critic-result-display.tsx` (7.3 k) and `get-action-event-title.ts` (4.2 k). It was queued as a
+  hand-build. It converts to a port.
+- **Confirmed genuinely additive:** zero occurrences of `blast`, `untrusted`, `pending_action`,
+  `reject_pending` or `awaiting_confirmation` across all 745 canvas files, so ADR-022's read-only
+  gate, ADR-023's blast radius, the 04a badge and the §4.1 trust dial have no canvas counterpart.
+- **Operator decision recorded:** suite-wide exposure is a **north star only** — no coverage
+  matrix, no drift test, no DoD change. Consequence noted in ADR-025 §7: nothing mechanical will
+  catch a suite surface we never expose.
+- **Files touched:** `adrs/ADR-025-canvas-is-a-primary-donor-reused-at-source-level.md` (new),
+  `adrs/ADR-024-canvas-alignment-client-pin-and-extensions.md`, `adrs/README.md`,
+  `docs/UPSTREAM_PINS.md`, `BUILD_LOG.md`
+- **Ports / adapters affected:** none yet; ADR-025 binds every subsequent port
+- **Verification:** no code changed, so the gate is unaffected. Field presence re-verified directly
+  against `agent-server-schema.d.ts` and SDK 1.41.0 `action.py` before any of this was written.
+- **Stop-condition status:** met. Next action is the ported agent's-own-account slice.
+
+## 2026-08-09 00:06 EDT — Correction: ADR-025 as first written re-decided a settled spec position
+
+- **Stage / plugin / port:** Phase 1 · ADR-025 · log hygiene
+- **What changed:** ADR-025 was drafted as though canvas's donor status were an open question the
+  operator had just resolved. It was not. `00-ground-truth.md`, amended by ADR-001, already states
+  canvas is "reclassified from *base* to *donor* — vendor its MIT components into OH-GUI and log
+  them in `PORTING_LEDGER.md`", plus "Do not treat this as a greenfield build". The preceding
+  BUILD_LOG entry's claim that canvas was "reclassified as a primary donor" therefore overstates
+  what changed: **the reclassification had already happened.**
+  The `UPSTREAM_PINS.md` §3a line "reference only, not consumed" was a lone outlier contradicting
+  its own baseline, not the project's position. ADR-025 retitled and rescoped to cover only the
+  reuse *mechanics* — source recovery from sourcemaps, the coupling split, the never-a-dependency
+  prohibition — with an explicit "what was already decided" section citing the spec.
+- **Root cause:** worked from a session summary of the specs instead of rereading the specs. Second
+  instance tonight of trusting a paraphrase over the source; the first was the UTC/EDT timestamps.
+- **Files touched:** `adrs/ADR-025-…md`, `BUILD_LOG.md`
+- **Stop-condition status:** met.

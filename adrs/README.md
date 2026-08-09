@@ -58,4 +58,5 @@ old one and mark the old one `Amended · superseded by ADR-###`.
 | ADR-021 | Agent Server DTOs are generated, not hand-written; `AuthorizeRequest` is PROVISIONAL until verified | Ratified |
 | ADR-022 | Below 900px the authorization surface is read-only: a UI affordance, not an enforcement boundary | Ratified |
 | ADR-023 | Blast radius is a per-tool projection; the terminal and MCP tools have none, and show raw native inputs instead | Ratified (option B) · amended 2026-08-09 (wire discriminator is `action.kind`, mangled; four statuses) |
-| ADR-024 | Agent Canvas alignment: hold the typescript-client at 1.37.0, defer `canvas_extensions` | Ratified |
+| ADR-024 | Agent Canvas alignment: hold the typescript-client at 1.37.0, defer `canvas_extensions` | Ratified · amended |
+| ADR-025 | Agent Canvas is a primary donor, reused at source level, never a runtime dependency; suite exposure is a north star, not a gate | Ratified |

@@ -1,8 +1,19 @@
 # ADR-024 — Agent Canvas alignment: hold the client at 1.37.0, defer `canvas_extensions`
 
-**Status:** Ratified
+**Status:** Ratified · amended 2026-08-09
 **Lock-in phase:** Phase 1, authorization surface
 **Supersedes:** —
+
+> **STATUS AMENDMENT (2026-08-09 00:02 EDT):** decision 2's *rationale and revisit trigger were
+> wrong*, though the deferral itself stands. This ADR deferred `canvas_extensions` partly because
+> "canvas 1.12.0 has zero awareness of it" and set the revisit trigger as "canvas itself ships a
+> consumer". The underlying fact still holds — re-grepping the 1.12.0 package for
+> `canvas-extension` returns zero hits. But the inference made canvas the gatekeeper, when
+> ADR-025 establishes that **OH-GUI is canvas's restructured successor and is therefore the
+> consumer that trigger was waiting for**. Corrected trigger: revisit when OH-GUI has a page host
+> capable of mounting a contributed page, or when a spec requires extension-contributed UI —
+> whichever comes first. Both are conditions we control, not upstream's. The original decision
+> text below is unchanged.
 
 ## Context
 

@@ -162,7 +162,14 @@ some bundlers — plan for an alias or an `external`. ADR-001's phrase "no Node 
 about the dependency graph and right about browser runtime behaviour; corrected in ADR-001
 Amendment #1.
 
-## 3a. Agent Canvas — reference only, not consumed
+## 3a. Agent Canvas — primary donor, reused at source level (see ADR-025)
+
+> **Reclassified 2026-08-09 (ADR-025).** This section previously read "reference only, not
+> consumed". That understated canvas's role: OH-GUI is a restructuring and extension of it, so
+> canvas is the **first place to look** for any new component. Reuse is at *source* level —
+> `@openhands/agent-canvas` is never a runtime dependency. The tarball below ships no `.tsx`, but
+> every sampled sourcemap carries `sourcesContent`, so the full original source (745 files,
+> ~2.84 M chars) is recoverable from this hash-pinned artifact.
 
 Recorded because canvas is the reference consumer of the same agent-server, so a divergence between
 its choices and ours is a fact worth keeping visible. **No canvas code is vendored or installed**
