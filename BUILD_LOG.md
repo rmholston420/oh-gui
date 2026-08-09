@@ -4019,3 +4019,28 @@ The applied diff is now printed for every mutant.
 - **Also:** enrolled spec `15` in `scripts/spec_coverage.py`, which the spec subagent correctly
   declined to edit as out-of-scope; register regenerated at 393 requirements across 17 specs.
 - **Stop-condition status:** ADR-031 closed. Browser verification outstanding.
+
+## 2026-08-09 05:10 EDT — ADR-031 revision 2: the cause was the clamp preferred values, not the minimums
+
+- **Stage / plugin / port:** Phase 1 · shell layout · no port
+- **What changed:** revision 1 (1650px) was wrong and its own browser test caught it — 33px of real
+  overflow at 1650px, 18px at 1920px. A DOM probe showed resolved tracks `297px 990px 396px`, far
+  above the 280/380 minimums revision 1 reasoned about. The binding constraint was
+  `18vw + 24vw = 42vw` against the 40% budget left by the 60% stage floor: a 2% overflow at every
+  width in the tier. Sides are now `17vw`/`23vw` (40% exactly) and the breakpoint is **1700px**,
+  the smallest width where the 23vw track clears its own 380px floor.
+- **Why the unit test did not catch it:** it was written from the same mistaken model as the ADR,
+  so it agreed with the error. Only the browser measurement falsified it. Recorded in the ADR.
+- **Files touched:** `adrs/ADR-031-four-region-breakpoint-is-1700px.md` (renamed from -1650px),
+  `docs/specs/03-layout.md`, `docs/specs/COVERAGE.md`, `apps/gui/src/shell/Shell.css`,
+  `apps/gui/src/shell/breakpoint-arithmetic.test.ts`, `apps/gui/e2e/breakpoint-overflow.spec.ts`
+- **Verification:** 9 unit tests green (added an exhaustive integer sweep to 3440px and a
+  regression asserting 1650-1652 would overflow); 11 browser tests green at
+  1600/1620/1650/1699/1700/1800/1920/2560/3440. Hard constraints `=== PASSED ===`.
+- **Operator hardware finding (05:12 EDT):** the display is 3440x1440 (21:9). At 3440px both side
+  clamps are pinned to their maximums (360/440), so the vw terms never bind on the only screen this
+  system targets. Resolved layout is `360 / 2640 / 440` — the center stage is 77% of the width and
+  the spec's fourth region (REQ-03-014, "up to 4 regions") is unimplemented. The corrected
+  arithmetic governs 1700-1900px, which this workstation never occupies. Logged as the next layout
+  item rather than fixed now, on the operator's instruction to prioritise the self-coding loop.
+- **Stop-condition status:** ADR-031 closed and browser-verified. Ultrawide layout deferred.

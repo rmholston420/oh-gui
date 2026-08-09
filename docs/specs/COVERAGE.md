@@ -66,7 +66,7 @@ uncovered default: it makes no implementation claim without named repository evi
 | REQ-03-011 | SPECCED |  | The lens switch: a single binary toggle in the global command bar - CSS/layout transition,... |
 | REQ-03-012 | SPECCED |  | The unmodified Agent Canvas is not a third mode. Retained only as: a pinned reference chec... |
 | REQ-03-013 | SPECCED |  | One-keystroke maximize for any surface, with restore. <!-- |
-| REQ-03-014 | SPECCED |  | Breakpoints: >=1650px (up to 4 regions), 1200-1649px (2 panes + collapsible sides), 900-11... |
+| REQ-03-014 | SPECCED |  | Breakpoints: >=1700px (up to 4 regions), 1200-1699px (2 panes + collapsible sides), 900-11... |
 | REQ-03-015 | SPECCED |  | Mobile/tablet approval policy: below 900px, authorization cards are read-only - Approve/Re... |
 | REQ-03-016 | SPECCED |  | Save per-mode layouts. (v4.3, ADR-003: the delegated-review exception and the <!-- |
 | REQ-03-017 | SPECCED |  | Terminal pane and command palette: port Qovery/react-xtermjs and cmdk/react-cmdk as commod... |

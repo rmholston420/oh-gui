@@ -3,11 +3,12 @@
  *
  * WHAT THIS SLICE DELIBERATELY DOES NOT BUILD
  * -------------------------------------------
- * Section 4.2 also requires the untrusted-content badge from 04a and the 4.2.1 audit log. Each is
- * tracked in KNOWN_ISSUES rather than stubbed here. The agent's own account
- * (`summary` / `thought` / `reasoning_content`) IS now built — ported from Agent Canvas, see
- * `agent-account.ts` — and renders below the blast radius so the derived reading is what the
- * operator meets first.
+ * Section 4.2's untrusted-content indicator is built as an explicit GUI-local provenance input:
+ * pinned SDK 1.41.0 `ActionEvent` carries no trust-class or context-provenance field. The badge
+ * never presents that local input as SDK-native. The 4.2.1 audit log remains outside this slice.
+ * The agent's own account (`summary` / `thought` / `reasoning_content`) IS now built — ported from
+ * Agent Canvas, see `agent-account.ts` — and renders below the blast radius so the derived reading
+ * is what the operator meets first.
  *
  * Blast radius IS now built, per ADR-023 (ratified option B), but only as identity reads of
  * native fields and one URL parse — see `blast-radius.ts`. It is optional on `PendingAction`:
@@ -32,6 +33,8 @@ import { readAgentAccount, type AgentAccountSource } from './agent-account';
 import { AgentAccountSection } from './AgentAccountSection';
 import { blastRadius, type ActionLike } from './blast-radius';
 import BlastRadiusSection from './BlastRadiusSection';
+import { UntrustedContentBadge } from './UntrustedContentBadge';
+import type { GuiLocalUntrustedContentProvenance } from './untrusted-content';
 import { APPROVAL_MIN_WIDTH, canActOnAuthorization, useViewportWidth } from './viewport';
 
 export type SecurityRisk = 'LOW' | 'MEDIUM' | 'HIGH' | 'UNKNOWN';
@@ -42,6 +45,12 @@ export interface PendingAction {
   toolName: string;
   /** `ActionEvent.security_risk`. Null when the agent supplied none — never defaulted to LOW. */
   securityRisk: SecurityRisk | null;
+  /**
+   * GUI-local (not SDK-native) untrusted-content provenance. The pinned SDK's `ActionEvent` has
+   * no equivalent field. Omit only when this GUI has no provenance input; within the local value,
+   * `null` means not computed and `[]` means computed with no untrusted influence.
+   */
+  guiLocalUntrustedContentProvenance?: GuiLocalUntrustedContentProvenance;
   /**
    * The native `ActionEvent` fields blast radius is projected from. Optional: when absent, no
    * blast-radius section renders. Omission is not the same as an empty radius, so it must not
@@ -122,6 +131,7 @@ export default function AuthorizationCard({
             The agent rates this {action.securityRisk}
           </span>
         )}
+        <UntrustedContentBadge provenance={action.guiLocalUntrustedContentProvenance} />
       </div>
 
       {/* Above the command and the analysis sections, not below them. This notice governs whether

@@ -470,3 +470,19 @@ better than another. They are a baseline of record for the app, not a model rank
   Then add a gate asserting every auto note matches the current requirement text — the gate is the
   actual deliverable, since the current failure mode is silence.
 - **Related DEBUG_LOG search terms:** COVERAGE.md, spec_coverage, note cell, stale requirement text
+
+### 2026-08-09 — Four-region layout is not designed for the 3440x1440 target display
+
+- **Blocks:** nothing functionally; it is the primary layout-quality gap on the only screen this
+  system targets.
+- **Symptom:** at 3440px the rail and conversation clamps are both pinned to their maximums
+  (360px, 440px), totalling 800px of 3440 (23%). The center stage absorbs the remaining 2640px,
+  which is far past a comfortable reading or editing measure. REQ-03-014 promises "up to 4
+  regions" at the top tier but only three are implemented (rail, stage, conversation).
+- **Attempted fixes:** none. ADR-031 rev. 2 corrected overflow, not proportion; verified
+  overflow-free at 3440px but did not address whether the resulting proportions are usable.
+- **Next investigation:** decide whether the ultrawide answer is (a) larger side caps, (b) a
+  max-width on the stage with the surplus given to a fourth region, or (c) a splittable stage
+  (editor + diff side by side), which is likely the real 21:9 win and interacts with ADR-030.
+  Option (c) is a design decision requiring operator input, not a CSS tweak.
+- **Related DEBUG_LOG search terms:** 3440, ultrawide, 21:9, four-region, clamp maximum, REQ-03-014

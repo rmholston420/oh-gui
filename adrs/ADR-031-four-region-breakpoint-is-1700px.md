@@ -1,6 +1,33 @@
-# ADR-031 — The four-region breakpoint is 1650px, because 1600px cannot satisfy its own requirements
+# ADR-031 — The four-region breakpoint is 1700px, because 1600px cannot satisfy its own requirements
 
-**Status:** Ratified
+> **REVISION 2 (2026-08-09 05:08 EDT) — the original decision was wrong and was caught by its own
+> browser test.** Revision 1 concluded 1650px by reasoning about the side *minimums* (280 + 380 =
+> 660 against a 40% budget). The Playwright suite then measured 33px of real overflow at 1650px,
+> 18px at 1920px. A DOM probe showed the resolved tracks at 1650px were `297px 990px 396px` — the
+> rail and conversation were nowhere near their 280/380 minimums.
+>
+> **The binding constraint was never the minimums; it was the clamp preferred values.** The sides
+> were `clamp(280px, 18vw, 360px)` and `clamp(380px, 24vw, 440px)`: `18vw + 24vw = 42vw` against a
+> 40% budget left by the 60% stage floor. The layout overflowed by 2% of the viewport at every
+> width in the tier, shrinking only where a clamp hit its cap (hence 18px rather than 33px at
+> 1920px, where the conversation track is capped at 440px).
+>
+> Minimum-fit is **necessary but not sufficient**. Three conditions must hold together: the
+> minimums must fit the 40% budget, the preferred percentages must sum to <=40%, and the maximums
+> must not exceed it either.
+>
+> **Revised decision: sides become `17vw` and `23vw` (40% exactly) and the breakpoint becomes
+> 1700px.** 1700px is the smallest width where the 23vw conversation track clears its own 380px
+> floor; below 1653px the floor wins and the sides exceed 40% again. Verified by exhaustive
+> search over every integer width from the breakpoint to 3440px (Colossus's ultrawide), and in a
+> real browser at 1600/1620/1650/1699/1700/1800/1920/2560/3440.
+>
+> The lesson worth keeping: revision 1's arithmetic was self-consistent and completely wrong,
+> because it modelled a constraint the CSS was not actually exercising. The unit test agreed with
+> it, since it was written from the same mistaken model. Only the browser measurement caught it.
+> A test derived from the same assumption as the implementation cannot falsify that assumption.
+
+**Status:** Ratified · revised 2026-08-09 (revision 2)
 **Lock-in phase:** Phase 1 · shell layout
 **Supersedes:** — (corrects REQ-03-014 in `docs/specs/03-layout.md`)
 

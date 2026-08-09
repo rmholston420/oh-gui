@@ -34,7 +34,7 @@ The unmodified Agent Canvas is not a third mode. Retained only as: a pinned refe
 ## 3.2 Responsiveness
 
 - One-keystroke maximize for any surface, with restore. <!-- [REQ-03-013] -->
-- Breakpoints: >=1650px (up to 4 regions), 1200-1649px (2 panes + collapsible sides), 900-1199px (1 pane + drawer), <900px (monitoring/approvals/conversation only). <!-- [REQ-03-014] -->
+- Breakpoints: >=1700px (up to 4 regions), 1200-1699px (2 panes + collapsible sides), 900-1199px (1 pane + drawer), <900px (monitoring/approvals/conversation only). <!-- [REQ-03-014] -->
 - Mobile/tablet approval policy: below 900px, authorization cards are read-only - Approve/Reject/Relax require >=900px viewport. <!-- [REQ-03-015] -->
 - Save per-mode layouts. (v4.3, ADR-003: the delegated-review exception and the <!-- [REQ-03-016] -->
   novice-default-lens rule are removed. Below 900px the surface stays read-only; approve,
@@ -42,9 +42,12 @@ The unmodified Agent Canvas is not a third mode. Retained only as: a pinned refe
 
 > **Corrected 2026-08-09 (ADR-031).** The four-region threshold was 1600px, which cannot satisfy
 > REQ-03-007, REQ-03-008 and REQ-03-009 simultaneously: a 60% stage floor leaves 640px for side
-> minimums summing to 660px. The threshold is a fixed point, not a sum — the stage floor scales
-> with the viewport — so it is `660 / 0.4 = 1650px`. An intermediate correction to 1620px was also
-> wrong and still overflowed by 12px. The three constituent minimums are unchanged.
+> minimums summing to 660px. Corrections to 1620px and then 1650px were also wrong: the real
+> constraint is the side tracks' *preferred* widths, which were `18vw + 24vw = 42vw` against the
+> 40% the 60% stage floor leaves. The sides are now `17vw` and `23vw` (40% exactly) and the
+> threshold is **1700px**, the smallest width where the 23vw conversation track clears its own
+> 380px floor. Verified overflow-free at every integer width to 3440px. The 280/380/360/440
+> minimums and maximums are unchanged.
 
 ## 3.3 Implementation notes
 

@@ -28,32 +28,32 @@ async function openProShell(page: Page, width: number) {
 }
 
 test.describe('four-region breakpoint does not overflow (ADR-031)', () => {
-  // 1649 is the last two-pane width; 1650 is the first four-region width.
-  // 1600 and 1620 are the two values that were previously believed correct
-  // and both overflowed — they must now resolve to the two-pane tier.
-  for (const width of [1600, 1620, 1649, 1650, 1680, 1920]) {
+  // 1699 is the last two-pane width; 1700 is the first four-region width.
+  // 1600, 1620 and 1650 were all believed correct at some point and all
+  // overflowed — they must now resolve to the two-pane tier.
+  for (const width of [1600, 1620, 1650, 1699, 1700, 1800, 1920, 2560, 3440]) {
     test(`no horizontal overflow at ${width}px`, async ({ page }) => {
       await openProShell(page, width);
       expect(await overflowPx(page)).toBe(0);
     });
   }
 
-  test('four regions appear only at and above 1650px', async ({ page }) => {
+  test('four regions appear only at and above 1700px', async ({ page }) => {
     const rail = () => page.locator('.oh-shell__left-rail');
 
-    await openProShell(page, 1649);
+    await openProShell(page, 1699);
     await expect(rail()).toBeHidden();
 
-    await page.setViewportSize({ width: 1650, height: HEIGHT });
+    await page.setViewportSize({ width: 1700, height: HEIGHT });
     await expect(rail()).toBeVisible();
   });
 
   test('the stage keeps its 60% floor at the boundary', async ({ page }) => {
-    await openProShell(page, 1650);
+    await openProShell(page, 1700);
     const stage = page.locator('.oh-shell__center-stage');
     const box = await stage.boundingBox();
     expect(box).not.toBeNull();
-    // 60% of 1650 = 990. Allow a pixel of subpixel rounding, no more.
-    expect(box!.width).toBeGreaterThanOrEqual(989);
+    // 60% of 1700 = 1020. Allow a pixel of subpixel rounding, no more.
+    expect(box!.width).toBeGreaterThanOrEqual(1019);
   });
 });
