@@ -1,67 +1,45 @@
-# Kosmos Session Handoff — 2026-08-08 20:05 EDT
-
-> Project: **OH-GUI** (`rmholston420/oh-gui`, public, `main`). Read this before doing anything else.
+# OH-GUI Session Handoff — 2026-08-08 20:21 EDT
 
 ## Current build-sequencing position
-
-- **Stage / phase:** **Phase 0 CLOSED 2026-08-08 20:05 EDT.** Phase 1 (Authorization slice) is next
-  and has not started.
-- **Plugin / kernel component:** `apps/gui` first-run wizard shipped. Next component is the
-  authorization slice per `docs/specs/04-authorization.md`.
-- **Port(s) in progress:** none. `services/middleware/` does not exist yet and is the first thing
-  Phase 1 needs.
+- **Stage / phase:** Phase 0 **CLOSED**. Phase 1 (Authorization slice) **not started**.
+- **Plugin / kernel component:** next up is `services/middleware/`, which does not exist yet.
+- **Port(s) in progress:** none.
 
 ## Completed this session
-
-- `87094e9` — reclaimed 247 GB by deleting both orphaned apt container data-roots. Root cause was
-  `containerd.service` (separate `containerd.io` package) still active after only Docker was masked.
-  Free space 434G → 681G.
-- `a404378` — local Docker volumes ruled permanently off-limits; handoff rewritten.
-- `82efce7` — **ADR-016**: baseline benchmark decoupled from Phase 0 exit. It was gating code for
-  reporting reasons; no Phase 1 module imports a benchmark result.
-- `757caef` — **go/no-go executed: NO-GO, zero GPU spent.** The harness disagrees with itself on
-  **40% of repeated tasks** (23 of 58; mean per-task pass probability 0.515). One GPU hour buys 36%
-  power against a 20-point model gap; 80% power costs 171–320 min. ADR-013 gained clause 8 (state
-  the minimum detectable effect in the manifest pre-run) and clause 9 (run-to-run variance is
-  reportable).
-- **Phase 0 exit criterion met** — first-run wizard verified, one native-fidelity defect fixed,
-  test gate strengthened and proven against that defect. 27 Vitest + 8 Playwright green.
+- ADR-016 — decoupled the baseline benchmark from Phase 0 exit (`82efce7`).
+- Go/no-go on the baseline benchmark: **NO-GO**, zero GPU hours spent (`757caef`). Power analysis
+  over empirical per-task pass rates showed the binding constraint is instrument noise, not sample
+  size: the harness disagrees with itself on ~40% of repeated tasks, and 80% power on a 20-point
+  gap costs 3–5 GPU hours. ADR-013 amended with clauses 8 and 9.
+- First-run wizard verified; **native-fidelity defect found and fixed** (`490aee0`). `trust-dial.ts`
+  guarded the out-of-worktree HIGH elevation with `risk !== 'UNKNOWN'`, so with
+  `confirm_unknown=false` the UI claimed an unclassifiable write outside the worktree would
+  proceed where OpenHands actually pauses. `EnsembleSecurityAnalyzer` filters UNKNOWN out before
+  `max(concrete)`, so `confirm_unknown` is never consulted. ADR-015 violation. Regression tests
+  proven against the old predicate before the fix landed.
+- `scripts/verify-local.sh` — one-command, colour-coded operator verification (`0a91b75`).
+- Walkthrough test + clamp extraction (`845ea1e`). Mutation testing showed a button-mashing test
+  was covering nothing; clamp moved to `wizard-nav.ts` where it is reachable.
+- **Operator ran the headed walkthrough on Colossus and it passed. Phase 0 closed.**
 
 ## Remaining before the current Definition of Done
+Phase 0 has none. Phase 1 exit criteria are the cumulative list at `docs/specs/04-authorization.md`
+§4.10 — restate them before writing any code.
 
-Phase 0's DoD is met. Phase 1's exit criteria are the cumulative list in
-`docs/specs/04-authorization.md` §4.10 (approve / reject-with-reason / mid-run trust-dial change
-without restart; no retroactive auto-approval; provenance badge; expiring relaxation in the audit
-log; stuck-loop card with five actions; hard-budget pause; reliability tier; malformed-tool-call
-diagnostic; cloud-fallback escape hatch; scope-shape review screen; visible UNKNOWN handling — all
-in both Vibe and Pro lenses).
+## Open questions / awaiting operator answer
+- Build a minimal middleware model-profile scan early in Phase 1 so wizard step 1 stops being an
+  inert placeholder? Agent recommendation: no — the authorization slice forces the middleware into
+  existence anyway, and the scan is cheap to add once it exists.
 
-Carried forward as owed work, tracked in `KNOWN_ISSUES.md`:
-- Wizard spec 3.4 items 1 and 3 ship inert — they need the middleware.
-- `trust-dial.ts` is a hand-maintained mirror; drive it from the middleware schema.
-- ADR-014 is still **Proposed**, gated on four-item executable verification.
-
-## Standing constraints (carry forward — violating these has cost real hours)
-
-1. **Never prune Docker volumes.** ~122 GB across 69 local volumes is off-limits, permanently.
-2. **Never make a model/quant/runtime superiority claim** without an ADR-013-compliant run
-   (now including clauses 8–9). ADR-012's upstream-deference default is the only exception.
-3. **Never quote the six Phase 0 block acceptance rates as a model ranking.**
-4. **Always use Playwright to check the frontend.** jsdom has no layout engine and no colours.
-5. GPU gates: `GPU_MAX_C=83`, `GPU_WARN_C=80`, `GPU_COLD_C=45`. Monitor temperature in any script
-   that drives the LLM.
-6. Verify a claim by executing it. A test's log is the author's summary, not the run.
-
-## Open questions / awaiting user answer
-
-- Whether to build a minimal middleware model-profile scan early in Phase 1 so wizard step 1 stops
-  being a placeholder, or to leave it until the authorization slice needs the middleware anyway.
-  My recommendation: leave it; the authorization slice forces the middleware into existence and the
-  scan is cheap to add once it exists.
+## Carried-in debt
+- Wizard spec §3.4 items 1 and 3 ship inert: ADR-001 item 4 confines the frontend to the
+  middleware, which does not exist until Phase 1. Both flagged in `KNOWN_ISSUES.md`.
+- `trust-dial.ts` is a hand-maintained mirror of SDK semantics and has already shipped one wrong
+  decision. Drive it from the middleware's generated schema in Phase 1.
+- ADR-014 is **Proposed**, gated on four-item executable verification.
+- Baseline benchmark decoupled (ADR-016) and unrun; harness self-disagreement is the open problem.
+- Next free ADR number: **ADR-017**.
 
 ## Exact next action
-
-Start the Phase 1 authorization slice: create `services/middleware/` and stand up the OH-GUI
-middleware skeleton, since every remaining Phase 1 exit criterion depends on it and the frontend is
-forbidden from talking to anything else (ADR-001 item 4). Restate scope from
-`docs/specs/04-authorization.md` before writing code.
+Read `docs/specs/04-authorization.md` §4.10, restate the Phase 1 scope and stop condition to the
+operator, and wait for confirmation before creating `services/middleware/`.

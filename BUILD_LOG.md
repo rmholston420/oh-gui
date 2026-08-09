@@ -2952,3 +2952,19 @@ split.
   `BUILD_LOG.md`, `DEBUG_LOG.md`
 - **PORTING_LEDGER / ADR updated:** none
 - **Stop-condition status:** met pending operator confirmation of the headed run.
+
+## 2026-08-08 20:21 EDT — Phase 0 CLOSED: operator witnessed the walkthrough on Colossus
+
+- **Stage / plugin / port:** Phase 0 · first-run wizard · no port touched
+- **What changed:** Nothing built. Recording the acceptance event.
+- **Evidence:** Operator ran `./scripts/verify-local.sh --walkthrough` on Colossus at HEAD 845ea1e
+  and watched headed Chromium drive all 5 wizard steps forward and back to 1 — 1 passed (13.3s).
+  Earlier the same evening, the full gate ran green on the same machine at 0a91b75: node v24.16.0,
+  port free, lint clean, 27/27 Vitest (31/31 as of 845ea1e), production build, 8/8 Playwright,
+  5 screenshots. Phase 0 exit was previously verified only in the agent sandbox; it is now
+  verified on the target machine, which is what the operator required.
+- **Files touched:** `BUILD_LOG.md`, `SESSION_HANDOFF.md`
+- **Ports / adapters affected:** none
+- **PORTING_LEDGER / ADR updated:** none
+- **Stop-condition status:** MET. Phase 0 is closed. Next work is the Phase 1 authorization slice,
+  which begins with creating `services/middleware/`.
