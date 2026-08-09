@@ -65,7 +65,13 @@ test.describe('@live real conversation against agent-server', () => {
     // Spec 03 makes the GUI read-only below 900px with no exception path, so a window that failed
     // to maximize would disable the very controls these tests click, and the failure would surface
     // as an unexplained "element is not enabled" twenty seconds later. Name it here instead.
-    const width = await page.evaluate(() => window.innerWidth);
+    const { width, height } = await page.evaluate(() => ({
+      width: window.innerWidth,
+      height: window.innerHeight,
+    }));
+    // Printed every run so the size the operator is actually looking at is a known number rather
+    // than something inferred from how the window looks. Pin it with WATCH_WIDTH / WATCH_HEIGHT.
+    console.log(`[viewport] ${width}x${height}`);
     expect(
       width,
       `viewport is ${width}px wide; below 900px the GUI is read-only by design and no control can ` +
