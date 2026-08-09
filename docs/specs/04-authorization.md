@@ -54,7 +54,23 @@ When the conversation enters WAITING_FOR_CONFIRMATION, render a rail-anchored ca
 - The risk level, labelled as **the LLM's** assessment — `ActionEvent.security_risk`, whose native field description reads "The LLM's assessment of the safety risk of this action" (`sdk/event/llm_convertible/action.py:66-69`). Never render it as an unattributed verdict.
 - ~~which analyzer flagged it (pattern/policy-rail/LLM/GraySwan/ensemble) plus rationale~~ — **REMOVED 2026-08-08 by ADR-015 Status amendment.** Not native and **not recoverable**: `SecurityAnalyzerBase.security_risk()` returns a bare four-value enum with no provenance carrier (`sdk/security/analyzer.py:26`, `sdk/security/risk.py:13-23`), and `EnsembleSecurityAnalyzer` collects child verdicts into a *local* list and returns `max(concrete)`, discarding attribution at the return boundary (`sdk/security/ensemble.py:80-101`). Displaying it would be manufacturing it.
 - **Substituted for the above, all native:** the LLM's own account of the action — `ActionEvent.summary` (LLM-provided ~10-word explainability string), `thought`, and `reasoning_content` (`action.py:26-88`) — each labelled as the agent's account, not an analyzer's justification. Optionally the **configured** analyzer set from `EnsembleSecurityAnalyzer.analyzers` (`ensemble.py:64-68`), labelled as configuration, never as attribution.
-- Blast radius: files, paths, network hosts, credentials touched. **Classified DERIVED** under ADR-015: a per-tool projection over the native `ActionEvent.action`, `tool_call`, and `tool_name` (`action.py:40-56`). Subject to all five DERIVED conditions, including **(e)** — the native inputs must be displayed inline at their native field names so the operator can audit the derivation. One declared formula per tool class; a tool class with no declared projection renders `null`, not an empty blast radius. An empty list and an uncomputed list must never look alike.
+- ~~Blast radius: files, paths, network hosts, **credentials touched**~~ — **"credentials touched" REMOVED 2026-08-08 by [ADR-023](../../adrs/ADR-023-blast-radius-projection-table.md).** No field on any of the **37** `Action` subclasses in the pinned suite carries credentials, secrets, tokens, keys, environment, or auth material (`docs/evidence/tool-action-fields.json`, verified across `openhands-sdk`, `openhands-tools`, `openhands-workspace`, `openhands-agent-server`). Same category as the analyzer-identity removal above: not unverified, **non-existent**. No substitute — a heuristic over command text would be the manufacture ADR-015 clause 3 forbids.
+- **Blast radius: files, paths, network hosts.** **Classified DERIVED** under ADR-015: a per-tool projection over the native `ActionEvent.action`, `tool_call`, and `tool_name` (`action.py:40-56`). Subject to all five DERIVED conditions, including **(e)** — the native inputs must be displayed inline at their native field names so the operator can audit the derivation. One declared formula per tool class; a tool class with no declared projection renders `null`, not an empty blast radius. An empty list and an uncomputed list must never look alike.
+
+  **Projection table ratified by [ADR-023](../../adrs/ADR-023-blast-radius-projection-table.md)** (field names verified in the pinned image):
+
+  | Action class | Native inputs | Projects |
+  |---|---|---|
+  | `FileEditorAction`, `PlanningFileEditorAction` | `path`, `command` | one path |
+  | `EditAction`, `WriteFileAction`, `ReadFileAction` | `file_path` | one path |
+  | `ListDirectoryAction` | `dir_path`, `recursive` | one path |
+  | `GlobAction` | `path`, `pattern` | search root + pattern, **never** a match set |
+  | `GrepAction` | `path`, `pattern`, `include` | search root + pattern, **never** a match set |
+  | `BrowserNavigateAction` | `url` | one network host, `null` on parse failure |
+
+  **Everything else renders no projection**, including `TerminalAction` (carries only an opaque `command: str` — deriving a radius means parsing shell, which under-reports; see ADR-023 Finding 1) and `MCPToolAction` (carries only `data: dict[str, Any]`, shaped at runtime by the connected MCP server — no static field set exists to project over, ADR-023 Finding 4).
+
+  **Option B (ratified):** a tool with no projection still shows its native inputs **verbatim and unparsed**, under a heading that names the native field and states that no projection was computed — never under a "blast radius" heading. Showing the operator a command is not telling them what it will do. A test must fail if a projected value and a raw native value render under the same heading or with the same affordance.
 - If upstream context is tagged untrusted per 04a-prompt-injection.md, display a distinct badge separate from the risk badge.
 - Three actions: Approve / Reject with reason (free-text required) / Approve and relax for this class.
 - Wire Reject directly to conversation.reject_pending_actions(reason).

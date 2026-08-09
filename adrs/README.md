@@ -52,8 +52,10 @@ old one and mark the old one `Amended · superseded by ADR-###`.
 | ADR-015 | Native-fidelity boundary: only verified native fields, upstream code over documentation | Ratified · amended 2026-08-08 (DERIVED tier ratified; spec 04 §4.2 amended) |
 | ADR-016 | The benchmark gates a claim, not the code: decouple the baseline report from Phase 0 exit | Ratified |
 | ADR-017 | Three ambiguities in the Phase 1 exit criteria, resolved before any of them can be built to | Ratified |
-
 | ADR-018 | The hard-constraints checklist becomes executable: three tiers, one registry, mutation-tested | Ratified |
 | ADR-019 | Spec Wizard ships at the Phase 1→2 boundary; its restricted-capability primitive lands in Phase 1 | Ratified |
 | ADR-020 | Audit-log entries carry structured provenance from Phase 1; the Context Inspector resolves it in Phase 5 | Ratified |
 | ADR-021 | Agent Server DTOs are generated, not hand-written; `AuthorizeRequest` is PROVISIONAL until verified | Ratified |
+| ADR-022 | Below 900px the authorization surface is read-only: a UI affordance, not an enforcement boundary | Ratified |
+| ADR-023 | Blast radius is a per-tool projection; the terminal and MCP tools have none, and show raw native inputs instead | Ratified (option B) · amended 2026-08-09 (wire discriminator is `action.kind`, mangled; four statuses) |
+| ADR-024 | Agent Canvas alignment: hold the typescript-client at 1.37.0, defer `canvas_extensions` | Ratified |

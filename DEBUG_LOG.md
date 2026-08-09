@@ -1577,3 +1577,47 @@ the snap daemon. Recorded in `docs/forge-oh-port-survey.md`.
 - **Generalisable trap:** a pinned install is not a pinned interpreter. A later `pip install` in the
   same venv can move a pin underneath a script that has already reported success. Assert versions
   at the point of use, not at the point of install.
+
+## 2026-08-09 03:40 EDT — Every action class would have rendered as `unknown-action`
+
+- **Symptom:** No runtime error. The first `blast-radius.ts` keyed its projection table on a
+  top-level `action_class` field of `ActionEvent`. No such field exists. Every one of the 37 action
+  classes would have fallen through to the `unknown-action` branch — silently, uniformly, and with
+  a plausible-looking UI.
+- **Affected stage / plugin / port:** Phase 1 · authorization surface · spec 04 §4.2 · ADR-023
+- **Root cause:** Two compounding mistakes. (1) The concrete class arrives nested, as
+  `ActionEvent.action.kind`, not as a sibling of `action`. (2) The value is not the bare class
+  name; the generated schema mangles it to
+  `openhands__tools__file_editor__definition__FileEditorAction-Output__1`, i.e.
+  `<module__path>__<ClassName>-Output__<N>`. `ActionEvent` itself carries a *bare* `kind:
+  'ActionEvent'`, which is what made the wrong assumption feel confirmed.
+- **Fix applied:** Re-keyed on `event.action.kind`; added `normalizeActionKind()` accepting both
+  the mangled and bare forms; added a contract test that walks the `Action` union out of the
+  installed `@openhands/typescript-client` generated schema and asserts every wire kind normalizes
+  into a class with a recorded ADR-023 decision. ADR-023 amended.
+- **Files changed:** `apps/gui/src/features/authorization/blast-radius.ts`,
+  `apps/gui/src/__tests__/blast-radius-contract.test.ts`,
+  `adrs/ADR-023-blast-radius-projection-table.md`
+- **Related BUILD_LOG entry:** 2026-08-09 03:45 EDT
+
+**Search terms:** `unknown-action`, `action_class`, `action.kind`, mangled discriminator, `-Output__1`,
+fully-qualified kind, silent fallthrough.
+
+## 2026-08-09 03:38 EDT — A mutant that edits a comment proves nothing
+
+- **Symptom:** Two rendering mutants (R1, R2) reported as SURVIVED with all 9 tests green,
+  including one that should have been trivially fatal.
+- **Affected stage / plugin / port:** Phase 1 · test tooling
+- **Root cause:** The mutation script asserted the anchor string was *present in the file* and
+  replaced its first occurrence. For R1 the first occurrence of `data-testid="native-reading"` was
+  in the module's own doc comment, so the mutant edited prose. The guard confirmed the string
+  existed; it never confirmed executable code had changed.
+- **Fix applied:** Mutations are now applied to a specific line, assert the line actually changed,
+  and print the resulting `-`/`+` diff so a comment-only edit is visible immediately. Re-run under
+  the corrected harness, R1 died (6 tests) and R2 turned out to be a *genuine* survivor exposing a
+  real coverage gap.
+- **Files changed:** none in the product; harness is inline in the verification commands.
+- **Related BUILD_LOG entry:** 2026-08-09 03:45 EDT
+
+**Search terms:** mutation survived, mutant did not apply, comment-only edit, first-occurrence
+replace, false negative mutation.

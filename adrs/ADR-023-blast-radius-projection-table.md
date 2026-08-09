@@ -1,6 +1,36 @@
 # ADR-023 — Blast radius is a per-tool projection, and the terminal tool has none
 
-**Status:** Proposed — awaiting operator ratification
+> **STATUS AMENDMENT (2026-08-09 03:40 EDT) — the discriminator is not the class name.**
+>
+> This ADR's projection table is keyed by action class. Implementation revealed that the class
+> does **not** arrive as a bare name, and does not arrive where the first implementation looked
+> for it. It arrives as `ActionEvent.action.kind`, mangled to a fully-qualified form:
+>
+> ```
+> openhands__tools__file_editor__definition__FileEditorAction-Output__1
+> openhands__sdk__mcp__definition__MCPToolAction-Output__1
+> ```
+>
+> Pattern: `<module__path>__<ClassName>-Output__<N>`. `ActionEvent` itself carries `kind:
+> 'ActionEvent'`, which is what made the mistake easy: the outer discriminator is a bare name, the
+> inner one is not.
+>
+> The first implementation keyed on a sibling `action_class` field that does not exist, so **all 37
+> classes would have resolved to `unknown-action`** — the drift state — silently and uniformly.
+> Nothing in the decision text below changes; the *lookup key* does. `normalizeActionKind()`
+> reduces both the mangled and bare forms to the class name, and
+> `apps/gui/src/__tests__/blast-radius-contract.test.ts` walks the `Action` union out of the
+> installed client's generated schema so this cannot drift back unnoticed.
+>
+> Two further points settled during implementation:
+>
+> - **Four statuses, not two.** `projected` / `no-projection` / `not-executable` / `unknown-action`.
+>   `ActionEvent.action` is nullable upstream ("None when non-executable"), which is a documented
+>   state, not drift, and must not render as either an empty radius or an unrecognised class.
+> - The result type named `no-projection-declared` in Consequences below is implemented as
+>   `no-projection`.
+
+**Status:** Ratified 2026-08-08 23:18 EDT (operator chose option B)
 
 > **SCOPE CORRECTION (2026-08-08 23:20 EDT):** the first revision of this ADR verified
 > `openhands-tools` only. That was too narrow — the suite is `openhands-sdk`, `openhands-tools`,
@@ -130,10 +160,23 @@ empty list. This includes `TerminalAction`, `ApplyPatchAction` (paths live insid
 `WorkflowAction`, `ConsultTomAction`, the fifteen non-navigate browser actions, the five SDK
 builtins from Finding 5, and `MCPToolAction`.
 
+**2b. A tool with no projection still shows its native inputs verbatim, under a heading that
+promises no analysis.** Ratified as option B. Rendering nothing would withhold information the
+operator already needs and which is already native — `TerminalAction.command` is on the card
+regardless. What is refused is the *implication of analysis*: the raw value appears under a heading
+that names the native field and states no projection was computed, never under a "blast radius"
+heading. The distinction is between showing an operator a command and telling them what it will do.
+
+This costs nothing in fidelity: the value is native, displayed at its native field name, unparsed.
+It concedes nothing to the shell parser rejected in Alternative A — no substring is extracted, no
+target is claimed, no completeness is implied. A test must fail if a projected value and a raw
+native value render under the same heading or with the same affordance.
+
 **2a. `MCPToolAction` renders `null` permanently, not pending work.** Per Finding 4 there is no
 static field set to project. The card must name the MCP tool via the native `ActionEvent.tool_name`
 and state that no projection is possible for MCP tools — distinct from "none declared yet", which
-would imply a future in which one is.
+would imply a future in which one is. Under 2b its native `data` dict is shown verbatim as JSON,
+unparsed, under the same no-analysis heading.
 
 **3. `GlobAction` and `GrepAction` project a search root, never a match set.** The set of files a
 glob will match is not knowable before execution and is not a native field. Showing a root labelled

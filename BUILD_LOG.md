@@ -3359,3 +3359,69 @@ a rewording test was comparing a file with itself and could never have failed.
 - **PORTING_LEDGER / ADR updated:** ADR-023 scope correction (still **Proposed**).
 - **Stop-condition status:** still blocked on the same operator decision (a/b/c). Scope of the
   evidence behind it is now the full suite rather than one package.
+
+## 2026-08-09 03:45 EDT — Blast radius built, wired into the authorization card, and mutation-tested
+
+- **Stage / plugin / port:** Phase 1 · authorization surface · spec 04 §4.2 · ADR-023 (option B), ADR-024
+- **What changed:**
+  - `blast-radius.ts` rewritten to key off the real wire discriminator `ActionEvent.action.kind`
+    (see DEBUG_LOG same timestamp). Four statuses: `projected` / `no-projection` /
+    `not-executable` / `unknown-action`. 9 declared projections, 28 recorded no-projection classes,
+    37 total — matching the pinned image exactly.
+  - `BlastRadiusSection.tsx` renders the four states with distinct headings, distinct testids and
+    distinct borders, enforcing ADR-023 decision 2b structurally.
+  - `AuthorizationCard.tsx` takes an optional `event`; omitting it renders no section at all,
+    because "not supplied" is not "empty".
+  - `App.tsx` demo action replaced. The old one was
+    `rm -rf ~/dev/oh-gui/node_modules && docker volume prune -f && git clean -xfd` — inert as
+    rendered text, but one copy-paste from destroying the ~122 GB of Docker volumes that are
+    permanently off-limits. Replaced with a read-only `find | sort | head`, still long enough to
+    exercise the 390px overflow assertion. Clears carried debt.
+  - ADR-024 authored (client stays at 1.37.0; `canvas_extensions` deferred). ADR-023 amended with
+    the wire-discriminator finding. `adrs/README.md`, `docs/UPSTREAM_PINS.md` §3a and
+    `PORTING_LEDGER.md` updated to agree.
+- **Files touched:**
+  - `apps/gui/src/features/authorization/blast-radius.ts` (new)
+  - `apps/gui/src/features/authorization/BlastRadiusSection.tsx` (new)
+  - `apps/gui/src/features/authorization/blast-radius.test.ts` (new, 18 tests)
+  - `apps/gui/src/__tests__/blast-radius-contract.test.ts` (new, 6 tests)
+  - `apps/gui/src/__tests__/blast-radius-section.test.tsx` (new, 10 tests)
+  - `apps/gui/e2e/blast-radius.spec.ts` (new, 5 tests)
+  - `apps/gui/src/features/authorization/AuthorizationCard.tsx`, `apps/gui/src/App.tsx`
+  - `adrs/ADR-024-…md` (new), `adrs/ADR-023-…md`, `adrs/README.md`
+  - `docs/UPSTREAM_PINS.md`, `docs/specs/04-authorization.md`, `PORTING_LEDGER.md`
+- **Ports / adapters affected:** none — frontend-only, no middleware surface
+- **PORTING_LEDGER / ADR updated:** ADR-023 (amended), ADR-024 (new), ledger entry for
+  `canvas_extensions` REJECTED (deferred)
+- **Verification:** `npm run gate` exit 0 — 84 unit tests, 10 files, tsc and eslint clean.
+  Playwright 22/22 including 5 new headed-capable specs. **13 mutants applied and killed**
+  (5 logic, 6 rendering, 2 browser-only). One mutant initially survived and exposed a real gap —
+  see below.
+- **Stop-condition status:** met for the blast-radius slice of §4.2.
+
+### Mutation results
+
+| # | Mutant | Killed by |
+|---|---|---|
+| M1 | `normalizeActionKind` stops de-mangling (reproduces the original bug) | 7 tests |
+| M2 | `unknown-action` downgraded to `no-projection` | 2 tests |
+| M3 | a decided class dropped from the table | contract test |
+| M4 | unparseable URL guesses a host | unit test |
+| M5 | `not-executable` collapsed into `unknown-action` | unit test |
+| R1 | echoed native fields given the derived affordance | 6 tests |
+| R2 | **no-projection** echoed heading reuses derived wording | **SURVIVED — gap closed, now killed** |
+| R3 | no-projection heading claims a computed radius | 2 tests |
+| R4 | empty projection collapsed into no-projection wording | 1 test |
+| R5 | unknown-action rendered as reassuring | 1 test |
+| R6 | readings nested inside the target list | 3 tests |
+| R7 | projected-branch echoed heading loses its disclaimer | 1 test |
+| E1 | unknown-action loses its warning colour | browser-only |
+| E2 | echoed block moves above the derived targets | browser-only |
+
+R2 survived because only the *projected* branch's disclaimer was asserted. The heading over a raw
+`rm -rf` could have read "What this will touch" with every test green — the exact ADR-023 violation
+the suite exists to prevent. A test was added and the mutant now dies.
+
+Two earlier mutants (R1, R2) were also initially mis-reported as survivors because the mutation
+script matched the first occurrence of a string, which fell inside a doc comment rather than code.
+The applied diff is now printed for every mutant.

@@ -238,3 +238,60 @@ Rejected alternative: hand-writing Agent Server DTOs. The donor already did this
 `PORTING_LEDGER.md` above excludes the result. `ipc/schema.py:AuthorizeRequest` is the same
 mistake in this repo, caught before a hook was wired to it and now marked
 `PROVISIONAL — UNVERIFIED` under ADR-014 verification item 5.
+
+## 2026-08-08 23:30 EDT — ADR-023: blast radius (DERIVED, not a port)
+
+#### Blast-radius projection table — DERIVED, hand-built by rule
+
+- **Source:** none. This is not a port. ADR-015 clause 7 forbids re-implementing upstream semantics
+  for display, and every candidate library for this job (shell parsers, diff-header parsers,
+  command-intent classifiers) would be exactly that: a second source of truth for what an OpenHands
+  action touches. **Vendoring was considered and rejected on the rule, not on quality.**
+- **Commit / Version:** n/a
+- **License:** n/a
+- **Kosmos location:** `apps/gui/src/features/authorization/blast-radius.ts`
+- **Port(s):** none — frontend projection over the ADR-021 DTO surface. No new port.
+- **Modifications:** n/a
+- **ADR:** ADR-023 (Ratified, option B)
+- **Native basis** (ADR-015 clause 8; all verified in the pinned agent-server image and diffed
+  against the pinned sdists, `docs/evidence/tool-action-fields.json`):
+
+  | Native field | Declared formula |
+  |---|---|
+  | `FileEditorAction.path`, `.command` | identity → one path, native `command` literal beside it |
+  | `PlanningFileEditorAction.path`, `.command` | identity → one path |
+  | `EditAction.file_path` | identity → one path |
+  | `WriteFileAction.file_path` | identity → one path |
+  | `ReadFileAction.file_path` | identity → one path |
+  | `ListDirectoryAction.dir_path`, `.recursive` | identity → one path + native recursive flag |
+  | `GlobAction.path`, `.pattern` | identity → search root + pattern; **never** a resolved match set |
+  | `GrepAction.path`, `.pattern`, `.include` | identity → search root + pattern; **never** a match set |
+  | `BrowserNavigateAction.url` | WHATWG `new URL(url).host`; `null` on parse failure |
+
+  Every formula is an identity or a single standard-library parse. Nothing infers, expands a glob,
+  resolves a symlink, or interprets shell.
+
+- **Explicitly NOT derived** (ADR-023 decisions 2, 2a, 2b): `TerminalAction`, `ApplyPatchAction`,
+  `TaskAction`, `DelegateAction`, `WorkflowAction`, `ConsultTomAction`, `MCPToolAction`, the five
+  SDK builtin actions, and the fifteen non-navigate browser actions. These render their native
+  inputs verbatim under a no-analysis heading, never under a blast-radius heading.
+- **Drift guard:** `apps/gui/src/__tests__/blast-radius-coverage.test.ts` reads
+  `docs/evidence/tool-action-fields.json` and fails if the pinned suite contains an `Action` class
+  with no recorded decision. A new upstream tool cannot silently inherit `null`.
+- **Logged:** 2026-08-08 23:30 EDT
+
+#### `openhands.agent_server.canvas_extensions` — REJECTED (deferred)
+- **Source:** https://github.com/OpenHands/software-agent-sdk (`openhands-agent-server` 1.41.0)
+- **Commit / Version:** 1.41.0 · sdist sha256 `a4c6456af759a43a92f9f0e9a620835519c0061763cc8e70d19aff2fb128eb6e`
+- **License:** MIT (permissive — not the reason for rejection)
+- **Kosmos location:** none
+- **Port(s):** none
+- **Modifications:** n/a
+- **ADR:** ADR-024
+- **Logged:** 2026-08-09 03:45 EDT
+
+New in 1.41.0: installable UI bundles contributing pages via a `canvas-extension.json` manifest,
+with path-traversal and symlink-escape containment. Deferred, not rejected on merit: the module is
+two days old, has zero upstream consumers, and Agent Canvas 1.12.0 has no awareness of it. Building
+against an interface with no shipped implementation gives ADR-015's "source beats docs" rule nothing
+to check a reading against. Revisit triggers are recorded in ADR-024.

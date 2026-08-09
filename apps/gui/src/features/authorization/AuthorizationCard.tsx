@@ -3,11 +3,15 @@
  *
  * WHAT THIS SLICE DELIBERATELY DOES NOT BUILD
  * -------------------------------------------
- * Section 4.2 also requires blast radius (a DERIVED projection per tool class, subject to all
- * five ADR-015 conditions), the untrusted-content badge from 04a, the agent's own account
+ * Section 4.2 also requires the untrusted-content badge from 04a, the agent's own account
  * (`summary` / `thought` / `reasoning_content`), and the 4.2.1 audit log. Each is tracked in
- * KNOWN_ISSUES rather than stubbed here, because a stubbed blast radius is worse than an absent
- * one: an empty list and an uncomputed list must never look alike (section 4.2, ADR-015).
+ * KNOWN_ISSUES rather than stubbed here.
+ *
+ * Blast radius IS now built, per ADR-023 (ratified option B), but only as identity reads of
+ * native fields and one URL parse — see `blast-radius.ts`. It is optional on `PendingAction`:
+ * a card given no `event` renders no blast-radius section at all, which is honest, whereas a
+ * card that invented an empty one would not be. An empty projection and an uncomputed one must
+ * never look alike (section 4.2, ADR-015), which `BlastRadiusSection` enforces structurally.
  *
  * This slice exists to make the 900px read-only gate real — a gate needs something to gate — and
  * to establish the headed-Playwright pattern the remaining Phase 1 frontend work will use.
@@ -21,7 +25,9 @@
  * removed analyzer attribution from this card precisely because it is not recoverable.
  */
 
-import { useId, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
+import { blastRadius, type ActionLike } from './blast-radius';
+import BlastRadiusSection from './BlastRadiusSection';
 import { APPROVAL_MIN_WIDTH, canActOnAuthorization, useViewportWidth } from './viewport';
 
 export type SecurityRisk = 'LOW' | 'MEDIUM' | 'HIGH' | 'UNKNOWN';
@@ -32,6 +38,12 @@ export interface PendingAction {
   toolName: string;
   /** `ActionEvent.security_risk`. Null when the agent supplied none — never defaulted to LOW. */
   securityRisk: SecurityRisk | null;
+  /**
+   * The native `ActionEvent` fields blast radius is projected from. Optional: when absent, no
+   * blast-radius section renders. Omission is not the same as an empty radius, so it must not
+   * be modelled as one.
+   */
+  event?: ActionLike;
 }
 
 export interface AuthorizationCardProps {
@@ -59,6 +71,10 @@ export default function AuthorizationCard({
   const canAct = canActOnAuthorization(width);
   const [reason, setReason] = useState('');
   const reasonId = useId();
+  const radius = useMemo(
+    () => (action.event === undefined ? null : blastRadius(action.event)),
+    [action.event],
+  );
 
   // Section 4.2: "Reject with reason (free-text required)". Required means the control is
   // unavailable without it, not that a blank reason is silently accepted.
@@ -109,6 +125,8 @@ export default function AuthorizationCard({
       >
         {action.command}
       </pre>
+
+      {radius !== null && <BlastRadiusSection radius={radius} />}
 
       {!canAct && (
         <p

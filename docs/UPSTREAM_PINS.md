@@ -162,6 +162,41 @@ some bundlers — plan for an alias or an `external`. ADR-001's phrase "no Node 
 about the dependency graph and right about browser runtime behaviour; corrected in ADR-001
 Amendment #1.
 
+## 3a. Agent Canvas — reference only, not consumed
+
+Recorded because canvas is the reference consumer of the same agent-server, so a divergence between
+its choices and ours is a fact worth keeping visible. **No canvas code is vendored or installed**
+(ADR-001). Verified from npm metadata 2026-08-09.
+
+| Field | Value |
+|---|---|
+| Package | `@openhands/agent-canvas` |
+| Latest version | **1.12.0**, published 2026-08-07 |
+| `gitHead` | `4d0fe4983b6b8e52c104c7ffa4b7be8c7ab5a364` |
+| Tarball sha256 | `fa110b20f400efe74d8888122e9db1c91e4b892776d2e248c40074113acf39ab` |
+| npm shasum | `8060968d801175b5b58e12781241aa0bd5981c40` |
+| License | MIT |
+| `config/defaults.json` → `versions.agentServer` | 1.40.1 |
+| `compatibility.minimumAgentServer` | 1.28.0 |
+| Canvas-shipped `@openhands/typescript-client` | **1.36.1** |
+| Canvas-shipped `@openhands/extensions` | 0.16.0 |
+| `versions.automation` | 1.6.0 |
+
+**Two deliberate divergences from canvas**, both ratified in
+[ADR-024](../adrs/ADR-024-canvas-alignment-client-pin-and-extensions.md):
+
+1. We pin the client at **1.37.0**, canvas ships **1.36.1**. 1.37.0 is a strict superset for
+   everything we consume, and its additions describe the 1.41.0 server we actually pinned.
+2. We pin the server image at **1.41.0**, canvas declares **1.40.1**. The action surface is
+   identical across those two versions (37 classes, zero field changes), and canvas 1.12.0 uses
+   none of the three symbols 1.41.0 removed — so this divergence is inert for our purposes.
+
+> **"Archived" refers to a repository, never to the package.** `OpenHands/agent-canvas` on GitHub
+> was archived 2026-07-27 as a README-only stub; the package is published from the
+> `OpenHands/OpenHands` monorepo and is actively maintained (ADR-001).
+
+---
+
 ## 4. Upstream sources (for provenance, not consumption)
 
 | What | Where |
