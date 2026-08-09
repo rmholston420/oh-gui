@@ -2901,3 +2901,29 @@ split.
 - **Stop-condition status:** **met. Phase 0 is closed.** Next: Phase 1 authorization slice
   (04-authorization.md), which also owes the two inert wizard steps and the schema-driven
   replacement of the trust-dial mirror.
+
+## 2026-08-08 20:15 EDT — Added scripts/verify-local.sh for operator-side Phase 0 verification
+
+- **Stage / plugin / port:** Phase 0 · verification tooling · no port touched
+- **What changed:** Added `scripts/verify-local.sh` so the operator can reproduce the Phase 0 gate
+  on Colossus in one command instead of eight, and watch what each step does. Colour-coded per the
+  operator's standing preference: green pass, yellow worth-your-eyes, red stop-and-read.
+  Steps: environment (node version, port 5173 free), revision, `npm ci`, lint + 27 Vitest + build,
+  Playwright 8 browser assertions, screenshot extraction, then serves the wizard for manual
+  click-through (`--no-serve` to skip, `--headed` to watch the browser drive the UI).
+- **Two design decisions worth recording:**
+  1. The port check is a hard failure, not a warning. `playwright.config.ts` sets
+     `reuseExistingServer: true`, so anything already on 5173 would be tested as though it were
+     OH-GUI and the failures would look like UI bugs.
+  2. The revision check asserts on **content** — that `trust-dial.ts` still carries the
+     unconditional out-of-worktree elevation — rather than on a commit SHA. A hardcoded SHA goes
+     stale on the very next commit and trains the operator to ignore the line.
+- **Verified by execution, both directions:** ran the script green end-to-end (27 Vitest, 8
+  Playwright, 5 screenshots), then **reverted the trust-dial fix in the working tree and re-ran**
+  to confirm the revision check goes RED rather than passing quietly. Restored afterward and
+  confirmed the fix is back. A gate that has never been seen to fail is not a gate.
+- **Files touched:** `scripts/verify-local.sh` (new), `BUILD_LOG.md`
+- **Ports / adapters affected:** none
+- **PORTING_LEDGER / ADR updated:** none
+- **Stop-condition status:** met. Phase 0 verification is now reproducible by the operator; Phase 0
+  stays open until the operator confirms it runs green on Colossus.
