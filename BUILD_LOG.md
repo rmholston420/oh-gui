@@ -3425,3 +3425,23 @@ the suite exists to prevent. A test was added and the mutant now dies.
 Two earlier mutants (R1, R2) were also initially mis-reported as survivors because the mutation
 script matched the first occurrence of a string, which fell inside a doc comment rather than code.
 The applied diff is now printed for every mutant.
+
+## 2026-08-09 03:58 EDT — Blast-radius operator walkthrough: a headed run that actually drives the UI
+
+- **Stage / plugin / port:** Phase 1 · authorization surface · spec 04 §4.2 · ADR-023
+- **What changed:** Added `e2e/blast-radius-walkthrough.spec.ts` and the `watch:blast` script.
+  The operator ran `watch:e2e -- blast-radius` on Colossus at 23:47 EDT: 5/5 green in 5.4s headed.
+  Green, but not watchable — `slowMo` delays *actions*, and `blast-radius.spec.ts` is `goto` plus
+  assertions, so there was nothing for it to slow down. A headed run that shows the operator
+  nothing does not satisfy the standing requirement to watch Playwright drive the UI.
+  The walkthrough dwells, scrolls, resizes 1240 → 900 → 640 → 390 live, and outlines the derived
+  region green against the echoed region amber so ADR-023's separation is *visible* rather than
+  inferred from a passing count. Records video and five numbered stills.
+- **Files touched:** `apps/gui/e2e/blast-radius-walkthrough.spec.ts` (new),
+  `apps/gui/package.json` (`watch:blast`)
+- **Ports / adapters affected:** none
+- **PORTING_LEDGER / ADR updated:** —
+- **Verification:** gate exit 0 (84 tests); Playwright 23/23. Dwells collapse to zero without
+  `WATCH`, so the walkthrough costs the headless suite ~1.3s. Mutation: forcing the
+  `not-executable` branch off fails the walkthrough (exit 1) — it gates, it does not merely record.
+- **Stop-condition status:** met.
