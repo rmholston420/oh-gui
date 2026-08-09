@@ -3829,3 +3829,16 @@ The applied diff is now printed for every mutant.
 - Validation: `npx vitest run` scoped to the three event test files: 3 passed, 27 passed. Deliberate mutants M1–M8 were all killed; detailed output: `/tmp/events-mutation-results.txt` and `/tmp/events-vitest-output.txt`.
 - Files created: `event-types.ts`; four event-content helpers; `chat/group-events.ts`; three event-message components; and three test files, all inside the assigned `apps/gui/src/features/events/` boundary.
 - Stop condition: current event-rendering port implementation and scoped test contract are complete. No commit, push, gate, or build was run.
+
+## 2026-08-09 03:38 EDT — live Playwright spec against the real agent-server; event log switched to the Canvas port
+
+- **Stage / plugin / port:** Phase 1 · apps/gui · run surface, shell, event rendering
+- **What changed:**
+  - `EventLog.tsx` replaces the raw `JSON.stringify` list with the ported Agent Canvas renderers (grouping, action/observation pairing, collapsible thinking, error/finish messages). Unhandled kinds render tagged as unhandled; a missing native signal renders nothing — no fabricated `success`.
+  - `Shell` wired into `App.tsx`, so the Vibe/Pro lens now wraps the mounted run surface. `RunView` mounts once and is not remounted or refetched on lens change.
+  - `e2e/live-run.spec.ts`: three tests against the real agent-server with no mocks — approve a real pending action, reject one with a required reason, and toggle the lens mid-run without disturbing the conversation. Records video.
+  - Fast suite is now `playwright test --grep-invert @live` so real model latency stays out of the gate; `test:e2e:live` and `watch:live` run the live spec.
+- **Files touched:** `apps/gui/src/features/run/EventLog.tsx`, `apps/gui/src/features/run/RunView.tsx`, `apps/gui/src/App.tsx`, `apps/gui/e2e/live-run.spec.ts`, `apps/gui/package.json`
+- **Ports / adapters affected:** none (GUI only)
+- **PORTING_LEDGER / ADR updated:** ledger entry for the Canvas event port landed in `f632b64`
+- **Stop-condition status:** in-progress — gate green (22 files / 161 tests), but the live spec has **not been executed**; it needs the operator's machine, since this sandbox has neither the agent-server nor a browser. Unrun is unproven.

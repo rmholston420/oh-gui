@@ -15,7 +15,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test",
+    "test:e2e": "playwright test --grep-invert @live",
     "gate": "npm run constraints && npm run lint && npm run test && npm run build",
     "e2e:setup": "playwright install chromium",
     "verify": "npm run gate && npm run test:e2e",
@@ -23,7 +23,9 @@
     "watch:e2e": "WATCH=1 playwright test --headed",
     "watch:blast": "WATCH=1 playwright test --headed blast-radius-walkthrough",
     "watch:account": "WATCH=1 playwright test --headed agent-account-walkthrough",
-    "constraints": "python3 ../../scripts/check-hard-constraints.py"
+    "constraints": "python3 ../../scripts/check-hard-constraints.py",
+    "test:e2e:live": "playwright test live-run",
+    "watch:live": "WATCH=1 playwright test live-run --headed"
   },
   "dependencies": {
     "motion": "13.0.0",
