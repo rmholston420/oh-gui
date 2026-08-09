@@ -1,54 +1,48 @@
-# Kosmos / OH-GUI Session Handoff — 2026-08-09 04:38 EDT
+# Kosmos Session Handoff — 2026-08-09 05:33 EDT
 
 ## Current build-sequencing position
-
-- **Stage / phase:** Phase 0 parallel track (ADR-016 benchmark) + Phase 1 GUI slice
-- **Component:** `bench/toolcall/` harness; `apps/gui/src/features/model-profiles/`
-- **Ports in progress:** none (bench + GUI surface only)
+- **Stage / phase:** Phase 1 · GUI shell + authorization surface
+- **Plugin / kernel component:** `apps/gui` shell, authorization, audit-log
+- **Port(s) in progress:** none open; `agentServer` client is the only I/O surface
 
 ## Completed this session
+- `d9570da` — registered `qwen3.5:0.8b-q8_0` as exploratory bench cell K
+- `5db6ffb` — spec 15 requirement IDs, coverage register 370 → 393 reqs / 17 specs
+- `9a24da0` — ADR-031 **revision 2**: breakpoint is **1700px**, sides `17vw`/`23vw`
+- `d0c32c6` — browser coverage at real windowed widths on 3440x1440
+- `9bbfee8` — untrusted-content badge (wired) + audit-log module (**unwired**), tsconfig fix
 
-- Measured per-request latency; falsified the registered 24.2 s/request estimate by ~40x.
-- **Withdrew** ADR-016 Amendment I as premise-falsified; added Amendment II derived from measurement.
-- Task library 47 -> 120, independently verified (unique ids, no duplicate goals, no `_sdk_src` refs).
-- Pre-registered disjoint 40/80 screening/confirmatory split, content-addressed by salted sha256.
-- 10 cells in confirmatory (A-D) / exploratory (E-J) arms; Holm-Bonferroni over 3 comparisons.
-- Attainability re-registered against the 80-task confirmatory split: **8.65** expected discordant pairs.
-- Harness: `--mode`, resume, availability preflight, manifest-vs-filesystem drift check, live progress.
-- GUI: model profiles, observed reliability tiers, failure signatures, 30-tool warning, disabled cloud fallback.
-- Mutation-tested all three new gates; each produced the expected red before restore.
-- Committed and pushed **`54ce691`**.
+State: 204 unit tests / 29 files, 49 browser tests, build clean, hard constraints `=== PASSED ===`.
 
-## Verification state (all green at handoff)
+## Three defects found this session that outlive it
+1. **ADR-031 was wrong twice.** Both wrong answers came from arithmetic; only a DOM probe found
+   the truth. The unit test agreed with the error because it shared the ADR's model. **A test
+   derived from the same assumption as the implementation cannot falsify that assumption.**
+2. **`git add -u` while subagents run** swept an unrelated edit into `9a24da0`, leaving it
+   unbuildable in isolation. Stage explicit paths only.
+3. **`?raw` CSS imports return `''` under the test runner**, so assertions pass vacuously. A build
+   error is better than a silent green.
 
-- `python3 -m pytest bench/toolcall/tests/ -q` — 29 passed
-- `python3 scripts/check-hard-constraints.py` — `=== PASSED ===`
-- `python3 bench/validate_harness.py` — all checks passed
-- `apps/gui`: `npm run gate` — 24 files / 174 tests; `npx playwright test --grep-invert @live` — 28 passed
+## Remaining before "OH-GUI can help write its own code"
+1. **Workspace targeting.** `working_dir` is hardcoded to `/workspace/project`
+   (`apps/gui/src/api/types.ts:219`). The agent can only edit what the container mounts there.
+   Fix at the container level first (below); make it selectable in the GUI second.
+2. **Follow-up message composer.** `agentServer.sendMessage` exists but **no UI calls it**. A run
+   can be started, approved and stopped, but not steered mid-flight. This is the single largest
+   gap for iterative self-coding. Needs: a composer in `RunView`, a `send` action in
+   `useConversation`, unit + live-Playwright coverage.
+3. **Mount the audit-log panel** into the shell (module and tests are done and unmounted).
 
-## Remaining before the current Definition of Done
-
-1. Operator approves the registered manifest, then runs the screen (~66 min projected) and the
-   confirmatory run.
-2. Score, rank, and record the verdict in ADR-016.
-3. Assign requirement IDs across the remaining Phase 1 specs (ADR-028).
-
-## Open questions awaiting operator answer
-
-- **Ollama upgrade.** `laguna-xs-2.1:q4_K_M` and `ornith:35b` return HTTP 412 (needs a newer
-  Ollama). Deliberately deferred: upgrading before an unattended run risks the night, and it would
-  change the tool-call templates being measured. Decide while awake, after this benchmark.
-- Whether any exploratory cell that screens well should be promoted to confirmatory. If so it is
-  tested **only** on the held-out 80, and the Holm family grows accordingly.
-
-## Carried debt (unchanged)
-
-- Wizard §3.4 items 1 & 3 inert; `trust-dial.ts` mirror owed; `docs/specs/15-middleware-harness.md`
-  unwritten; ADR-030 `03-layout.md` object-set; 1600px breakpoint arithmetic unresolved
-  (280+380+>=60% needs >=1620px).
+## Open questions / awaiting user answer
+- **Benchmark confirmatory set is three-quarters Qwen** (A/C/D); only B (Devstral) is
+  architecturally independent. Proposal: promote `glm-4.7-flash` to confirmatory if it screens
+  well. **Undecided.**
+- **Ultrawide layout** (KNOWN_ISSUES): larger side caps, a stage max-width with a fourth region,
+  or a splittable stage. Option 3 is likely the real 21:9 win and interacts with ADR-030.
+- **900px approval floor** disables all authorization in a quarter-tile window (860px). Keying it
+  on pointer type instead of width alone would need an ADR amending ADR-003.
 
 ## Exact next action
-
-```bash
-cd ~/dev/oh-gui && git pull --ff-only && python3 bench/toolcall/bench_toolcall.py --mode screen 2>&1 | tee /tmp/screen.log
-```
+Run the benchmark (it is ready and unrun):
+`cd ~/dev/oh-gui && git pull --ff-only && ./bench/toolcall/run_overnight.sh`
+Then build the follow-up composer (item 2 above).
