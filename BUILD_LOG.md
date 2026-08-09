@@ -3513,3 +3513,38 @@ The applied diff is now printed for every mutant.
   instance tonight of trusting a paraphrase over the source; the first was the UTC/EDT timestamps.
 - **Files touched:** `adrs/ADR-025-…md`, `BUILD_LOG.md`
 - **Stop-condition status:** met.
+
+## 2026-08-09 00:21 EDT — the agent's own account, ported from Agent Canvas
+
+- **Stage / plugin / port:** Phase 1 · spec 04 §4.2 (the agent's own account) · no port contract crossed (GUI-local projection)
+- **What changed:** first source-level canvas port under ADR-025. Renders `summary`, `thought`, and
+  `reasoning_content` as the agent's account, below the derived blast radius and labelled as the
+  agent speaking rather than as an assessment. Three donor defects fixed en route: the optional
+  `TextContent.type` filter that silently dropped untyped thought, the type-discriminated thinking
+  filter that both dropped untyped thinking and made a discriminator load-bearing for keeping
+  `RedactedThinkingBlock.data` off screen, and the bare `=== 'ThinkAction'` comparison that never
+  matches the mangled wire kind. Withheld thinking is now reported as withheld, which is a different
+  fact from none recorded and must not render alike.
+- **Files touched:**
+  - `apps/gui/src/features/authorization/agent-account.ts` (new)
+  - `apps/gui/src/features/authorization/AgentAccountSection.tsx` (new)
+  - `apps/gui/src/features/authorization/agent-account.test.ts` (new, 20 tests)
+  - `apps/gui/src/features/authorization/agent-account-section.test.tsx` (new, 10 tests)
+  - `apps/gui/e2e/agent-account-walkthrough.spec.ts` (new, headed)
+  - `apps/gui/src/features/authorization/AuthorizationCard.tsx` (wired; `event` type widened; stale header note corrected)
+  - `apps/gui/src/App.tsx` (demo self-report data, incl. an untyped thought block and a redacted thinking block)
+  - `apps/gui/package.json` (`watch:account`)
+  - `PORTING_LEDGER.md`, `KNOWN_ISSUES.md`
+- **Ports / adapters affected:** none
+- **PORTING_LEDGER / ADR updated:** PORTING_LEDGER (new ADR-025 section); no new ADR — §4.2 already specified this, ADR-025 already authorised the reuse mechanics
+- **Verification:** gate 114/114 unit across 12 files, build clean, Playwright 24/24. Ten mutants
+  run: nine killed. The tenth (**A2**, leaking `RedactedThinkingBlock.data` through the map)
+  **survived**, and investigation showed the mutant was *unreachable* rather than the code merely
+  lucky — the structural filter runs first and already excludes data-only blocks. Retargeted at the
+  real guard as A2b (donor-faithful type filter + data fallback) and A2c (guard removed entirely);
+  both killed by the redaction assertion. Recorded rather than quietly dropped: a mutant that
+  survives because it cannot execute is a defect in the mutant, and reporting it as a pass would
+  have been the kind of unearned green this log exists to prevent.
+- **Stop-condition status:** met for §4.2's agent-account bullet. §4.2 as a whole remains open —
+  untrusted badge (04a), §4.2.1 audit log, and wiring Reject to
+  `conversation.reject_pending_actions(reason)` are all still absent. Nothing transmits to a runtime yet.

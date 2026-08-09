@@ -295,3 +295,42 @@ with path-traversal and symlink-escape containment. Deferred, not rejected on me
 two days old, has zero upstream consumers, and Agent Canvas 1.12.0 has no awareness of it. Building
 against an interface with no shipped implementation gives ADR-015's "source beats docs" rule nothing
 to check a reading against. Revisit triggers are recorded in ADR-024.
+
+
+## 2026-08-09 00:20 EDT — ADR-025: first source-level canvas port (spec 04 §4.2 agent account)
+
+The first port executed under [ADR-025](adrs/ADR-025-canvas-is-a-primary-donor-reused-at-source-level.md).
+Recovery worked as ADR-025 predicted: the published tarball ships `sourcesContent` in its sourcemaps,
+so this is the donor's original TypeScript, not decompiled output.
+
+#### Agent thought / reasoning rendering — VENDORED (adapted)
+
+- **Source:** `@openhands/agent-canvas` 1.12.0, `src/components/conversation-events/chat/event-thought-helpers.ts`, recovered from `dist/**/*.map` `sourcesContent`
+- **Commit / Version:** npm 1.12.0 · `gitHead` `4d0fe4983b6b8e52c104c7ffa4b7be8c7ab5a364` · tarball sha256 `fa110b20f400efe74d8888122e9db1c91e4b892776d2e248c40074113acf39ab`
+- **License:** MIT
+- **Kosmos location:** `apps/gui/src/features/authorization/agent-account.ts` (logic), `AgentAccountSection.tsx` (presentation)
+- **Port(s):** none — this is GUI-local projection over already-fetched `ActionEvent` fields. No port contract is crossed, so no adapter is owed.
+- **Not ported from the donor:** `splitInlineThink` (inline `<think>` scraping — a model-specific workaround with no §4.2 mandate) and `getThoughtSourceAction` (needs canvas's event-store shape).
+
+**Modifications — three donor defects, each fixed and each covered by a killed mutant:**
+
+| # | Donor behaviour | Why it is wrong | Ours |
+|---|---|---|---|
+| 1 | `thought.filter(t => t.type === 'text')` | `TextContent.type` is **optional** (`type?: 'text'`), so any block omitting it is silently dropped and real thought text is lost | Absent `type` counts as text |
+| 2 | `thinking_blocks.filter(b => b.type === 'thinking')` | `ThinkingBlock.type` is also optional, so untyped thinking is dropped — and a *discriminator* is made load-bearing for keeping redacted payloads off screen | Structural selection: a block contributes only if `thinking` is a string, so `RedactedThinkingBlock.data` cannot leak even when mislabelled |
+| 3 | `event.action.kind === 'ThinkAction'` | All **34** members of the wire `Action` union carry mangled kinds (`openhands__sdk__tool__builtins__think__ThinkAction-Output__1`); only the standalone declaration is bare. The comparison never matches — the donor's exclusion is dead code | `normalizeActionKind()` first (ADR-023) |
+
+**Native basis (ADR-015 clause 8) —** verified against `@openhands/typescript-client` 1.37.0 `src/generated/agent-server-schema.d.ts`, cross-checked against SDK source in `openhands_sdk-1.41.0` (`sdk/event/llm_convertible/action.py`):
+
+| Exposed field | Verified at | Note |
+|---|---|---|
+| `summary` | `agent-server-schema.d.ts` · `ActionEvent.summary` | LLM-authored ~10-word string. A *claim*, never rendered as a finding |
+| `thought` | `ActionEvent.thought: TextContent[]` | Required in the SDK; `TextContent.type` optional |
+| `reasoning_content` | `ActionEvent.reasoning_content` | Defaults `None` in SDK |
+| `thinking_blocks` | `ActionEvent.thinking_blocks` | Read only to detect withheld reasoning |
+| `responses_reasoning_item` | `ActionEvent.responses_reasoning_item` | **Deliberately unread.** `ReasoningItemModel` docstring: "Do not log or render `encrypted_content`." Exposing it is a separate specced decision |
+| `critic_result` | `ActionEvent.critic_result` | Out of §4.2 scope; donor's `critic-result-display.tsx` extracted but not ported |
+
+Display order follows upstream `ActionEvent.visualize` (Summary → Reasoning → Thought), except that Thought
+precedes Reasoning here: `thought` is the agent's stated reason and `reasoning_content` its intermediate
+chain, and §4.2 is about the account, so the conclusion leads.

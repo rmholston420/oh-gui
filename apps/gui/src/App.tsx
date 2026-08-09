@@ -35,6 +35,12 @@ const DEMO_ACTIONS: Record<string, PendingAction> = {
         timeout: 30,
         reset: false,
       },
+      // The agent's own account (spec 04 §4.2). Deliberately phrased the way a real model phrases
+      // it: a confident, agreeable summary that says nothing about blast radius.
+      summary: 'Looking for recently changed TypeScript files',
+      thought: [{ type: 'text', text: 'I need to see which files changed after the last install so I can narrow the search.' }],
+      reasoning_content:
+        'The user asked what changed. `-newer package.json` is a cheap proxy for "since the last dependency change". Capping at 50 keeps the output readable.',
     },
   },
   edit: {
@@ -48,6 +54,9 @@ const DEMO_ACTIONS: Record<string, PendingAction> = {
         command: 'str_replace',
         path: '/etc/hosts',
       },
+      summary: 'Adding a local hostname entry',
+      // No `type` field — the shape canvas's filter silently dropped. It must still render.
+      thought: [{ text: 'Mapping the dev domain to localhost so the app can be reached by name.' }],
     },
   },
   unknown: {
@@ -57,6 +66,7 @@ const DEMO_ACTIONS: Record<string, PendingAction> = {
     event: {
       tool_name: 'quantum_tool',
       action: { kind: 'openhands__tools__quantum__definition__QuantumAction-Output__1' },
+      thinking_blocks: [{ type: 'redacted_thinking', data: 'redacted-by-provider' }],
     },
   },
   none: {

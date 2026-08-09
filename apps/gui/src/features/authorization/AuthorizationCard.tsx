@@ -3,9 +3,11 @@
  *
  * WHAT THIS SLICE DELIBERATELY DOES NOT BUILD
  * -------------------------------------------
- * Section 4.2 also requires the untrusted-content badge from 04a, the agent's own account
- * (`summary` / `thought` / `reasoning_content`), and the 4.2.1 audit log. Each is tracked in
- * KNOWN_ISSUES rather than stubbed here.
+ * Section 4.2 also requires the untrusted-content badge from 04a and the 4.2.1 audit log. Each is
+ * tracked in KNOWN_ISSUES rather than stubbed here. The agent's own account
+ * (`summary` / `thought` / `reasoning_content`) IS now built — ported from Agent Canvas, see
+ * `agent-account.ts` — and renders below the blast radius so the derived reading is what the
+ * operator meets first.
  *
  * Blast radius IS now built, per ADR-023 (ratified option B), but only as identity reads of
  * native fields and one URL parse — see `blast-radius.ts`. It is optional on `PendingAction`:
@@ -26,6 +28,8 @@
  */
 
 import { useId, useMemo, useState } from 'react';
+import { readAgentAccount, type AgentAccountSource } from './agent-account';
+import { AgentAccountSection } from './AgentAccountSection';
 import { blastRadius, type ActionLike } from './blast-radius';
 import BlastRadiusSection from './BlastRadiusSection';
 import { APPROVAL_MIN_WIDTH, canActOnAuthorization, useViewportWidth } from './viewport';
@@ -43,7 +47,7 @@ export interface PendingAction {
    * blast-radius section renders. Omission is not the same as an empty radius, so it must not
    * be modelled as one.
    */
-  event?: ActionLike;
+  event?: ActionLike & AgentAccountSource;
 }
 
 export interface AuthorizationCardProps {
@@ -73,6 +77,16 @@ export default function AuthorizationCard({
   const reasonId = useId();
   const radius = useMemo(
     () => (action.event === undefined ? null : blastRadius(action.event)),
+    [action.event],
+  );
+
+  // Same optionality rule as the radius: no event means no self-report section, because "the agent
+  // said nothing" and "we were never given the event" are different facts (spec 04 §4.2).
+  const account = useMemo(
+    () =>
+      action.event === undefined
+        ? null
+        : readAgentAccount(action.event),
     [action.event],
   );
 
@@ -127,6 +141,8 @@ export default function AuthorizationCard({
       </pre>
 
       {radius !== null && <BlastRadiusSection radius={radius} />}
+      {/* Below the radius, deliberately: derived first, self-report second. Order is asserted. */}
+      {account !== null && <AgentAccountSection account={account} />}
 
       {!canAct && (
         <p

@@ -398,14 +398,18 @@ better than another. They are a baseline of record for the app, not a model rank
     names (condition e), and `null` rather than an empty list for tool classes with no projection.
     Deliberately not stubbed: an empty list and an uncomputed list must never look alike.
   - **Untrusted-content badge** (04a), distinct from the risk badge.
-  - **The agent's own account** — `ActionEvent.summary`, `thought`, `reasoning_content`, each
-    labelled as the agent's account rather than an analyzer's justification.
+  - ~~**The agent's own account**~~ — **BUILT 2026-08-09 00:20 EDT.** Ported from Agent Canvas
+    under ADR-025 with three donor defects fixed; see PORTING_LEDGER.md and
+    `apps/gui/src/features/authorization/agent-account.ts`. `critic_result` and
+    `responses_reasoning_item` remain unexposed, both deliberately and both out of §4.2 scope.
   - **§4.2.1 audit log** — approvals, rejections-with-reason, relax grants; session-scoped
     expiry; the live relaxation badge count on the trust dial.
   - **Reject is not wired to `conversation.reject_pending_actions(reason)`** — the card takes an
     `onReject` callback and the harness passes none. Nothing is transmitted anywhere yet.
 - **Also carried:** `App.tsx` selects the surface from `?surface=`, a seam standing in for the
   §3.1 shell. Trivial by design so there is nothing to migrate when the shell lands.
-- **Next investigation:** blast radius first — it is the one item with an ADR-015 obligation
-  attached, so getting it wrong is expensive.
+- **Next investigation:** ~~blast radius~~ (ADR-023, built) and ~~the agent's own account~~
+  (ADR-025, built) are done. Next is the untrusted-content badge (04a), then §4.2.1's audit log,
+  then wiring Reject — the audit log is the one with a zero-trust obligation attached, since every
+  entry must carry the structured `provenance` array captured at decision time.
 - **Related DEBUG_LOG search terms:** blast radius, DERIVED, authorization card, reject_pending_actions
