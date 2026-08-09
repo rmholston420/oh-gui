@@ -70,6 +70,20 @@ All four move in lockstep and were published together at 2026-08-06T13:29Z.
 | `openhands-workspace` | **1.41.0** | >=3.12 | `8ce1ced56126a29099a86f1ce1cec51475b0482655492bd2901cb5482b7d3b29` |
 | `openhands-agent-server` | **1.41.0** | >=3.12 | `a1fd602105b20c0321d67c7851b6ffd379ebf95b75cca53e570a33530aaea5b7` |
 
+### sdist digests (verification inputs, not runtime dependencies)
+
+ADR-015 clause 1 verification reads the shipped image's bytecode and diffs it against source
+compiled from an sdist. Those sdists are pinned here so the verification is reproducible.
+
+| Package | sdist `sha256` | URL |
+|---|---|---|
+| `openhands-sdk` 1.41.0 | `b12bb6f5a69bfee476a4ae8700b0bf33c478f67ea708c8d4a5f75a95d6f4045f` | https://files.pythonhosted.org/packages/2f/ee/a938c78fdd310022c9081445195047207f06fabb2650abb9c1c04e44f66d/openhands_sdk-1.41.0.tar.gz |
+| `openhands-tools` 1.41.0 | `93bbfe1b6b289a379e656b84167ba4b163f5f2778d48cc2cce1f2507bf21ac9a` | https://files.pythonhosted.org/packages/65/dc/d39fa6f6471ad9c5ccf81ca17a905f9d4212bdd21fdf8cd4299eaf320ef6/openhands_tools-1.41.0.tar.gz |
+
+The `openhands-tools` pin was added 2026-08-08 for `scripts/verify_tool_actions.py`, which
+establishes the native basis for blast radius (ADR-023). Tool `Action` classes live in
+`openhands-tools`, not in `openhands-sdk`, so the SDK pin alone was insufficient.
+
 `requires_python >=3.12` is a hard floor on the middleware venv. Colossus's project venvs must be
 checked against it before scaffolding (`colossus-python-env` skill; do not assume the system Python).
 

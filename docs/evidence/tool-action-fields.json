@@ -1,0 +1,659 @@
+{
+  "source": "openhands.tools.*.definition, read from the pinned agent-server image's PyInstaller PYZ and verified byte-structure-equal to the pinned openhands-tools sdist",
+  "caveat": "Field sets are read off the constructed pydantic models. Executor implementations, rich, and browser drivers were stubbed inert; logic living in a stubbed dependency is not covered. Modules that failed to execute are listed under `unavailable` and are NOT absent-by-omission.",
+  "definition_modules_verified": [
+    "openhands.tools.apply_patch.definition",
+    "openhands.tools.browser_use.definition",
+    "openhands.tools.delegate.definition",
+    "openhands.tools.file_editor.definition",
+    "openhands.tools.gemini.edit.definition",
+    "openhands.tools.gemini.list_directory.definition",
+    "openhands.tools.gemini.read_file.definition",
+    "openhands.tools.gemini.write_file.definition",
+    "openhands.tools.glob.definition",
+    "openhands.tools.grep.definition",
+    "openhands.tools.planning_file_editor.definition",
+    "openhands.tools.task.definition",
+    "openhands.tools.task_tracker.definition",
+    "openhands.tools.terminal.definition",
+    "openhands.tools.tom_consult.definition",
+    "openhands.tools.workflow.definition"
+  ],
+  "unavailable": {},
+  "actions": {
+    "ApplyPatchAction": {
+      "module": "openhands.tools.apply_patch.definition",
+      "class": "ApplyPatchAction",
+      "fields": [
+        {
+          "name": "patch",
+          "type": "str",
+          "required": true,
+          "default": null,
+          "description": "Patch content following the '*** Begin Patch' ... '*** End Patch' format as described in OpenAI GPT-5.1 prompting guide."
+        }
+      ]
+    },
+    "BrowserAction": {
+      "module": "openhands.tools.browser_use.definition",
+      "class": "BrowserAction",
+      "fields": []
+    },
+    "BrowserClickAction": {
+      "module": "openhands.tools.browser_use.definition",
+      "class": "BrowserClickAction",
+      "fields": [
+        {
+          "name": "index",
+          "type": "int",
+          "required": true,
+          "default": null,
+          "description": "The index of the element to click (from browser_get_state)"
+        },
+        {
+          "name": "new_tab",
+          "type": "bool",
+          "required": false,
+          "default": "False",
+          "description": "Whether to open any resulting navigation in a new tab. Default: False"
+        }
+      ]
+    },
+    "BrowserCloseTabAction": {
+      "module": "openhands.tools.browser_use.definition",
+      "class": "BrowserCloseTabAction",
+      "fields": [
+        {
+          "name": "tab_id",
+          "type": "str",
+          "required": true,
+          "default": null,
+          "description": "4 Character Tab ID of the tab to close (from browser_list_tabs)"
+        }
+      ]
+    },
+    "BrowserGetContentAction": {
+      "module": "openhands.tools.browser_use.definition",
+      "class": "BrowserGetContentAction",
+      "fields": [
+        {
+          "name": "extract_links",
+          "type": "bool",
+          "required": false,
+          "default": "False",
+          "description": "Whether to include links in the content (default: False)"
+        },
+        {
+          "name": "start_from_char",
+          "type": "int",
+          "required": false,
+          "default": "0",
+          "description": "Character index to start from in the page content (default: 0)"
+        }
+      ]
+    },
+    "BrowserGetStateAction": {
+      "module": "openhands.tools.browser_use.definition",
+      "class": "BrowserGetStateAction",
+      "fields": [
+        {
+          "name": "include_screenshot",
+          "type": "bool",
+          "required": false,
+          "default": "False",
+          "description": "Whether to include a screenshot of the current page. Default: False"
+        }
+      ]
+    },
+    "BrowserGetStorageAction": {
+      "module": "openhands.tools.browser_use.definition",
+      "class": "BrowserGetStorageAction",
+      "fields": []
+    },
+    "BrowserGoBackAction": {
+      "module": "openhands.tools.browser_use.definition",
+      "class": "BrowserGoBackAction",
+      "fields": []
+    },
+    "BrowserListTabsAction": {
+      "module": "openhands.tools.browser_use.definition",
+      "class": "BrowserListTabsAction",
+      "fields": []
+    },
+    "BrowserNavigateAction": {
+      "module": "openhands.tools.browser_use.definition",
+      "class": "BrowserNavigateAction",
+      "fields": [
+        {
+          "name": "url",
+          "type": "str",
+          "required": true,
+          "default": null,
+          "description": "The URL to navigate to"
+        },
+        {
+          "name": "new_tab",
+          "type": "bool",
+          "required": false,
+          "default": "False",
+          "description": "Whether to open in a new tab. Default: False"
+        }
+      ]
+    },
+    "BrowserScrollAction": {
+      "module": "openhands.tools.browser_use.definition",
+      "class": "BrowserScrollAction",
+      "fields": [
+        {
+          "name": "direction",
+          "type": "Literal",
+          "required": false,
+          "default": "'down'",
+          "description": "Direction to scroll. Options: 'up', 'down'. Default: 'down'"
+        }
+      ]
+    },
+    "BrowserSetStorageAction": {
+      "module": "openhands.tools.browser_use.definition",
+      "class": "BrowserSetStorageAction",
+      "fields": [
+        {
+          "name": "storage_state",
+          "type": "dict",
+          "required": true,
+          "default": null,
+          "description": "Storage state dictionary containing 'cookies' and 'origins' (from browser_get_storage)"
+        }
+      ]
+    },
+    "BrowserStartRecordingAction": {
+      "module": "openhands.tools.browser_use.definition",
+      "class": "BrowserStartRecordingAction",
+      "fields": []
+    },
+    "BrowserStopRecordingAction": {
+      "module": "openhands.tools.browser_use.definition",
+      "class": "BrowserStopRecordingAction",
+      "fields": []
+    },
+    "BrowserSwitchTabAction": {
+      "module": "openhands.tools.browser_use.definition",
+      "class": "BrowserSwitchTabAction",
+      "fields": [
+        {
+          "name": "tab_id",
+          "type": "str",
+          "required": true,
+          "default": null,
+          "description": "4 Character Tab ID of the tab to switch to (from browser_list_tabs)"
+        }
+      ]
+    },
+    "BrowserTypeAction": {
+      "module": "openhands.tools.browser_use.definition",
+      "class": "BrowserTypeAction",
+      "fields": [
+        {
+          "name": "index",
+          "type": "int",
+          "required": true,
+          "default": null,
+          "description": "The index of the input element (from browser_get_state)"
+        },
+        {
+          "name": "text",
+          "type": "str",
+          "required": true,
+          "default": null,
+          "description": "The text to type"
+        }
+      ]
+    },
+    "ConsultTomAction": {
+      "module": "openhands.tools.tom_consult.definition",
+      "class": "ConsultTomAction",
+      "fields": [
+        {
+          "name": "reason",
+          "type": "str",
+          "required": true,
+          "default": null,
+          "description": "Brief explanation of why you need Tom agent consultation"
+        },
+        {
+          "name": "use_user_message",
+          "type": "bool",
+          "required": false,
+          "default": "True",
+          "description": "Whether to consult about the user message (True) or provide custom query (False)"
+        },
+        {
+          "name": "custom_query",
+          "type": "str | None",
+          "required": false,
+          "default": "None",
+          "description": "Custom query to ask Tom agent (only used when use_user_message is False)"
+        }
+      ]
+    },
+    "DelegateAction": {
+      "module": "openhands.tools.delegate.definition",
+      "class": "DelegateAction",
+      "fields": [
+        {
+          "name": "command",
+          "type": "Literal",
+          "required": true,
+          "default": null,
+          "description": "The commands to run. Allowed options are: `spawn`, `delegate`."
+        },
+        {
+          "name": "ids",
+          "type": "list[str] | None",
+          "required": false,
+          "default": "None",
+          "description": "Required parameter of `spawn` command. List of identifiers to initialize sub-agents with."
+        },
+        {
+          "name": "agent_types",
+          "type": "list[str] | None",
+          "required": false,
+          "default": "None",
+          "description": "Optional parameter of `spawn` command. List of agent types for each ID (e.g., ['researcher', 'programmer']). If omitted or blank for an ID, the default general-purpose agent is used."
+        },
+        {
+          "name": "tasks",
+          "type": "dict[str, str] | None",
+          "required": false,
+          "default": "None",
+          "description": "Required parameter of `delegate` command. Dictionary mapping sub-agent identifiers to task descriptions."
+        }
+      ]
+    },
+    "EditAction": {
+      "module": "openhands.tools.gemini.edit.definition",
+      "class": "EditAction",
+      "fields": [
+        {
+          "name": "file_path",
+          "type": "str",
+          "required": true,
+          "default": null,
+          "description": "The path to the file to modify."
+        },
+        {
+          "name": "old_string",
+          "type": "str",
+          "required": true,
+          "default": null,
+          "description": "The text to replace. To create a new file, use an empty string. Must match the exact text in the file including whitespace."
+        },
+        {
+          "name": "new_string",
+          "type": "str",
+          "required": true,
+          "default": null,
+          "description": "The text to replace it with."
+        },
+        {
+          "name": "expected_replacements",
+          "type": "int",
+          "required": false,
+          "default": "1",
+          "description": "Number of replacements expected. Defaults to 1. Use when you want to replace multiple occurrences. The edit will fail if the actual count doesn't match."
+        }
+      ]
+    },
+    "FileEditorAction": {
+      "module": "openhands.tools.file_editor.definition",
+      "class": "FileEditorAction",
+      "fields": [
+        {
+          "name": "command",
+          "type": "Literal",
+          "required": true,
+          "default": null,
+          "description": "The commands to run. Allowed options are: `view`, `create`, `str_replace`, `insert`, `undo_edit`."
+        },
+        {
+          "name": "path",
+          "type": "str",
+          "required": true,
+          "default": null,
+          "description": "Absolute path to file or directory."
+        },
+        {
+          "name": "file_text",
+          "type": "str | None",
+          "required": false,
+          "default": "None",
+          "description": "Required parameter of `create` command, with the content of the file to be created."
+        },
+        {
+          "name": "old_str",
+          "type": "str | None",
+          "required": false,
+          "default": "None",
+          "description": "Required parameter of `str_replace` command containing the string in `path` to replace."
+        },
+        {
+          "name": "new_str",
+          "type": "str | None",
+          "required": false,
+          "default": "None",
+          "description": "Optional parameter of `str_replace` command containing the new string (if not given, no string will be added). Required parameter of `insert` command containing the string to insert."
+        },
+        {
+          "name": "insert_line",
+          "type": "int | None",
+          "required": false,
+          "default": "None",
+          "description": "Required parameter of `insert` command. The `new_str` will be inserted AFTER the line `insert_line` of `path`."
+        },
+        {
+          "name": "view_range",
+          "type": "list[int] | None",
+          "required": false,
+          "default": "None",
+          "description": "Optional parameter of `view` command when `path` points to a file. If none is given, the full file is shown. If provided, the file will be shown in the indicated line number range, e.g. [11, 12] will show lines 11 and 12. Indexing at 1 to start. Setting `[start_line, -1]` shows all lines from `start_line` to the end of the file."
+        }
+      ]
+    },
+    "GlobAction": {
+      "module": "openhands.tools.glob.definition",
+      "class": "GlobAction",
+      "fields": [
+        {
+          "name": "pattern",
+          "type": "str",
+          "required": true,
+          "default": null,
+          "description": "The glob pattern to match files (e.g., \"**/*.js\", \"src/**/*.ts\")"
+        },
+        {
+          "name": "path",
+          "type": "str | None",
+          "required": false,
+          "default": "None",
+          "description": "The directory (absolute path) to search in. Defaults to the current working directory."
+        }
+      ]
+    },
+    "GrepAction": {
+      "module": "openhands.tools.grep.definition",
+      "class": "GrepAction",
+      "fields": [
+        {
+          "name": "pattern",
+          "type": "str",
+          "required": true,
+          "default": null,
+          "description": "The regex pattern to search for in file contents"
+        },
+        {
+          "name": "path",
+          "type": "str | None",
+          "required": false,
+          "default": "None",
+          "description": "The directory (absolute path) to search in. Defaults to the current working directory."
+        },
+        {
+          "name": "include",
+          "type": "str | None",
+          "required": false,
+          "default": "None",
+          "description": "Optional file pattern to filter which files to search (e.g., \"*.js\", \"*.{ts,tsx}\")"
+        }
+      ]
+    },
+    "ListDirectoryAction": {
+      "module": "openhands.tools.gemini.list_directory.definition",
+      "class": "ListDirectoryAction",
+      "fields": [
+        {
+          "name": "dir_path",
+          "type": "str",
+          "required": false,
+          "default": "'.'",
+          "description": "The path to the directory to list. Defaults to current directory."
+        },
+        {
+          "name": "recursive",
+          "type": "bool",
+          "required": false,
+          "default": "False",
+          "description": "Whether to list subdirectories recursively (up to 2 levels)."
+        }
+      ]
+    },
+    "PlanningFileEditorAction": {
+      "module": "openhands.tools.planning_file_editor.definition",
+      "class": "PlanningFileEditorAction",
+      "fields": [
+        {
+          "name": "command",
+          "type": "Literal",
+          "required": true,
+          "default": null,
+          "description": "The commands to run. Allowed options are: `view`, `create`, `str_replace`, `insert`, `undo_edit`."
+        },
+        {
+          "name": "path",
+          "type": "str",
+          "required": true,
+          "default": null,
+          "description": "Absolute path to file or directory."
+        },
+        {
+          "name": "file_text",
+          "type": "str | None",
+          "required": false,
+          "default": "None",
+          "description": "Required parameter of `create` command, with the content of the file to be created."
+        },
+        {
+          "name": "old_str",
+          "type": "str | None",
+          "required": false,
+          "default": "None",
+          "description": "Required parameter of `str_replace` command containing the string in `path` to replace."
+        },
+        {
+          "name": "new_str",
+          "type": "str | None",
+          "required": false,
+          "default": "None",
+          "description": "Optional parameter of `str_replace` command containing the new string (if not given, no string will be added). Required parameter of `insert` command containing the string to insert."
+        },
+        {
+          "name": "insert_line",
+          "type": "int | None",
+          "required": false,
+          "default": "None",
+          "description": "Required parameter of `insert` command. The `new_str` will be inserted AFTER the line `insert_line` of `path`."
+        },
+        {
+          "name": "view_range",
+          "type": "list[int] | None",
+          "required": false,
+          "default": "None",
+          "description": "Optional parameter of `view` command when `path` points to a file. If none is given, the full file is shown. If provided, the file will be shown in the indicated line number range, e.g. [11, 12] will show lines 11 and 12. Indexing at 1 to start. Setting `[start_line, -1]` shows all lines from `start_line` to the end of the file."
+        }
+      ]
+    },
+    "ReadFileAction": {
+      "module": "openhands.tools.gemini.read_file.definition",
+      "class": "ReadFileAction",
+      "fields": [
+        {
+          "name": "file_path",
+          "type": "str",
+          "required": true,
+          "default": null,
+          "description": "The path to the file to read."
+        },
+        {
+          "name": "offset",
+          "type": "int | None",
+          "required": false,
+          "default": "None",
+          "description": "Optional: The 0-based line number to start reading from. Use for paginating through large files."
+        },
+        {
+          "name": "limit",
+          "type": "int | None",
+          "required": false,
+          "default": "None",
+          "description": "Optional: Maximum number of lines to read. Use with 'offset' to paginate through large files."
+        }
+      ]
+    },
+    "SleeptimeComputeAction": {
+      "module": "openhands.tools.tom_consult.definition",
+      "class": "SleeptimeComputeAction",
+      "fields": []
+    },
+    "TaskAction": {
+      "module": "openhands.tools.task.definition",
+      "class": "TaskAction",
+      "fields": [
+        {
+          "name": "description",
+          "type": "str | None",
+          "required": false,
+          "default": "None",
+          "description": "A short (3-5 word) description of the task."
+        },
+        {
+          "name": "prompt",
+          "type": "str",
+          "required": true,
+          "default": null,
+          "description": "The task for the agent to perform."
+        },
+        {
+          "name": "subagent_type",
+          "type": "str",
+          "required": false,
+          "default": "'general-purpose'",
+          "description": "The type of specialized agent to use for this task."
+        },
+        {
+          "name": "resume",
+          "type": "str | None",
+          "required": false,
+          "default": "None",
+          "description": "Task ID of the task to resume from."
+        },
+        {
+          "name": "max_turns",
+          "type": "int | None",
+          "required": false,
+          "default": "None",
+          "description": "Deprecated: This field is ignored and will be removed in version 2. Maximum iterations are now determined by the agent definition or parent conversation."
+        }
+      ]
+    },
+    "TaskTrackerAction": {
+      "module": "openhands.tools.task_tracker.definition",
+      "class": "TaskTrackerAction",
+      "fields": [
+        {
+          "name": "command",
+          "type": "Literal",
+          "required": false,
+          "default": "'view'",
+          "description": "The command to execute. `view` shows the current task list. `plan` creates or updates the task list based on provided requirements and progress. Always `view` the current list before making changes."
+        },
+        {
+          "name": "task_list",
+          "type": "list",
+          "required": false,
+          "default": "PydanticUndefined",
+          "description": "The full task list. Required parameter of `plan` command."
+        }
+      ]
+    },
+    "TerminalAction": {
+      "module": "openhands.tools.terminal.definition",
+      "class": "TerminalAction",
+      "fields": [
+        {
+          "name": "command",
+          "type": "str",
+          "required": true,
+          "default": null,
+          "description": "The shell command to execute. Can be empty string to view additional logs when the previous exit code is `-1`. Can be a special key name when `is_input` is True: `C-c` (Ctrl+C), `C-d` (Ctrl+D/EOF), `C-z` (Ctrl+Z), or any `C-<letter>` for Ctrl sequences; navigation keys `UP`, `DOWN`, `LEFT`, `RIGHT`, `HOME`, `END`, `PGUP`, `PGDN`; and `TAB`, `ESC`, `BS` (Backspace), `ENTER`. You can only execute one command at a time. Use the platform-appropriate shell syntax described in the tool description when chaining commands."
+        },
+        {
+          "name": "is_input",
+          "type": "bool",
+          "required": false,
+          "default": "False",
+          "description": "If True, the command is an input to the running process. If False, the command is executed in the terminal session. Default is False."
+        },
+        {
+          "name": "timeout",
+          "type": "float | None",
+          "required": false,
+          "default": "None",
+          "description": "Optional. Sets a maximum time limit (in seconds) for running the command. If the command takes longer than this limit, you\u2019ll be asked whether to continue or stop it. If you don\u2019t set a value, the command will instead pause and ask for confirmation when it produces no new output for 30 seconds. Use a higher value if the command is expected to take a long time (like installation or testing), or if it has a known fixed duration (like sleep)."
+        },
+        {
+          "name": "reset",
+          "type": "bool",
+          "required": false,
+          "default": "False",
+          "description": "If True, reset the terminal by creating a new session. Use this only when the terminal becomes unresponsive. Note that all previously set environment variables and session state will be lost after reset. Cannot be used with is_input=True."
+        }
+      ]
+    },
+    "WorkflowAction": {
+      "module": "openhands.tools.workflow.definition",
+      "class": "WorkflowAction",
+      "fields": [
+        {
+          "name": "name",
+          "type": "str",
+          "required": true,
+          "default": null,
+          "description": "A short name for this workflow run."
+        },
+        {
+          "name": "script",
+          "type": "str",
+          "required": true,
+          "default": null,
+          "description": "Python workflow script to run. It must define `async def main(wf):` and coordinate work only through the provided `wf` object."
+        },
+        {
+          "name": "max_concurrency",
+          "type": "int",
+          "required": false,
+          "default": "8",
+          "description": "Maximum number of sub-agent tasks to run concurrently. Consider 2\u20134 for LLM-heavy workflows to avoid hitting API rate limits."
+        }
+      ]
+    },
+    "WriteFileAction": {
+      "module": "openhands.tools.gemini.write_file.definition",
+      "class": "WriteFileAction",
+      "fields": [
+        {
+          "name": "file_path",
+          "type": "str",
+          "required": true,
+          "default": null,
+          "description": "The path to the file to write to."
+        },
+        {
+          "name": "content",
+          "type": "str",
+          "required": true,
+          "default": null,
+          "description": "The content to write to the file."
+        }
+      ]
+    }
+  }
+}

@@ -3298,3 +3298,33 @@ a rewording test was comparing a file with itself and could never have failed.
   the setting, so a run-time check here would have proven nothing.
 - **Stop-condition status:** gate unchanged and still green (8 passed); this only changes how it
   is observed.
+
+## 2026-08-08 23:12 EDT — Native basis for blast radius established; ADR-023 proposed
+
+- **Stage / plugin / port:** Phase 1 · Authorization surface · §4.2 blast radius (DERIVED, ADR-015 (a)-(e))
+- **What changed:** ADR-015 condition (a) requires each blast-radius input to be a named native
+  field verified in the shipped artifact. That verification was impossible against the artifacts
+  pinned so far — tool `Action` classes are not in `openhands-sdk`; they ship in `openhands-tools`,
+  which had no pin. Added the pin and the verification, then read the fields.
+  - `scripts/verify_tool_actions.py` — reads all 16 `openhands.tools.*.definition` modules from the
+    pinned image's PYZ, diffs each against the pinned `openhands-tools` 1.41.0 sdist (**16/16
+    match**), executes the image's own code objects, reads field sets off the constructed pydantic
+    models. **31 Action subclasses.**
+  - `docs/evidence/tool-action-fields.json` — the field sets.
+  - `docs/UPSTREAM_PINS.md` §2 — sdist digests for `openhands-sdk` and (new) `openhands-tools`.
+  - `adrs/ADR-023-blast-radius-projection-table.md` — **Proposed**, not ratified.
+- **Findings that change the spec:**
+  - `TerminalAction` carries `command: str` and nothing else. No path field, no host field. Blast
+    radius for the terminal tool is **not derivable** — deriving it means parsing shell, and the
+    worked example in the ADR (`docker volume prune -f` in an `&&` chain) under-reports the single
+    most destructive command available on Colossus. Terminal renders `null`.
+  - **No** field on any of the 31 actions carries credentials/secrets/tokens/env. "Credentials
+    touched" is ABSENT, same category as ADR-015 Finding 1 — proposed dropped from §4.2.
+  - `BrowserNavigateAction.url` is the only native field on any action carrying a network host.
+- **Files touched:** `scripts/verify_tool_actions.py`, `docs/evidence/tool-action-fields.json`,
+  `docs/UPSTREAM_PINS.md`, `adrs/ADR-023-blast-radius-projection-table.md`, `BUILD_LOG.md`
+- **Ports / adapters affected:** none yet — no code written against the table until ADR-023 is ratified.
+- **PORTING_LEDGER / ADR updated:** ADR-023 (Proposed). Ledger entry deferred to ratification.
+- **Stop-condition status:** **blocked pending operator decision.** ADR-023 drops a spec
+  requirement and renders `null` on the most dangerous tool; per project instruction, spec-flagged
+  ADR items go to the operator rather than being assumed.
