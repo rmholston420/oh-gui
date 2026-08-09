@@ -24,6 +24,10 @@ step "preflight"
 # with "Tool 'bash' not found" - which looks like a clean deny but is an unarmed test.
 # Naming a tool is not enough: the server only knows a ToolDefinition after its module has
 # been imported, so tool_module_qualnames must accompany tools (conversation_service.py:1382).
+# The registry key is derived, not the class name: __init_subclass__ does
+# _camel_to_snake(cls.__name__).removesuffix("_tool"), so TerminalTool registers as
+# "terminal" (tool.py:236-241). The SDK's own Tool.name docstring examples say
+# "TerminalTool" and are wrong - ADR-015, source beats docs.
 docker ps -q --filter "name=$CTR" | grep -q . || { fail "container $CTR not running"; exit 1; }
 [ "$(curl -s -o /dev/null -w '%{http_code}' "$API/../openapi.json")" = "200" ] || warn "openapi not 200"
 ok "container up, agent-server reachable"
@@ -39,9 +43,9 @@ print(json.dumps({
   "agent": {"kind": "Agent",
       "llm": {"model": os.environ["MODEL"], "base_url": os.environ["OLLAMA"],
               "api_key": "ollama", "native_tool_calling": True},
-      "tools": [{"name": "TerminalTool"}, {"name": "FileEditorTool"}]},
-  "tool_module_qualnames": {"TerminalTool": "openhands.tools.terminal",
-                            "FileEditorTool": "openhands.tools.file_editor"},
+      "tools": [{"name": "terminal"}, {"name": "file_editor"}]},
+  "tool_module_qualnames": {"terminal": "openhands.tools.terminal",
+                            "file_editor": "openhands.tools.file_editor"},
   "hook_config": {"pre_tool_use": [{"matcher": "*", "hooks": [
       {"type": "command", "command": os.environ["DENY"], "timeout": 20}]}]},
   "initial_message": {"role": "user", "content": [{"type": "text", "text":
