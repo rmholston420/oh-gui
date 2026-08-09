@@ -620,6 +620,31 @@ _ADR_INDEX_ROW_RE = re.compile(r"^\|\s*\[?ADR-(\d{3})\b", re.MULTILINE)
 _FOREIGN_ADR_DIRS = ("docs/donor-specs",)
 
 
+def _donor_names() -> tuple[str, ...]:
+    """Donor projects, read from the directories under `docs/donor-specs/` rather than a list.
+
+    A hardcoded list rots the first time a donor is added; the directory names cannot.
+    """
+    root = REPO_ROOT / "docs" / "donor-specs"
+    if not root.is_dir():
+        return ()
+    return tuple(d.name.replace("-", "").lower() for d in root.iterdir() if d.is_dir())
+
+
+def _names_a_donor(line: str) -> bool:
+    """Whether a line attributes its ADR number to a donor project by name.
+
+    Our own logs discuss donor ADR numbers — "Forge-OH's ADR-074 is Forge-OH's, not a dangling
+    reference to ours" is a true sentence that must not be a red. Exempting the donor *directory*
+    is not enough for that, because the sentence lives in `BUILD_LOG.md`.
+
+    The exemption is deliberately narrow: it requires the donor to be named on the same line as the
+    number. An unattributed `ADR-074` in our prose still reads as ours, and still fails.
+    """
+    squashed = line.replace("-", "").replace("_", "").lower()
+    return any(name in squashed for name in _donor_names())
+
+
 def _adr_citation_offenders() -> list[str]:
     """Bare `ADR-###` citations, and the index that is supposed to list them all.
 
@@ -649,9 +674,12 @@ def _adr_citation_offenders() -> list[str]:
         if rel.startswith(_FOREIGN_ADR_DIRS):
             continue
         text = source.read_text(encoding="utf-8", errors="replace")
-        for number in sorted(set(_ADR_NUMBER_RE.findall(text))):
-            if number not in by_number:
-                offenders.append(f"{rel} cites ADR-{number}, which has no file")
+        for line in text.splitlines():
+            if _names_a_donor(line):
+                continue
+            for number in sorted(set(_ADR_NUMBER_RE.findall(line))):
+                if number not in by_number:
+                    offenders.append(f"{rel} cites ADR-{number}, which has no file")
 
     index = adr_dir / "README.md"
     if not index.is_file():

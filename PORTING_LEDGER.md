@@ -498,3 +498,24 @@ chain, and §4.2 is about the account, so the conclusion leads.
   suspicion that the metrics were fabricated was checked and found wrong.
 - **ADR:** [ADR-033](adrs/ADR-033-code-index-is-an-mcp-server-not-a-vendored-index.md)
 - **Logged:** 2026-08-09 06:03 EDT
+
+#### Forge-OH agent skills — VENDORED
+- **Source:** https://github.com/rmholston420/Forge-OH
+- **Commit / Version:** df73ebed2d6d9df9397f7e95dd1eb66bd3dd98b2
+- **License:** MIT
+- **Kosmos location:** `.agents/skills/`
+- **Port(s):** none — content only; no adapter or formal port is involved.
+- **Native basis:** `.agents/skills/` is the project-skill discovery path and
+  `~/.openhands/skills/` the user-scope path, both read from the pinned SDK source at
+  `review/_sdk_src/1.41.0/openhands_sdk-1.41.0/openhands/sdk/skills/__init__.py`
+  (`load_project_skills` / `load_user_skills`). Nothing in OH-GUI loads these files; the SDK
+  does. No OH-GUI-invented directory, key, or field is introduced.
+- **Modifications:**
+  - 15 domain-neutral skills copied from `misc/user-scope-skills/` unchanged except for five
+    donor-specific references scrubbed in `skill-authoring` and `planning` (BFF router paths and
+    the :8090 agent-server port rewritten to OH-GUI's middleware path and :8000).
+  - 3 skills rewritten from scratch against OH-GUI facts: `oh-gui-repo-navigation`,
+    `playwright-oh-gui`, `oh-gui-log-discipline`.
+  - 5 donor skills rejected with reasons recorded in `.agents/skills/README.md`.
+- **ADR:** —
+- **Logged:** 2026-08-09 06:33 EDT

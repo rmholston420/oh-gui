@@ -4346,7 +4346,7 @@ The applied diff is now printed for every mutant.
 - **Stop-condition status:** ADR-022 unchanged; still a client-side affordance, still not mirrored
   in middleware. 20/20 card tests green.
 
-## 2026-08-09 06:44 EDT — ADR citation gate extended to numbers, logs and the index
+## 2026-08-09 06:20 EDT — ADR citation gate extended to numbers, logs and the index
 
 - **Stage / plugin / port:** Phase 0 · tooling · `spec_cross_references_resolve`
 - **What changed:** the registered cross-reference gate now also fails on a bare `ADR-###` citation
@@ -4362,3 +4362,34 @@ The applied diff is now printed for every mutant.
 - **Mutation evidence:** bogus number in BUILD_LOG, unindexed ADR, and phantom index row each
   caught; all three pinned by permanent tests, plus one asserting donor specs stay exempt. 63 pass.
 - **Stop-condition status:** carried debt item closed.
+
+## 2026-08-09 06:33 EDT — Forge-OH agent skills ported to .agents/skills/
+
+- **Stage / plugin / port:** Phase 1 · agent context · no port (native SDK path)
+- **What changed:** 18 skills now live at `.agents/skills/`, which the OpenHands SDK discovers as
+  project skills with no wiring on our side. 15 domain-neutral skills ported from Forge-OH,
+  3 written fresh against OH-GUI facts, 5 rejected.
+- **Verified before porting, not assumed:** `.agents/skills/` is the native project-skill path and
+  `~/.openhands/skills/` the user path, both read from SDK source. OH-GUI has no Socket.IO
+  (no match in `apps/gui/src` or `services/middleware/src`), which is what disqualified
+  `socketio-events-tracing`; the middleware *is* a FastAPI app, which is what kept
+  `fastapi-router-authoring`.
+- **Files touched:** `.agents/skills/**` (19 files incl. README), `PORTING_LEDGER.md`
+- **Ports / adapters affected:** none
+- **ADR / ledger updated:** PORTING_LEDGER entry with source URL, SHA df73ebe, SPDX MIT
+- **Stop-condition status:** met — content port complete, gates green.
+
+## 2026-08-09 06:36 EDT — ADR-citation exemption narrowed from directory to attribution
+
+- **Stage / plugin / port:** Phase 0 · tooling · `spec_cross_references_resolve`
+- **What changed:** exempting `docs/donor-specs/` was not enough. Our own logs discuss donor ADR
+  numbers, and that sentence lives in `BUILD_LOG.md`, so the gate red-flagged a true statement. The
+  exemption is now per-line and attribution-based: a donor ADR number is exempt only when the donor
+  is named on the same line. Donor names are read from the directories under `docs/donor-specs/`
+  rather than hardcoded, so adding a donor cannot rot the list.
+- **Caught by:** the gate I had just written, on my own first use of it — the intended behavior.
+- **Files touched:** `scripts/hard_constraints/checks.py`,
+  `scripts/tests/test_check_hard_constraints.py`, `PORTING_LEDGER.md`
+- **Mutation evidence:** an unattributed `ADR-099` on the line *below* an exempt donor line is
+  still red, pinning that the exemption cannot launder a fabrication elsewhere in the file. 65 pass.
+- **Stop-condition status:** met.

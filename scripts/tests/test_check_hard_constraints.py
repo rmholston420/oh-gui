@@ -656,6 +656,28 @@ def test_an_index_row_with_no_file_is_caught(repo_copy):
     assert checks.spec_cross_references_resolve() is not None
 
 
+def test_an_adr_number_attributed_to_a_donor_by_name_is_exempt(repo_copy):
+    """Our own logs discuss donor ADR numbers, and saying so truthfully is not a dangling ref."""
+    donor = repo_copy / "docs" / "donor-specs" / "forge-oh"
+    donor.mkdir(parents=True, exist_ok=True)
+    (donor / "keep.md").write_text("x\n", encoding="utf-8")
+    (repo_copy / "BUILD_LOG.md").write_text(
+        "## entry\n\n- Forge-OH's ADR-074 is Forge-OH's, not ours.\n", encoding="utf-8"
+    )
+    assert checks.spec_cross_references_resolve() is None
+
+
+def test_an_unattributed_number_is_still_caught_beside_a_donor_line(repo_copy):
+    """The exemption is per-line, so it cannot launder a fabrication elsewhere in the file."""
+    donor = repo_copy / "docs" / "donor-specs" / "forge-oh"
+    donor.mkdir(parents=True, exist_ok=True)
+    (donor / "keep.md").write_text("x\n", encoding="utf-8")
+    (repo_copy / "BUILD_LOG.md").write_text(
+        "## entry\n\n- Forge-OH's ADR-074 is theirs.\n- ratified by ADR-099.\n", encoding="utf-8"
+    )
+    assert checks.spec_cross_references_resolve() is not None
+
+
 def test_donor_specs_keep_their_own_adr_numbering(repo_copy):
     """Forge-OH's ADR-074 is a real decision of Forge-OH's, not a dangling reference to ours.
 
