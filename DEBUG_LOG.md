@@ -1733,3 +1733,24 @@ change. A per-spec run is reported as a per-spec run.
   reasoning — it must key on link syntax and on paths it is asked to resolve, never on bare strings.
   Recorded here so the gate is built against it. Second-order lesson: "grep found more hits" is not
   a finding, it is a prompt to read them.
+
+## 2026-08-09 02:08 EDT — pushed a red: read the gate's exit code and committed anyway
+
+- **Symptom:** `constraints=1` printed in the same command block that committed and pushed
+  `fe1e8bb`. One red: `cited_evidence_paths_resolve` — ADR-029:134 cited
+  `review/_sdk_src/1.41.0/.../hooks/executor.py`, an **elided** path with a literal `...` that
+  resolves to nothing.
+- **Affected stage / plugin / port:** Phase 1 · spec governance · ADR-029
+- **Root cause:** Two failures, one mechanical and one procedural. Mechanical: I abbreviated a long
+  evidence path for readability, and an abbreviated citation is an unresolvable citation. Procedural
+  and worse: I chained `check-hard-constraints.py; echo` with `git commit && git push` in a single
+  block, so the red printed **and the push proceeded regardless**. The gate did its job; the shell
+  I wrote around it did not.
+- **Fix applied:** Replaced the elided path with both full paths, corrected the executor range to
+  `343-352` to match the source re-read. Runner back to `=== PASSED ===`.
+- **Files changed:** `adrs/ADR-029-*.md`
+- **Related BUILD_LOG entry:** 2026-08-09 02:05 EDT
+- **Lesson:** Never put a gate invocation and a push in the same command block unless the push is
+  **`&&`-chained behind the gate's own exit status**. Printing an exit code is not checking it. This
+  is the fourth entry in the recurring "gate that quietly stops gating" class, and the first where
+  the gate worked perfectly and was simply ignored.

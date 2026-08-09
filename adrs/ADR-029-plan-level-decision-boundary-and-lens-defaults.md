@@ -131,4 +131,5 @@ execute against a live pinned agent-server on Colossus.
 - `adrs/ADR-003-single-operator-remove-household.md` (two lenses, one operator)
 - `adrs/ADR-014-authorization-enforcement-seam.md` (COMMAND-hook enforcement, unverified)
 - `adrs/ADR-015-native-fidelity-boundary.md` clause 3 (no manufactured fields)
-- `review/_sdk_src/1.41.0/.../hooks/executor.py:343-351`, `hooks/types.py:35-40`
+- `review/_sdk_src/1.41.0/openhands_sdk-1.41.0/openhands/sdk/hooks/executor.py:343-352`
+- `review/_sdk_src/1.41.0/openhands_sdk-1.41.0/openhands/sdk/hooks/types.py:35-40`
