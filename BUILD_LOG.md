@@ -3278,3 +3278,23 @@ a rewording test was comparing a file with itself and could never have failed.
   --constraints-only` PASSED (1 warning, pytest lives in the middleware venv) · lint and build clean.
 - **Stop-condition status:** KNOWN_ISSUES item 5 **closed**. Item 49 of hard-constraints partially
   closed. The card itself is one bullet of §4.2 — new KNOWN_ISSUES entry filed for the rest.
+
+## 2026-08-08 22:47 EDT — WATCH=1 mode so the headed run is actually watchable
+
+- **Stage / plugin / port:** Phase 1 · Authorization slice · e2e tooling
+- **What changed:** the operator's headed run on Colossus finished 8 tests in 2.8s across 8
+  workers — eight windows, each alive under a second. That satisfies "headed" on a technicality
+  and not at all in substance: the standing requirement is to *watch it drive the UI*, and nothing
+  was watchable. `WATCH=1` now pins one worker and applies a 600ms `slowMo` (override with
+  `WATCH_MS`). Default runs are untouched — full parallelism, zero slowMo.
+  - `npm run watch:authz` — the 900px gate, watchable.
+  - `npm run watch:e2e` — every e2e spec, watchable.
+- **Files touched:** `apps/gui/playwright.config.ts`, `apps/gui/package.json`
+- **Ports / adapters affected:** none.
+- **PORTING_LEDGER / ADR updated:** —
+- **Verification:** config resolution asserted directly rather than inferred from run output —
+  default `{slowMo: 0}` with workers unset, `WATCH=1` → `{workers: 1, slowMo: 600}`,
+  `WATCH_MS=200` → `{workers: 1, slowMo: 200}`. The sandbox resolves to 1 worker regardless of
+  the setting, so a run-time check here would have proven nothing.
+- **Stop-condition status:** gate unchanged and still green (8 passed); this only changes how it
+  is observed.

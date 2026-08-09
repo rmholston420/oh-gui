@@ -8,7 +8,15 @@ export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
   reporter: [['list'], ['html', { open: 'never' }]],
-  use: { baseURL: URL, trace: 'on-first-retry' },
+  // `WATCH=1` is for the operator watching the browser, not for CI-style throughput. Headed runs
+  // default to 8 parallel windows that each live under a second, which is a green tick, not a
+  // demonstration. One worker plus slowMo makes the run legible in real time.
+  workers: process.env.WATCH ? 1 : undefined,
+  use: {
+    baseURL: URL,
+    trace: 'on-first-retry',
+    launchOptions: { slowMo: process.env.WATCH ? Number(process.env.WATCH_MS ?? 600) : 0 },
+  },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
     // `--host 127.0.0.1` is load-bearing, not decoration. Vite's default host is `localhost`,

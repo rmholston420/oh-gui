@@ -18,7 +18,9 @@
     "test:e2e": "playwright test",
     "gate": "npm run lint && npm run test && npm run build",
     "e2e:setup": "playwright install chromium",
-    "verify": "npm run gate && npm run test:e2e"
+    "verify": "npm run gate && npm run test:e2e",
+    "watch:authz": "WATCH=1 playwright test authorization-narrow --headed",
+    "watch:e2e": "WATCH=1 playwright test --headed"
   },
   "dependencies": {
     "motion": "13.0.0",
