@@ -4548,3 +4548,15 @@ The applied diff is now printed for every mutant.
   `apps/gui/src/App.tsx`, `apps/gui/src/shell/Shell.css`, `apps/gui/e2e/plugins-live.spec.ts`
 - **Evidence:** 241 vitest pass (was 237), `tsc --noEmit` clean, 3 live tests enumerated.
 - **Stop-condition status:** in-progress -- the rail path is unwitnessed until the live run.
+
+## 2026-08-09 07:39 EDT — Navigation follows the breakpoint instead of dying with the rail
+
+- **Stage / plugin / port:** Phase 1 · GUI · shell navigation
+- **What changed:** surface navigation is hosted by the rail at >=1700px and by the command bar
+  below it, chosen by `useRailVisible()`. One `SurfaceNav` component, two hosts, one copy mounted.
+- **Why:** the live run proved the previous commit only made Plugins reachable in a maximised
+  window. See DEBUG_LOG 2026-08-09 07:39 EDT.
+- **Files touched:** `apps/gui/src/shell/useRailVisible.ts` (new), `useRailVisible.test.ts` (new,
+  3), `apps/gui/src/App.tsx`, `apps/gui/src/shell/Shell.css`, `apps/gui/e2e/plugins-live.spec.ts`
+- **Evidence:** 244 vitest pass (was 241), `tsc --noEmit` clean. Live path unwitnessed until the run.
+- **Stop-condition status:** in-progress -- awaiting the live run at both widths.

@@ -9,6 +9,7 @@ import type { AgentServerEvent } from './api/types';
 import RunView from './features/run/RunView';
 import Shell from './shell/Shell';
 import SurfaceNav, { type Surface } from './shell/SurfaceNav';
+import { useRailVisible } from './shell/useRailVisible';
 import type { SdkNativeModelProfileFields } from './features/model-profiles/model-profile';
 
 /**
@@ -160,6 +161,16 @@ function Workspace() {
   const [surface, setSurface] = useState<Surface>('run');
   const projectDir = new URLSearchParams(window.location.search).get('projectDir');
 
+  // Below 1700px the rail is `display: none`, which removes it from the accessibility tree —
+  // navigation mounted only there is unreachable, not merely cramped. So the nav moves into the
+  // command bar at those widths. `ShellProps.commandBarContent` is explicitly the integrating
+  // surface's slot, so this needs no change to Shell's spec'd structure.
+  //
+  // Exactly one copy is mounted at a time. Rendering both and hiding one with CSS would leave two
+  // identically-named controls in the DOM, which is ambiguous for assistive tech and for tests.
+  const railVisible = useRailVisible();
+  const nav = <SurfaceNav current={surface} onSelect={setSurface} />;
+
   // The lens is presentation over one mounted surface (spec 03 §3.0). `RunView` is mounted once
   // and is not remounted, refetched, or re-routed when the lens toggles — that is the constraint,
   // not an optimisation.
@@ -171,8 +182,13 @@ function Workspace() {
   // hide that leaves two surfaces readable to a screen reader at once.
   return (
     <Shell
-      commandBarContent={<span className="font-mono text-xs text-slate-400">agent-server · 127.0.0.1:8000</span>}
-      leftRail={<SurfaceNav current={surface} onSelect={setSurface} />}
+      commandBarContent={
+        <div className="flex items-center gap-4">
+          <span className="font-mono text-xs text-slate-400">agent-server · 127.0.0.1:8000</span>
+          {!railVisible && nav}
+        </div>
+      }
+      leftRail={railVisible ? nav : undefined}
     >
       {({ isReadOnlyViewport }) => (
         <>

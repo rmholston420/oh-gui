@@ -2024,3 +2024,31 @@ gating" defect class in this repo.
   exit code.** Printing a gate's verdict is not the same as honouring it.
 - **Files changed:** `BUILD_LOG.md` (timestamp), `DEBUG_LOG.md`
 - **Related BUILD_LOG entry:** 2026-08-09 07:32 EDT
+
+## 2026-08-09 07:39 EDT — Plugins was unreachable below 1700px; the rail is not in the accessibility tree
+
+- **Symptom:** live test `the operator can reach Plugins from the rail without editing the URL`
+  failed: `getByRole('navigation', { name: 'Surfaces' })` — "element(s) not found", 5s timeout,
+  after `landed on the default workspace in Pro` printed successfully.
+- **Affected stage / plugin / port:** Phase 1 · GUI · shell navigation
+- **Root cause:** not a test defect. `.oh-shell__left-rail` is `display: none` below 1700px in both
+  the 900–1199px and 1200–1699px blocks of `Shell.css` (the ADR-031 four-region breakpoint).
+  `display: none` removes a subtree from the accessibility tree, so the nav had no role to match —
+  hence "not found" rather than "not visible". **The rail-only navigation therefore left Plugins
+  genuinely unreachable at every width below 1700px**, which includes the operator's stated normal
+  case: a 3440x1440 screen with nothing run maximised. The previous commit's claim that Plugins was
+  reachable held only for a maximised window.
+- **Fix applied:** `useRailVisible()` (fails closed to `false`) selects the host. At >=1700px the
+  nav is the rail's content; below that it is rendered in `commandBarContent`, which `ShellProps`
+  already designates as the integrating surface's slot — so Shell's spec'd structure is unchanged.
+  Exactly one copy is mounted at a time; rendering both and hiding one with CSS would leave two
+  identically-named controls in the DOM, ambiguous for assistive tech and for locators.
+- **Guard against recurrence:** `useRailVisible.test.ts` reads `Shell.css` and asserts the
+  TypeScript constant appears as a real `@media (min-width: ...)` value, so the duplicated
+  breakpoint cannot drift. The live spec now resizes to 1280 and to 1800 and asserts the nav is
+  reachable at both, with exactly one copy at the wide width.
+- **Lesson:** a CSS `display: none` breakpoint is a reachability decision, not a styling one. I
+  mounted navigation into a container I had read the markup for but not the stylesheet of.
+- **Files changed:** `src/shell/useRailVisible.ts` (new), `useRailVisible.test.ts` (new),
+  `src/App.tsx`, `src/shell/Shell.css`, `e2e/plugins-live.spec.ts`
+- **Related BUILD_LOG entry:** 2026-08-09 07:39 EDT

@@ -93,8 +93,13 @@ test.describe('@live plugins panel against agent-server', () => {
     await page.goto(`/?projectDir=${encodeURIComponent(PROJECT_DIR)}`);
     step('landed on the default workspace in Pro');
 
+    // 1280px: the rail is display:none at this width, so navigation must be in the command bar.
+    // This is the width the operator actually uses -- an unmaximised window on a 3440px screen.
+    await page.setViewportSize({ width: 1280, height: 900 });
     const nav = page.getByRole('navigation', { name: 'Surfaces' });
     await expect(nav).toBeVisible();
+    await expect(page.locator('.oh-shell__command-content').getByRole('navigation')).toBeVisible();
+    step('navigation reachable at 1280px, hosted in the command bar');
 
     const runView = page.getByTestId('surface-run');
     await page.getByRole('button', { name: 'Plugins' }).click();
@@ -118,6 +123,13 @@ test.describe('@live plugins panel against agent-server', () => {
     await page.getByRole('button', { name: 'Run' }).click();
     await expect(runView).toBeVisible();
     step('returned to the run surface');
+
+    // >=1700px: the rail exists, so navigation belongs there and must not be duplicated.
+    await page.setViewportSize({ width: 1800, height: 1000 });
+    await expect(page.getByRole('complementary', { name: 'Navigation' }).getByRole('navigation')).toBeVisible();
+    await expect(page.getByRole('navigation', { name: 'Surfaces' })).toHaveCount(1);
+    await expect(page.getByRole('button', { name: 'Plugins' })).toHaveCount(1);
+    step('navigation moves into the rail at 1800px, exactly one copy');
   });
 
   test('the installed endpoint does not report a project plugin', async ({ request }) => {
