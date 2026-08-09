@@ -8,6 +8,10 @@
  * wrote about its own action, and a model that wants to run `rm -rf /` will happily summarise it as
  * "tidying up temporary files".
  *
+ * The word "unverified" lives in the *heading*, not only in the paragraph beneath it. A disclaimer
+ * one line down is a disclaimer that scrolls away and gets skimmed; the heading is what stays on
+ * screen next to the text it qualifies. A test asserts it, so it cannot quietly migrate.
+ *
  * That is also why this sits *below* the blast radius on the card: the derived account comes first,
  * the self-report second. A test asserts the order, because reversing it would quietly make the
  * agent's own words the operator's first impression of what is about to happen.
@@ -58,7 +62,7 @@ export function AgentAccountSection({ account }: { account: AgentAccount }) {
       className="mt-4 rounded-md border border-slate-700 bg-slate-900/40 p-3"
     >
       <h3 data-testid="agent-account-heading" className="text-sm font-semibold text-slate-300">
-        What the agent says about this
+        What the agent says about this &mdash; unverified
       </h3>
       <p className="mt-1 text-xs text-slate-500">
         The agent&rsquo;s own words, reported unchanged. Not an analysis, and not checked against

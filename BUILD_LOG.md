@@ -3548,3 +3548,22 @@ The applied diff is now printed for every mutant.
 - **Stop-condition status:** met for §4.2's agent-account bullet. §4.2 as a whole remains open —
   untrusted badge (04a), §4.2.1 audit log, and wiring Reject to
   `conversation.reject_pending_actions(reason)` are all still absent. Nothing transmits to a runtime yet.
+
+## 2026-08-09 00:26 EDT — "unverified" moved into the agent-account heading
+
+- **Stage / plugin / port:** Phase 1 · spec 04 §4.2 (the agent's own account)
+- **What changed:** the attribution heading now reads "What the agent says about this — unverified".
+  The word was previously only in the paragraph beneath, which is a disclaimer that scrolls away and
+  gets skimmed; the heading is what stays on screen beside the text it qualifies. Asserted in both
+  the rendering test and the headed walkthrough so it cannot quietly migrate back down.
+- **Files touched:**
+  - `apps/gui/src/features/authorization/AgentAccountSection.tsx`
+  - `apps/gui/src/features/authorization/agent-account-section.test.tsx`
+  - `apps/gui/e2e/agent-account-walkthrough.spec.ts`
+- **Ports / adapters affected:** none
+- **PORTING_LEDGER / ADR updated:** —
+- **Verification:** gate 114/114, build clean, Playwright 24/24. Mutant A9 (remove "unverified" from
+  the heading, leaving it in the paragraph) KILLED — the gate distinguishes heading from body, which
+  is the whole point of the change.
+- **Stop-condition status:** met. §4.2 still owes the untrusted badge (04a), the §4.2.1 audit log,
+  and wiring Reject.

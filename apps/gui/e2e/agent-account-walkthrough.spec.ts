@@ -58,7 +58,9 @@ test('an operator can see the agent account stay separate from the derived readi
   });
   expect(accountFollowsRadius).toBe(true);
 
-  await expect(page.getByTestId('agent-account-heading')).toContainText(/what the agent says/i);
+  const heading = page.getByTestId('agent-account-heading');
+  await expect(heading).toContainText(/what the agent says/i);
+  await expect(heading).toContainText(/unverified/i);
   await expect(account).toContainText(/own words/i);
   await spotlight('blast-target', '#34d399');
   await spotlight('agent-account-heading', '#60a5fa');

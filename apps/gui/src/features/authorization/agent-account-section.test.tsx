@@ -23,6 +23,9 @@ describe('AgentAccountSection', () => {
     );
     const heading = screen.getByTestId('agent-account-heading');
     expect(heading).toHaveTextContent(/what the agent says/i);
+    // In the heading specifically, not merely somewhere in the section: the paragraph below scrolls
+    // away and gets skimmed, the heading stays next to the text it qualifies.
+    expect(heading).toHaveTextContent(/unverified/i);
     // The framing must not present the self-report as analysis. ADR-015: `summary` is a claim.
     const section = screen.getByTestId('agent-account');
     expect(section.textContent).toMatch(/own words/i);
