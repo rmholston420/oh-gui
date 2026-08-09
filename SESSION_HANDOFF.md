@@ -1,50 +1,46 @@
-# Kosmos Session Handoff — 2026-08-08 22:44 EDT
+# Kosmos Session Handoff — 2026-08-09 03:50 EDT
 
 ## Current build-sequencing position
-- **Stage / phase:** Phase 1 · Authorization slice
-- **Plugin / kernel component:** frontend authorization surface (`apps/gui/src/features/authorization/`)
-- **Port(s) in progress:** none — the last two slices were evidence and frontend only, no port or
-  adapter touched.
+- **Stage / phase:** Phase 1 · authorization surface (`docs/specs/04-authorization.md` §4.2)
+- **Plugin / kernel component:** `apps/gui` frontend only. No middleware surface touched.
+- **Port(s) in progress:** none — blast radius is DERIVED, not a port (PORTING_LEDGER 2026-08-08 23:30 EDT)
 
 ## Completed this session
-- `ce461da`, `f5c3d2a` — hook-envelope capture + `AuthorizeRequest` fix; ADR-014 item 5 closed.
-- `efee480` — evidence-directory guard.
-- `de9ed54` — trust-dial mirror verified against the pinned image. All 192 combinations agree; the
-  mirror was correct. ADR-006 amended; a spec self-contradiction ("at least MEDIUM" vs HIGH) fixed.
-- `6047116` — 900px read-only gate (ADR-022), headed Playwright proof, 16 mutants all caught.
-- Operator reproduced both captures on Colossus with real docker; evidence byte-identical.
+- ADR-023 ratified (option B), then amended: the wire discriminator is `ActionEvent.action.kind`
+  in mangled FQN form, not a bare class name.
+- ADR-024 ratified: hold `@openhands/typescript-client` at 1.37.0; defer `canvas_extensions`.
+- `docs/specs/04-authorization.md` §4.2 amended; `PORTING_LEDGER.md`, `adrs/README.md`,
+  `docs/UPSTREAM_PINS.md` §3a brought into agreement.
+- Built `blast-radius.ts` (9 projections, 28 no-projection, 37 total = the pinned image exactly)
+  and `BlastRadiusSection.tsx`; wired into `AuthorizationCard` as an optional `event`.
+- Replaced the destructive `App.tsx` demo command (carried debt — cleared).
+- 39 new tests across unit / contract / rendering / browser. 13 mutants applied and killed.
+- Commit `bab46c9`, pushed to `main`.
 
-## Remaining before current Definition of Done
-Phase 1 exit criteria (§4.12 per ADR-017). Five items remain in KNOWN_ISSUES from the untracked
-set, plus one new one:
-1. §4.1 — trust dial settable **per task type**, not only globally.
-2. §4.3 — the thirteen named batching/confirmation trigger conditions.
-3. §8.4 — model-profile fields `generation/family version` and `dense vs MoE`.
-4. §8.5/§8.6 — tool-call-depth budget axis and the 30-concurrent-tool soft warning.
-6. §04a — quarantine invocations batched into the audit log.
-+ **New:** the rest of §4.2 — blast radius (DERIVED, ADR-015 condition (e)), untrusted-content
-  badge, the agent's own account, §4.2.1 audit log, and wiring Reject to
-  `conversation.reject_pending_actions(reason)`. Nothing is transmitted anywhere yet.
+## Verified state
+- `npm run gate` exit 0 — 84 tests, 10 files, tsc + eslint clean.
+- `npx playwright test` exit 0 — 22/22.
+- Working tree clean, `main` pushed.
 
-Carried debt: wizard §3.4 items 1 & 3 inert; `trust-dial.ts` still owed to the middleware
-(OpenAPI-driven, ADR-001 Amendment #1 finding 2) — verifying it did not retire it; ADR-016
-baseline benchmark unrun (~3-5 GPU hours); ADR-014 items 1-4 need a live agent-server plus an
-Ollama model, so ADR-014 stays *Proposed*.
+## Remaining before Phase 1 Definition of Done
+- §4.2 leftovers: untrusted-content badge (04a), the agent's own account
+  (`summary` / `thought` / `reasoning_content`), §4.2.1 audit log, and wiring Reject to
+  `conversation.reject_pending_actions(reason)` — **nothing is transmitted anywhere yet**.
+- §4.1 per-task-type trust dial · §4.3 thirteen batching triggers · §8.4 model-profile fields ·
+  §8.5/§8.6 tool-call-depth axis + 30-concurrent warning · §04a quarantine audit batching.
+- Carried debt: wizard §3.4 items 1 and 3 inert; `trust-dial.ts` mirror owed to the middleware
+  (ADR-015 clause 7 = Phase 1 deletion requirement); ADR-016 baseline benchmark unrun;
+  ADR-014 still **Proposed**.
 
 ## Open questions / awaiting user answer
-- None. The two scope questions from this session (how much §4.2 card to build, and where the
-  900px rule is enforced) were answered "make optimal choice" and are recorded in ADR-022 and the
-  new KNOWN_ISSUES entry.
+- None. The three open decisions from last session were made under "make the optimal choices" and
+  are recorded in ADR-024 and the ADR-023 amendment.
 
 ## Exact next action
-Watch the gate drive the UI, which has not yet been done headed on Colossus:
+Watch the new specs drive the UI headed on Colossus:
 
-    cd ~/dev/oh-gui && git pull && cd apps/gui && npx playwright test authorization-narrow --headed
+```bash
+cd ~/dev/oh-gui && git pull --ff-only && cd apps/gui && npm ci && npm run watch:e2e -- blast-radius
+```
 
-Then start blast radius — it is the one remaining §4.2 item carrying an ADR-015 obligation, so it
-is the expensive one to get wrong.
-
-## Environment note
-The sandbox runs Node 20, where jsdom 30 cannot load and vitest reports the crash as an *error*
-while the summary line still reads "passed". Read the exit code, not the summary. Colossus is on
-Node >=22.14 and unaffected.
+Then pick up §4.2's untrusted-content badge (04a).
