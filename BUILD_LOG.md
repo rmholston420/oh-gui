@@ -4560,3 +4560,14 @@ The applied diff is now printed for every mutant.
   3), `apps/gui/src/App.tsx`, `apps/gui/src/shell/Shell.css`, `apps/gui/e2e/plugins-live.spec.ts`
 - **Evidence:** 244 vitest pass (was 241), `tsc --noEmit` clean. Live path unwitnessed until the run.
 - **Stop-condition status:** in-progress -- awaiting the live run at both widths.
+
+## 2026-08-09 07:42 EDT — fabricated test id fixed, and made impossible to ship again
+
+- **Stage / plugin / port:** Phase 1 · GUI · e2e specs
+- **What changed:** corrected the plugin-card locator in the rail-navigation live test; added
+  `e2e/testids.spec.ts`, a browserless guard that rejects any `getByTestId` string absent from
+  `src/`. Runs in ~15ms, so it can precede any live run.
+- **Why:** two operator-run live cycles were spent on a string I invented. See DEBUG_LOG 2026-08-09 07:42 EDT.
+- **Files touched:** `apps/gui/e2e/plugins-live.spec.ts`, `apps/gui/e2e/testids.spec.ts` (new)
+- **Evidence:** guard green; mutation-tested by renaming a real id, which it caught by name.
+- **Stop-condition status:** in-progress -- rail navigation still unwitnessed live.

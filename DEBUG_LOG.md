@@ -2052,3 +2052,25 @@ gating" defect class in this repo.
 - **Files changed:** `src/shell/useRailVisible.ts` (new), `useRailVisible.test.ts` (new),
   `src/App.tsx`, `src/shell/Shell.css`, `e2e/plugins-live.spec.ts`
 - **Related BUILD_LOG entry:** 2026-08-09 07:39 EDT
+
+## 2026-08-09 07:42 EDT — live spec asserted a test id that had never existed
+
+- **Symptom:** `getByTestId('plugin-card-oh-gui')` — "element(s) not found" after 15s, in the new
+  rail-navigation live test. Navigation itself worked: both the 1280px command-bar step and the
+  click step printed.
+- **Affected stage / plugin / port:** Phase 1 · GUI · e2e specs
+- **Root cause:** I wrote the locator from memory. The real id is `plugin-card`, filtered by text
+  (`PluginsPanel.tsx:38`) — exactly what the sibling spec in the same file already did, four lines
+  of scrollback away. Nothing in the toolchain rejects a fabricated test id: it is an ordinary
+  string, so `tsc` and vitest both pass it through, and only a live run against a staged container
+  can catch it. The cost of my mistake was paid in the operator's time, twice.
+- **Fix applied:** locator corrected to `getByTestId('plugin-card').filter({ hasText: 'oh-gui' })`.
+- **Guard added:** `e2e/testids.spec.ts` (`@static`, no browser, ~15ms) reads every `getByTestId`
+  string in `e2e/*.spec.ts` and fails unless it appears in `src/`, expanding
+  `data-testid={`...${x}...`}` templates into patterns so dynamic ids are not false positives.
+  Written naively first, it flagged the legitimate `cell-ask-always-UNKNOWN-in`; a guard that cries
+  wolf gets ignored, so it now understands templates.
+- **Mutation-tested:** renaming a real id to `plugin-card-invented` was reported by name and failed
+  the guard; reverting restored green. Verified, not assumed.
+- **Files changed:** `apps/gui/e2e/plugins-live.spec.ts`, `apps/gui/e2e/testids.spec.ts` (new)
+- **Related BUILD_LOG entry:** 2026-08-09 07:42 EDT

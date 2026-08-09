@@ -105,8 +105,10 @@ test.describe('@live plugins panel against agent-server', () => {
     await page.getByRole('button', { name: 'Plugins' }).click();
     step('clicked Plugins in the rail');
 
-    const card = page.getByTestId('plugin-card-oh-gui');
-    await expect(card).toBeVisible({ timeout: 15_000 });
+    // `plugin-card` filtered by name -- the same locator the first spec uses. There is no
+    // `plugin-card-oh-gui` test id; this line asserted one that had never existed.
+    const card = page.getByTestId('plugin-card').filter({ hasText: 'oh-gui' });
+    await expect(card).toBeVisible({ timeout: 30_000 });
     await expect(page.getByRole('button', { name: 'Plugins' })).toHaveAttribute(
       'aria-current',
       'page',
