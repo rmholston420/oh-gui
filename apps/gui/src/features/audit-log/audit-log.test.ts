@@ -145,7 +145,12 @@ describe('AuthorizationAuditLog', () => {
   it('requires a structured provenance array and required provenance members at write time', () => {
     const audit = log();
 
-    expect(() => audit.append({ ...approval(), provenance: null } as unknown as AuthorizationAuditWrite)).toThrow(
+    // `null` is a legitimate ADR-020 state (untraceable), so it is NOT rejected here — see the
+    // clause 3 contract test below. Only unsupported shapes are.
+    expect(() => audit.append({ ...approval(), provenance: 'first-party' } as never)).toThrow(
+      /structured provenance array/i,
+    );
+    expect(() => audit.append({ ...approval(), provenance: undefined } as never)).toThrow(
       /structured provenance array/i,
     );
     expect(() => audit.append({ ...approval(), provenance: [{ id: 'context-1', trust_class: 'first-party' }] } as never)).toThrow(
@@ -183,8 +188,26 @@ describe('AuthorizationAuditLog', () => {
     (source.provenance as unknown as AuditProvenanceReferenceMutable[])[0]!.source = 'tampered-after-decision';
     (source as { confidence: number }).confidence = 0.01;
 
-    expect(entry.provenance[0]!.source).toBe('workspace/package.json');
+    expect(entry.provenance![0]!.source).toBe('workspace/package.json');
     expect(entry.confidence).toBe(0.85);
+  });
+
+  it('keeps "untraceable" and "traced, none" distinguishable per ADR-020 clause 3', () => {
+    const audit = log();
+    const untraced = audit.append({ ...approval(), provenance: null });
+    const tracedNone = audit.append({ ...approval(), provenance: [] });
+
+    // Mutation: coerce null to [] in copyProvenance. Both entries then read identically and an
+    // action whose ancestry was never computed becomes indistinguishable from one that was
+    // computed and found nothing. That is the conflation ADR-020 forbids.
+    expect(untraced.provenance).toBeNull();
+    expect(tracedNone.provenance).toEqual([]);
+    expect(untraced.provenance).not.toEqual(tracedNone.provenance);
+
+    // Omitting the field entirely is still a programming error, not a third silent state.
+    expect(() => audit.append({ ...approval(), provenance: undefined as never })).toThrow(
+      AuditLogValidationError,
+    );
   });
 
   it('makes entries deeply immutable and preserves append-only history against mutation attempts', () => {
@@ -198,14 +221,14 @@ describe('AuthorizationAuditLog', () => {
       (entry.guiLocal as { actionLabel: string }).actionLabel = 'tampered';
     }).toThrow(TypeError);
     expect(() => {
-      (entry.provenance[0]! as { source: string }).source = 'tampered';
+      (entry.provenance![0]! as { source: string }).source = 'tampered';
     }).toThrow(TypeError);
     expect(() => {
       (history as unknown as AuthorizationAuditEntryMutable[]).push(entry);
     }).toThrow(TypeError);
     expect(audit.entries).toHaveLength(1);
     expect(audit.entries[0]!.guiLocal.actionLabel).toBe('Read workspace package manifest');
-    expect(audit.entries[0]!.provenance[0]!.source).toBe('workspace/package.json');
+    expect(audit.entries[0]!.provenance![0]!.source).toBe('workspace/package.json');
   });
 
   it('expires every relaxation when the conversation session ends without mutating the grant record', () => {

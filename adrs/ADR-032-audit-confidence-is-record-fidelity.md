@@ -1,6 +1,6 @@
 # ADR-032 — Audit confidence is record fidelity, and an uncomputed tracker is not a clean one
 
-**Status:** Proposed — CONFLICTS WITH ADR-020, needs operator decision
+**Status:** Ratified · conforms to ADR-020
 **Lock-in phase:** Phase 1 · GUI authorization surface
 **Supersedes:** —
 
@@ -112,3 +112,36 @@ Phase 1, at the point the authorization audit log was mounted into the run surfa
 - `adrs/ADR-015-native-fidelity.md` (GUI-local values kept separate from SDK-native ones)
 - `adrs/ADR-020` (Context Inspector, future provenance source)
 - `apps/gui/src/features/audit-log/useAuthorizationAudit.ts`
+
+
+---
+
+## Resolution of the ADR-020 conflict (2026-08-09 05:52 EDT)
+
+The draft put the traced/untraced distinction in `actionClass` against a non-nullable
+`provenance`. **ADR-020 clause 3 had already ratified the opposite**: `null` = no traceable
+context items, `[]` = traced and none, never conflated, with a contract test asserting they are
+distinguishable. A ratified decision is not amended to match code written without reading it, so
+the implementation was conformed to ADR-020:
+
+- `AuthorizationAuditEntry.provenance` and `AuthorizationAuditWrite.provenance` are now
+  `readonly AuditProvenanceReference[] | null`.
+- `copyProvenance` preserves an explicit `null`; `undefined` and non-arrays still throw, so the
+  caller must state which of the three states applies.
+- `untrustedProvenanceReferences` returns `null` when the tracker never ran, instead of
+  `[operatorDecision]` which asserted a completed trace.
+- `AuditLogPanel` renders the untraced case distinctly from the traced-empty case.
+- `actionClass` (`gui-local-uncomputed` / `gui-local-clear`) is retained as a display mirror, not
+  as the authoritative distinction.
+
+Clause 1 of this ADR — confidence is record fidelity, always `1`, never a model score — does not
+conflict with ADR-020 and stands as ratified.
+
+Mutation-tested: coercing `null` to `[]` in `copyProvenance`, and returning `[operatorDecision]`
+for the uncomputed tracker, each turn the contract tests red.
+
+### Citation errors in the original draft
+This ADR was first drafted citing ADR-008 and ADR-015 from memory without opening `adrs/`. Both
+were wrong: ADR-008 is *Phase 0 Baseline Metrics*, and the provenance decision is **ADR-020**. A
+cheap gate asserting every `ADR-###` cross-reference resolves to a real file whose title matches
+is filed in KNOWN_ISSUES.

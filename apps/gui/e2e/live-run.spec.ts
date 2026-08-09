@@ -31,7 +31,6 @@ const LIVE_TIMEOUT_MS = 240_000;
 const T0 = Date.now();
 function step(message: string): void {
   const seconds = ((Date.now() - T0) / 1000).toFixed(0).padStart(4);
-  // eslint-disable-next-line no-console
   console.log(`\x1b[36m[${seconds}s]\x1b[0m ${message}`);
 }
 

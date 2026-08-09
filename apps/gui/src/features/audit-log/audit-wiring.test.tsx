@@ -93,17 +93,24 @@ describe('authorization audit binding', () => {
       { thirdPartyUntrustedContextIds: ['ctx-7', 'ctx-9'] },
       'terminal',
     );
-    expect(refs).toHaveLength(3);
-    expect(refs[0]!.trust_class).toBe('first-party');
-    expect(refs.slice(1).map((r) => r.id)).toEqual(['ctx-7', 'ctx-9']);
-    expect(refs.slice(1).every((r) => r.trust_class === 'third-party-untrusted')).toBe(true);
+    expect(refs).not.toBeNull();
+    expect(refs!).toHaveLength(3);
+    expect(refs![0]!.trust_class).toBe('first-party');
+    expect(refs!.slice(1).map((r) => r.id)).toEqual(['ctx-7', 'ctx-9']);
+    expect(refs!.slice(1).every((r) => r.trust_class === 'third-party-untrusted')).toBe(true);
   });
 
-  it('always carries a first-party item so a write is never provenance-free', () => {
-    expect(untrustedProvenanceReferences(undefined, 'terminal')).toHaveLength(1);
-    expect(untrustedProvenanceReferences(undefined, 'terminal')[0]!.trust_class).toBe(
-      'first-party',
-    );
+  it('reports an uncomputed tracker as null, not as an empty trace (ADR-020 clause 3)', () => {
+    // Mutation: return `[operatorDecision]` for the uncomputed case. The entry then claims a
+    // completed trace that found no untrusted context, which nothing supports.
+    expect(untrustedProvenanceReferences(undefined, 'terminal')).toBeNull();
+    expect(untrustedProvenanceReferences({ thirdPartyUntrustedContextIds: null }, 'terminal')).toBeNull();
+
+    // A tracker that ran and found nothing is a different fact and stays distinguishable.
+    const clear = untrustedProvenanceReferences({ thirdPartyUntrustedContextIds: [] }, 'terminal');
+    expect(clear).not.toBeNull();
+    expect(clear!).toHaveLength(1);
+    expect(clear![0]!.trust_class).toBe('first-party');
   });
 
   it('confidence is 1 because the operator decision is directly observed', () => {

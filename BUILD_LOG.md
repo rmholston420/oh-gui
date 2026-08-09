@@ -4217,3 +4217,27 @@ The applied diff is now printed for every mutant.
 - **Also fixed:** ADR-031 was never added to the ADR index; added.
 - **Stop-condition status:** live suite must be run on Colossus before the composer and audit
   wiring can be called verified. Headless: 219 unit / 49 browser green.
+
+## 2026-08-09 05:56 EDT — ADR-020 conformance; live suite green; pre-existing lint error cleared
+
+- **Stage / plugin / port:** Phase 1 · GUI authorization audit
+- **Live suite result:** the operator ran `--grep @live --headed`; the follow-up test failed on
+  `getByRole('region', {name:'Steer the run'})`. The composer is a `<form>`, so its role is `form`.
+  Every unit test queried it by label text, so the accessible name was never checked against the
+  role it sits on — a class of defect the mocked suite structurally cannot catch. Fixed, plus a
+  headless role guard (mutation-tested: drifting the name turns 3 tests red). Re-run: all 5 green.
+- **ADR-032 resolved as Ratified · conforms to ADR-020** rather than amending ADR-020:
+  `provenance` is now `readonly AuditProvenanceReference[] | null`; `copyProvenance` preserves an
+  explicit `null` and still rejects `undefined`; `untrustedProvenanceReferences` returns `null`
+  for an uncomputed tracker instead of `[operatorDecision]`; the panel renders untraced distinctly
+  from traced-empty. Mutation-tested both directions (null→[], uncomputed→[operator]): each red.
+- **Pre-existing lint error cleared:** `useAuthorizationAudit` created the log inside an effect and
+  recovered with a synchronous `setState`, which `react-hooks` flags as cascading renders. The log
+  is now created during render via `useMemo` with a revision counter, so the append-only log stays
+  the single source of truth instead of being copied into state. I had been masking this by
+  grepping gate output for test counts only.
+- **Files touched:** `apps/gui/src/features/audit-log/{audit-log.ts,useAuthorizationAudit.ts,AuditLogPanel.tsx,audit-log.test.ts,audit-wiring.test.tsx}`,
+  `apps/gui/src/features/run/followUp.test.tsx`, `apps/gui/e2e/live-run.spec.ts`,
+  `adrs/ADR-032-audit-confidence-is-record-fidelity.md`, `KNOWN_ISSUES.md`
+- **Stop-condition status:** met. 220 unit / 49 browser / 5 live green, 0 lint errors,
+  hard constraints PASSED.

@@ -81,10 +81,14 @@ interface SharedAuditWrite {
   /** GUI-local class key. Null is an explicit uncomputed state. */
   readonly actionClass: string | null;
   /**
-   * GUI-local decision-time evidence. It is required and is never defaulted to `[]` or `null`.
-   * `[]` is accepted only when the caller captured that no context item informed the decision.
+   * GUI-local decision-time evidence, per ADR-020 clause 3. The field is required, but it has
+   * three distinct states that must never be conflated:
+   *   - `null`  — the action has no traceable context items (the tracker did not compute ancestry)
+   *   - `[]`    — traced, and there were none
+   *   - items   — traced, and these informed the decision
+   * `undefined` is not one of them: omitting the field is a programming error, not a state.
    */
-  readonly provenance: readonly AuditProvenanceReference[];
+  readonly provenance: readonly AuditProvenanceReference[] | null;
   /** GUI-local confidence captured at decision time, constrained to [0, 1]. */
   readonly confidence: number;
   /** Verified native snapshot, or null when no native event was supplied. */
@@ -121,10 +125,11 @@ export interface AuthorizationAuditEntry {
   readonly recordedAt: string;
   readonly decision: AuthorizationAuditDecision;
   /**
-   * GUI-local decision-time provenance. It is always a structured array; an unsupported/missing
-   * value is rejected at write time. An empty array means explicitly captured with no items.
+   * GUI-local decision-time provenance, per ADR-020 clause 3. `null` means untraceable, `[]` means
+   * traced with no influencing items, and the two are never conflated. A missing value is rejected
+   * at write time.
    */
-  readonly provenance: readonly AuditProvenanceReference[];
+  readonly provenance: readonly AuditProvenanceReference[] | null;
   /** GUI-local decision-time confidence; this is not an SDK score. */
   readonly confidence: number;
   /** Only fields verified in the pinned SDK source, otherwise null. */
@@ -202,9 +207,11 @@ function isSdkNativeSecurityRisk(value: unknown): value is SdkNativeSecurityRisk
   return value === 'UNKNOWN' || value === 'LOW' || value === 'MEDIUM' || value === 'HIGH';
 }
 
-function copyProvenance(value: unknown): readonly AuditProvenanceReference[] {
-  // ADR-020 requires a captured array. Missing/null values must not silently become [] because that
-  // would falsely claim that a capture occurred and found no influencing context items.
+function copyProvenance(value: unknown): readonly AuditProvenanceReference[] | null {
+  // ADR-020 clause 3: `null` is the explicit "no traceable context items" state and is preserved
+  // as-is. It must never become `[]`, which claims a capture occurred and found none. `undefined`
+  // remains a hard error: the caller has to state which of the three states applies.
+  if (value === null) return null;
   if (!Array.isArray(value)) {
     throw new AuditLogValidationError(
       'missing-provenance',
@@ -378,14 +385,17 @@ export function sdkNativeAuthorizationSnapshotFromEvent(
 export function untrustedProvenanceReferences(
   provenance: { readonly thirdPartyUntrustedContextIds: readonly string[] | null } | undefined,
   toolName: string,
-): readonly AuditProvenanceReference[] {
+): readonly AuditProvenanceReference[] | null {
   const operatorDecision: AuditProvenanceReference = {
     id: `operator-authorization:${toolName}`,
     trust_class: 'first-party',
     source: 'authorization-card',
   };
   const ids = provenance?.thirdPartyUntrustedContextIds ?? null;
-  if (ids === null) return [operatorDecision];
+  // ADR-020 clause 3: the tracker never ran, so there is no traced ancestry to report. Returning
+  // `[operatorDecision]` here would assert a completed trace that found no untrusted context —
+  // a claim nothing supports.
+  if (ids === null) return null;
   return [
     operatorDecision,
     ...ids.map((id) => ({

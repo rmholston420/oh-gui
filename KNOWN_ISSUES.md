@@ -527,3 +527,16 @@ better than another. They are a baseline of record for the app, not a model rank
   the `actionClass`-carries-the-distinction test and replace it with the null-vs-empty contract test
   ADR-020 already specifies.
 - **Related DEBUG_LOG search terms:** provenance, ADR-020, actionClass, gui-local-uncomputed
+
+### 2026-08-09 — No gate asserts ADR cross-references resolve
+
+- **Blocks:** no blockers
+- **Symptom:** ADR-032 was drafted citing ADR-008 and ADR-015 from memory; both were wrong
+  (ADR-008 is Phase 0 Baseline Metrics; the provenance decision is ADR-020). Nothing catches a
+  fabricated cross-reference, so a wrong citation reads as authoritative.
+- **Attempted fixes:** none yet
+- **Next investigation:** extend `scripts/check-hard-constraints.py` to scan every `ADR-###`
+  mention in `adrs/`, `docs/`, and source comments, assert the file exists, and assert the title
+  in the referencing sentence matches the target's H1. Mutation-test by citing a real-but-wrong
+  ADR number.
+- **Related DEBUG_LOG search terms:** ADR cross-reference, citation, ADR-020, ADR-032

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useReducer } from 'react';
 import {
   AuthorizationAuditLog,
   untrustedProvenanceReferences,
@@ -18,14 +18,14 @@ import { sdkNativeAuthorizationSnapshotFromEvent } from './audit-log';
  * - **confidence is always 1.** It describes the fidelity of the *record*, not a
  *   belief about the action. An operator clicking Approve is directly observed,
  *   so the record is certain. It is never a model score and must not become one.
- * - **provenance always carries one first-party item** for the operator decision
- *   itself, plus one `third-party-untrusted` item per untrusted context id the
- *   tracker actually found. An empty untrusted set is therefore only ever
- *   recorded when the tracker computed one.
- * - **an uncomputed tracker is preserved as `actionClass`, not flattened.**
- *   `gui-local-uncomputed` and `gui-local-clear` are different facts; writing
- *   `[]` for both would silently promote "we did not look" into "we looked and
- *   found nothing", which is exactly the failure zero-trust exists to prevent.
+ * - **provenance follows ADR-020 clause 3.** When the untrusted-content tracker
+ *   ran, the entry carries one first-party item for the operator decision plus
+ *   one `third-party-untrusted` item per untrusted context id it found. When the
+ *   tracker did not run, provenance is `null` — not `[]`, which would promote
+ *   "we did not look" into "we looked and found nothing".
+ * - **`actionClass` mirrors the same fact for display.** `gui-local-uncomputed`
+ *   and `gui-local-clear` remain distinct, but the authoritative distinction is
+ *   the ratified null-vs-empty one.
  */
 export interface AuthorizationAuditBinding {
   readonly entries: readonly AuthorizationAuditEntry[];
@@ -35,38 +35,45 @@ export interface AuthorizationAuditBinding {
   recordRejection(action: PendingAction, reason: string): void;
 }
 
+const EMPTY_ENTRIES: readonly AuthorizationAuditEntry[] = Object.freeze([]);
+
 export function useAuthorizationAudit(
   conversationId: string | null,
 ): AuthorizationAuditBinding {
-  const logRef = useRef<AuthorizationAuditLog | null>(null);
-  const [entries, setEntries] = useState<readonly AuthorizationAuditEntry[]>([]);
-  const [session, setSession] = useState<AuthorizationAuditSession>({
-    sessionId: conversationId ?? 'no-conversation',
+  // The log is created during render, not in an effect. Creating it in an effect meant the first
+  // paint after a conversation appears had no log, and recovering from that required a setState
+  // inside the effect — a cascading render, and the reason `react-hooks` flags it.
+  const log = useMemo(
+    () => (conversationId === null ? null : new AuthorizationAuditLog({ sessionId: conversationId })),
+    [conversationId],
+  );
+
+  // The log owns the history; this counter only tells React that the owned value moved. Copying
+  // entries into state would give two sources of truth for an append-only record.
+  const [revision, bumpRevision] = useReducer((value: number) => value + 1, 0);
+  useEffect(() => {
+    if (log === null) return;
+    return () => {
+      // Relaxations are session-scoped: ending the session drops the live count without
+      // rewriting the grants that were historically made.
+      log.endSession();
+    };
+  }, [log]);
+
+  const entries = useMemo(
+    // `revision` is the dependency that matters: the log mutates in place on append.
+    () => log?.entries ?? EMPTY_ENTRIES,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [log, revision],
+  );
+  const session: AuthorizationAuditSession = log?.session ?? {
+    sessionId: 'no-conversation',
     status: 'active',
     endedAt: null,
-  });
-
-  useEffect(() => {
-    if (conversationId === null) {
-      logRef.current = null;
-      setEntries([]);
-      return;
-    }
-    const log = new AuthorizationAuditLog({ sessionId: conversationId });
-    logRef.current = log;
-    setEntries(log.entries);
-    setSession(log.session);
-    return () => {
-      // Relaxations are session-scoped: ending the session drops the live count
-      // without rewriting the grants that were historically made.
-      setSession(log.endSession());
-      logRef.current = null;
-    };
-  }, [conversationId]);
+  };
 
   const record = useCallback(
     (action: PendingAction, decision: 'approved' | 'rejected', reason?: string) => {
-      const log = logRef.current;
       if (log === null) return;
 
       const status = untrustedContentStatus(action.guiLocalUntrustedContentProvenance);
@@ -95,9 +102,9 @@ export function useAuthorizationAudit(
               sdkNative: sdkNativeAuthorizationSnapshotFromEvent(action.event ?? null),
             },
       );
-      setEntries(log.entries);
+      bumpRevision();
     },
-    [],
+    [log],
   );
 
   const recordApproval = useCallback(

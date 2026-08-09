@@ -84,6 +84,15 @@ function NativeReadings({ snapshot }: { snapshot: SdkNativeAuthorizationSnapshot
 }
 
 function Provenance({ entry }: { entry: AuthorizationAuditEntry }) {
+  if (entry.provenance === null) {
+    return (
+      <p className="mt-2 text-sm text-amber-200" data-testid={`audit-provenance-untraced-${entry.id}`}>
+        No traceable context items — decision-time ancestry was not computed. This is not the same
+        as a decision made with no influencing context.
+      </p>
+    );
+  }
+
   if (entry.provenance.length === 0) {
     return (
       <p className="mt-2 text-sm text-slate-400" data-testid={`audit-provenance-empty-${entry.id}`}>
