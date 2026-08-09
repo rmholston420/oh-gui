@@ -367,6 +367,36 @@ export function sdkNativeAuthorizationSnapshotFromEvent(
 }
 
 /**
+ * Map GUI-local untrusted-content provenance onto audit provenance references.
+ *
+ * The first-party item records that a human made this decision at the card. Each
+ * untrusted context id the tracker found becomes its own `third-party-untrusted`
+ * item. When the tracker did not compute ancestry, no untrusted items are added
+ * and the caller preserves that distinction in `actionClass` — the absence of
+ * items here means "none recorded", never "none exist".
+ */
+export function untrustedProvenanceReferences(
+  provenance: { readonly thirdPartyUntrustedContextIds: readonly string[] | null } | undefined,
+  toolName: string,
+): readonly AuditProvenanceReference[] {
+  const operatorDecision: AuditProvenanceReference = {
+    id: `operator-authorization:${toolName}`,
+    trust_class: 'first-party',
+    source: 'authorization-card',
+  };
+  const ids = provenance?.thirdPartyUntrustedContextIds ?? null;
+  if (ids === null) return [operatorDecision];
+  return [
+    operatorDecision,
+    ...ids.map((id) => ({
+      id,
+      trust_class: 'third-party-untrusted' as const,
+      source: 'gui-local-untrusted-content-tracker',
+    })),
+  ];
+}
+
+/**
  * Append-only per-conversation log. Relaxations have no time duration: they are active while this
  * session is active and become inactive atomically when `endSession()` is called.
  */

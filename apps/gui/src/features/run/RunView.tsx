@@ -8,6 +8,8 @@ import {
 import { useConversation } from './useConversation';
 import EventLog from './EventLog';
 import ModelProfilePanel from '../model-profiles/ModelProfilePanel';
+import AuthorizationAuditLogPanel from '../audit-log/AuditLogPanel';
+import { useAuthorizationAudit } from '../audit-log/useAuthorizationAudit';
 
 /**
  * The run surface is a view of durable server objects, not a chat transcript. Event narration is
@@ -18,6 +20,7 @@ export default function RunView({ isReadOnlyViewport = false }: { isReadOnlyView
   const [followUp, setFollowUp] = useState('');
   const [trustStop, setTrustStop] = useState<TrustStopId>(DEFAULT_STOP);
   const run = useConversation();
+  const audit = useAuthorizationAudit(run.conversationId);
   const canStart = !isReadOnlyViewport && !run.isStarting && run.conversationId === null;
   // Steering is available whenever a conversation exists, including while it is
   // waiting for confirmation or paused: the operator's most useful correction is
@@ -143,11 +146,27 @@ export default function RunView({ isReadOnlyViewport = false }: { isReadOnlyView
                 <AuthorizationCard
                   key={`${action.toolName}-${index}`}
                   action={action}
-                  onApprove={() => void run.approve()}
-                  onReject={(reason) => void run.reject(reason)}
+                  onApprove={() => {
+                    audit.recordApproval(action);
+                    void run.approve();
+                  }}
+                  onReject={(reason) => {
+                    audit.recordRejection(action, reason);
+                    void run.reject(reason);
+                  }}
                 />
               ))
             )}
+          </section>
+        )}
+
+        {audit.entries.length > 0 && (
+          <section className="mt-6 border-t border-slate-700 pt-6" aria-label="Authorization history">
+            <AuthorizationAuditLogPanel
+              entries={audit.entries}
+              session={audit.session}
+              activeRelaxationCount={audit.activeRelaxationCount}
+            />
           </section>
         )}
 

@@ -4136,3 +4136,26 @@ The applied diff is now printed for every mutant.
   so the GUI can now edit this repo. AppArmor teardown failure diagnosed in DEBUG_LOG.
 - **Stop-condition status:** self-coding blocker 2 of 3 closed. Remaining: workspace path is still
   hardcoded (`types.ts:219`), and the audit-log panel is still unmounted.
+
+## 2026-08-09 05:28 EDT — Authorization audit log mounted; zero-trust write convention fixed
+
+- **Stage / plugin / port:** Phase 1 · GUI authorization surface · MemoryPort write contract
+- **What changed:** `useAuthorizationAudit` binds the append-only log to a conversation; `RunView`
+  records every approve/reject and renders `AuthorizationAuditLogPanel` under "Authorization
+  history" once at least one decision exists. The module had been built, tested and left unmounted.
+- **Zero-trust convention now fixed in code (ADR-032 candidate — NOT yet ratified):**
+  - `confidence` is always `1`, and describes the fidelity of the *record*, not a belief about the
+    action. An operator clicking Approve is directly observed. It is not a model score.
+  - `provenance` always carries one `first-party` item for the operator decision, plus one
+    `third-party-untrusted` item per untrusted context id the tracker actually found.
+  - An **uncomputed** tracker is preserved in `actionClass` as `gui-local-uncomputed`, never
+    flattened to `[]`. Writing `[]` for both "did not look" and "looked, found nothing" would
+    promote ignorance into a clean bill of health — the exact failure zero-trust exists to prevent.
+- **Files touched:** `apps/gui/src/features/audit-log/useAuthorizationAudit.ts` (new),
+  `apps/gui/src/features/audit-log/audit-wiring.test.tsx` (new),
+  `apps/gui/src/features/audit-log/audit-log.ts` (added `untrustedProvenanceReferences`),
+  `apps/gui/src/features/run/RunView.tsx`
+- **Verification:** 8 new tests; **5/5 mutants caught** (flatten uncomputed to clean, drop the
+  first-party item, panel always visible, lose the rejection reason, record without a conversation).
+- **Stop-condition status:** carried debt "audit-log panel unwired" is closed. The confidence /
+  provenance convention above is a real architectural decision and still owes an ADR.
