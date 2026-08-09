@@ -19,8 +19,17 @@ Exit criterion (v4.3): architecture decision record + baseline metrics report + 
 > `qwen3.6:27b` + coder `qwen3.6:35b-a3b-mtp-q4_K_M`.
 > Outstanding for Phase 0 exit: ~~baseline metrics report~~ **(struck by ADR-016 2026-08-08 19:50
 > EDT — moved to a parallel track; it gates model *claims*, not code)**, ~~upstream artifact
-> pins~~ (done), ~~read-only stock Agent Canvas reference checkout~~ (done), **first-run wizard**
-> — now the sole remaining Phase 0 exit item.
+> pins~~ (done), ~~read-only stock Agent Canvas reference checkout~~ (done), ~~**first-run
+> wizard**~~ (done 2026-08-08 20:05 EDT).
+
+> **PHASE 0 EXIT CRITERION MET 2026-08-08 20:05 EDT.** Every surviving item is satisfied. The
+> wizard renders all five post-ADR-003 steps, states its default stop (`ConfirmRisky(threshold=HIGH,
+> confirm_unknown=True)`) and justifies it in-UI, and marks `NeverConfirm()` opt-in-only with its
+> reason. Gate: 27 Vitest assertions and 8 Playwright browser assertions green, including per-step
+> WCAG AA contrast, overflow, and narrow-viewport checks, with every step screenshotted into the
+> report. **Carried into Phase 1, not silently closed:** spec 3.4 items 1 and 3 ship inert pending
+> the middleware (see the delivery note in 03-layout.md §3.4), and the trust-dial table is a
+> hand-maintained mirror that Phase 1 must drive from the middleware schema.
 
 > **AMENDED 2026-08-08 19:50 EDT by ADR-016.** The baseline metrics report is no longer a Phase 0
 > exit criterion. ADR-013's seven clauses remain fully binding on any benchmark that does run, and

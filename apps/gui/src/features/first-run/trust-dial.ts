@@ -102,8 +102,21 @@ export function shouldConfirm(
       return confirmRisky(action.risk, params);
     case 'ask-outside-worktree': {
       // The analyzer elevates an out-of-worktree write to HIGH before the policy ever sees it.
-      const elevated: SecurityRisk =
-        action.writesOutsideWorktree && action.risk !== 'UNKNOWN' ? 'HIGH' : action.risk;
+      //
+      // The elevation is unconditional, including when the incoming risk is UNKNOWN. This
+      // mirrors EnsembleSecurityAnalyzer.security_risk() in the SDK
+      // (openhands/sdk/security/ensemble.py): it collects each child analyzer's assessment and,
+      // at the default propagate_unknown=False, filters UNKNOWN out and returns max(concrete).
+      // The worktree analyzer returns a concrete HIGH, so HIGH survives fusion and UNKNOWN does
+      // not reach the policy at all.
+      //
+      // A previous version guarded this with `action.risk !== 'UNKNOWN'`, which left UNKNOWN
+      // intact and handed the decision to confirm_unknown. At the default confirmUnknown=true
+      // both spellings pause, which is why every test passed; with confirmUnknown=false they
+      // diverge and this display mirror told the operator an out-of-worktree write would
+      // proceed when the real policy pauses it. See trust-dial.test.ts, which now sweeps the
+      // parameter space instead of only the defaults.
+      const elevated: SecurityRisk = action.writesOutsideWorktree ? 'HIGH' : action.risk;
       return confirmRisky(elevated, params);
     }
   }

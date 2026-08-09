@@ -57,7 +57,22 @@ The unmodified Agent Canvas is not a third mode. Retained only as: a pinned refe
 6. Show a sample plan tree (clearly labeled "example").
 7. ~~(v4.1) Delegated-approval walkthrough.~~ **REMOVED v4.3 by ADR-003.**
 
-Phase 0 exit criterion addition: first-run wizard ships with Phase 0 baseline-metrics report and states the default trust-dial stop explicitly in its own UI copy.
+Phase 0 exit criterion addition: first-run wizard ships ~~with Phase 0 baseline-metrics report
+and~~ states the default trust-dial stop explicitly in its own UI copy.
+
+> **AMENDED 2026-08-08 20:05 EDT by ADR-016.** The baseline-metrics report is no longer a Phase 0
+> exit criterion, so the wizard no longer ships paired with it. The surviving half of this sentence
+> — the wizard stating its default trust-dial stop explicitly in its own UI copy — is unchanged and
+> is delivered by step 3 of `apps/gui/src/features/first-run/FirstRunWizard.tsx`.
+
+> **DELIVERY NOTE 2026-08-08 20:05 EDT.** Items 4, 5 and 6 above ship functional. Items 1 and 3 ship
+> as labelled inert placeholders, and this is architectural rather than incidental: ADR-001 item 4
+> confines the frontend to talking to the OH-GUI middleware, which does not exist until Phase 1.
+> Item 1 (backend detection via the model-profile scan) therefore cannot reach Ollama from the
+> browser, and item 3's "one **live**, harmless example action" cannot execute an action. What
+> Phase 0 does deliver for item 3 is the *decision* for each stop, computed by the same predicate
+> the review UI will call rather than written as copy. Both remain owed in Phase 1 and are tracked
+> in KNOWN_ISSUES.md.
 
 ## 3.5 Kinetic feedback layer
 

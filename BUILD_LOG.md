@@ -2863,3 +2863,41 @@ split.
 - **PORTING_LEDGER / ADR updated:** ADR-013 amended
 - **Stop-condition status:** met. Benchmark deferred with a measured reason rather than a hunch.
   Next: Phase 1 authorization slice.
+
+## 2026-08-08 20:05 EDT — Phase 0 exit criterion met: first-run wizard verified and shipped
+
+- **Stage / plugin / port:** Phase 0 · first-run wizard (`apps/gui`) · trust-dial display mirror
+- **What changed:**
+  - Inspected the existing scaffold rather than rewriting it. `FirstRunWizard.tsx` (248 lines) and
+    `trust-dial.ts` (115 lines) already covered all five post-ADR-003 steps of spec 03-layout.md
+    §3.4, so the work was verification and correction, not construction.
+  - **Fixed a native-fidelity defect** in the trust-dial predicate found by reading the SDK against
+    the code: the out-of-worktree elevation was skipped when incoming risk was UNKNOWN, so with
+    `confirm_unknown=false` the wizard displayed "Proceeds" for an unclassifiable write outside the
+    worktree where native OpenHands pauses. Full diagnosis in DEBUG_LOG 2026-08-08 20:05 EDT.
+    This is an ADR-015 violation — the mirror changed the meaning of a native decision.
+  - **Strengthened the tests that let it through.** The "strictly stricter" property test swept
+    risks at default params only; it now sweeps risk x location x threshold x confirm_unknown
+    (48 combinations per pair). Added two direct native-semantics assertions. Confirmed by
+    execution that the new tests fail against the old predicate (2 failed | 14 passed) and pass
+    against the fixed one — the gate is proven against a real defect, not assumed.
+  - **Amended two specs for consistency with ADR-016:** 03-layout.md §3.4 no longer pairs the
+    wizard with the struck baseline-metrics report, and 11-dev-plan.md records Phase 0 exit as met.
+  - Added a delivery note recording honestly that spec 3.4 items 1 and 3 ship inert, and why.
+- **Verification (executed):** `npm run gate` → lint clean, **27/27 Vitest**, build clean.
+  `npx playwright test` → **8/8 chromium**, covering per-step WCAG AA contrast via axe, clipped and
+  overflowing text, a 900px narrow-viewport horizontal-scroll check, and DOM-level agreement
+  between the rendered table and the predicate. All five steps screenshotted into the report and
+  **visually inspected** — step 2's decision table and step 3's default-stop copy both render clean
+  with no wrapped, clipped, or low-contrast text.
+- **Files touched:**
+  - `apps/gui/src/features/first-run/trust-dial.ts`
+  - `apps/gui/src/__tests__/trust-dial.test.ts`
+  - `docs/specs/03-layout.md`, `docs/specs/11-dev-plan.md`
+  - `DEBUG_LOG.md`, `KNOWN_ISSUES.md`, `BUILD_LOG.md`, `SESSION_HANDOFF.md`
+- **Ports / adapters affected:** none. The frontend still imports no SDK and no vendor
+  (`import-boundary.test.ts` holds ADR-001 item 4).
+- **PORTING_LEDGER / ADR updated:** none new. Enforces ADR-015; consequence of ADR-016.
+- **Stop-condition status:** **met. Phase 0 is closed.** Next: Phase 1 authorization slice
+  (04-authorization.md), which also owes the two inert wizard steps and the schema-driven
+  replacement of the trust-dial mirror.

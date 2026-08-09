@@ -321,3 +321,20 @@ better than another. They are a baseline of record for the app, not a model rank
   single task, single model.
 - **Related DEBUG_LOG search terms:** flip rate, run-to-run variance, resolved mismatch, mid-p,
   discordant pairs, statistical power, MDE
+
+### 2026-08-08 — First-run wizard steps 1 and 3 ship inert pending the middleware
+
+- **Blocks:** nothing. Phase 0 exit is met without them; they are owed work in Phase 1.
+- **Symptom:** Spec 03-layout.md §3.4 item 1 ("Connect a model/agent — detected local backends
+  pre-populate from the model-profile scan") renders a labelled "Not active yet" placeholder, and
+  item 3's "one **live**, harmless example action" shows a computed decision rather than an
+  executed action.
+- **Why:** ADR-001 item 4 confines the frontend to the OH-GUI middleware, which does not exist
+  until Phase 1. The browser cannot reach Ollama directly, so backend detection cannot be honestly
+  faked, and no action can be executed without a conversation.
+- **Also owed:** `trust-dial.ts` is a hand-maintained mirror of the spec table. Phase 1 must drive
+  it from the middleware's generated schema (ADR-001 Amendment #1 finding 2). Until then
+  `trust-dial.test.ts` pins every cell so drift fails the gate rather than misleading the operator.
+- **Next investigation:** build the middleware model-profile scan endpoint in the Phase 1
+  authorization slice, then replace both placeholders.
+- **Related DEBUG_LOG search terms:** trust-dial, mirror, drift, model-profile scan, middleware

@@ -87,12 +87,61 @@ describe('trust-dial mirror', () => {
       expect(shouldConfirm('ask-outside-worktree', { risk: 'UNKNOWN' })).toBe(true);
     });
 
-    it('is strictly stricter than "Ask on risky", never looser', () => {
+    it('is strictly stricter than "Ask on risky", never looser - across every parameter combination', () => {
+      // Previously this swept risks at the DEFAULT params only. That is what let the UNKNOWN
+      // elevation bug below ship green: the two spellings only disagree when confirmUnknown is
+      // off. Sweep the whole parameter space, not just the defaults.
       for (const risk of RISKS) {
         for (const out of [false, true]) {
-          const a = shouldConfirm('ask-risky', { risk, writesOutsideWorktree: out });
-          const b = shouldConfirm('ask-outside-worktree', { risk, writesOutsideWorktree: out });
-          if (a) expect(b).toBe(true);
+          for (const threshold of ['LOW', 'MEDIUM', 'HIGH'] as const) {
+            for (const confirmUnknown of [true, false]) {
+              const params = { threshold, confirmUnknown };
+              const a = shouldConfirm('ask-risky', { risk, writesOutsideWorktree: out }, params);
+              const b = shouldConfirm(
+                'ask-outside-worktree',
+                { risk, writesOutsideWorktree: out },
+                params,
+              );
+              if (a) {
+                expect(
+                  b,
+                  `ask-outside-worktree must never be looser than ask-risky (risk=${risk} outside=${out} threshold=${threshold} confirmUnknown=${confirmUnknown})`,
+                ).toBe(true);
+              }
+            }
+          }
+        }
+      }
+    });
+
+    it('pauses an UNKNOWN-risk write outside the worktree even when confirm_unknown is off', () => {
+      // Native semantics, verified against openhands/sdk/security/ensemble.py at SDK 1.41.0:
+      // EnsembleSecurityAnalyzer filters UNKNOWN and returns max(concrete) when
+      // propagate_unknown is false (the default). The worktree analyzer contributes a concrete
+      // HIGH, so the policy is handed HIGH -- it never sees UNKNOWN and confirm_unknown is not
+      // consulted. ConfirmRisky(threshold=HIGH).should_confirm(HIGH) is true because
+      // SecurityRisk.is_riskier is reflexive.
+      const unknownOff = { threshold: 'HIGH', confirmUnknown: false } as const;
+      expect(
+        shouldConfirm(
+          'ask-outside-worktree',
+          { risk: 'UNKNOWN', writesOutsideWorktree: true },
+          unknownOff,
+        ),
+      ).toBe(true);
+    });
+
+    it('elevation outranks the threshold knob: an out-of-worktree write pauses at every threshold', () => {
+      for (const threshold of ['LOW', 'MEDIUM', 'HIGH'] as const) {
+        for (const risk of RISKS) {
+          expect(
+            shouldConfirm(
+              'ask-outside-worktree',
+              { risk, writesOutsideWorktree: true },
+              { threshold, confirmUnknown: false },
+            ),
+            `out-of-worktree write must pause (risk=${risk} threshold=${threshold})`,
+          ).toBe(true);
         }
       }
     });

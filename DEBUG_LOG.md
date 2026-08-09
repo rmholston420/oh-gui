@@ -1298,3 +1298,39 @@ the snap daemon. Recorded in `docs/forge-oh-port-survey.md`.
   aborted with exit 1, and passed once it was killed.
 - **Files changed:** none in this repo — host configuration only.
 - **Related BUILD_LOG entry:** 2026-08-08 19:40 EDT
+
+## 2026-08-08 20:05 EDT — Trust-dial mirror let an out-of-worktree write proceed when confirm_unknown was off
+
+- **Symptom:** No runtime error; a silent semantic divergence found by reading the SDK against the
+  code. In `apps/gui/src/features/first-run/trust-dial.ts`, `shouldConfirm('ask-outside-worktree',
+  { risk: 'UNKNOWN', writesOutsideWorktree: true }, { threshold: 'HIGH', confirmUnknown: false })`
+  returned `false` ("Proceeds"). Native OpenHands pauses that action. The wizard's decision table
+  would have told the operator an unclassifiable write landing outside the worktree proceeds, on
+  the one stop whose entire purpose is to catch out-of-worktree writes.
+- **Affected stage / plugin / port:** Phase 0 · first-run wizard · trust-dial display mirror
+  (ADR-015 native-fidelity boundary)
+- **Root cause:** The elevation was guarded by `action.risk !== 'UNKNOWN'`:
+  `const elevated = action.writesOutsideWorktree && action.risk !== 'UNKNOWN' ? 'HIGH' : action.risk`.
+  That guard has no counterpart in the SDK. Verified in
+  `openhands/sdk/security/ensemble.py` at 1.41.0: `EnsembleSecurityAnalyzer.security_risk()`
+  collects each child's assessment and, at the default `propagate_unknown=False`, computes
+  `concrete = [r for r in results if r != UNKNOWN]` then `return max(concrete)`. The worktree
+  analyzer contributes a concrete HIGH, so UNKNOWN is **filtered out and never reaches the
+  policy** — `confirm_unknown` is not consulted at all. `ConfirmRisky.should_confirm(HIGH)` then
+  returns True because `SecurityRisk.is_riskier` is reflexive (`risk.py`, `reflexive: bool = True`).
+- **Why the gate missed it:** every existing assertion used `DEFAULT_CONFIRM_RISKY`
+  (`confirmUnknown: true`), and at that value both spellings pause. The two implementations are
+  observationally identical across the entire default-parameter surface. The "strictly stricter
+  than ask-risky" property test also swept risks at default params only, so a property test that
+  looked exhaustive was exhaustive on the wrong axis.
+- **Fix applied:** elevation is now unconditional —
+  `const elevated = action.writesOutsideWorktree ? 'HIGH' : action.risk` — with the ensemble
+  filtering rule cited inline so the next reader does not "restore" the guard.
+- **Verification (executed, not assumed):** the two new tests were run against the **old**
+  predicate first and observed to fail (`2 failed | 14 passed`), then against the fixed predicate
+  and observed to pass (27/27). The parameter sweep alone did **not** catch the bug; the explicit
+  native-semantics assertions did. Both were kept.
+- **Files changed:**
+  - `apps/gui/src/features/first-run/trust-dial.ts`
+  - `apps/gui/src/__tests__/trust-dial.test.ts`
+- **Related BUILD_LOG entry:** 2026-08-08 20:05 EDT
